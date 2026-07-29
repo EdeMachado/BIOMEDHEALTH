@@ -20,10 +20,10 @@ export function LoginPage() {
       <Card className="w-full max-w-lg space-y-4">
         <div className="space-y-2">
           <CardTitle>BIOMED HEALTH</CardTitle>
-          <CardDescription>Saude conectada. Decisoes inteligentes.</CardDescription>
+          <CardDescription>Saúde conectada. Decisões inteligentes.</CardDescription>
         </div>
         <Alert>
-          Ambiente demonstrativo - dados ficticios. Nao use informacoes reais de pacientes ou
+          Ambiente demonstrativo — dados fictícios. Não use informações reais de pacientes ou
           colaboradores.
         </Alert>
         {error ? <p className="text-sm text-[var(--destructive)]">{error}</p> : null}
@@ -33,7 +33,7 @@ export function LoginPage() {
             event.preventDefault();
             const result = login({ email, password, organizationId });
             if (!result.ok) {
-              setError(result.message ?? 'Falha de autenticacao.');
+              setError(result.message ?? 'Falha de autenticação.');
               return;
             }
             void navigate(result.redirectTo ?? '/');
@@ -52,7 +52,7 @@ export function LoginPage() {
             />
           </label>
           <label className="block space-y-1 text-sm">
-            <span>Organizacao</span>
+            <span>Organização</span>
             <select
               value={organizationId}
               onChange={(event) => setOrganizationId(event.target.value)}
@@ -70,7 +70,7 @@ export function LoginPage() {
           </Button>
         </form>
         <p className="text-xs text-[var(--muted-foreground)]">
-          Contas demo: usuario, medico, profissional de saude, gestor clinico, gestor institucional,
+          Contas demo: usuário, médico, profissional de saúde, gestor clínico, gestor institucional,
           SST, administrador cliente, administrador BioMed e auditor (senha `Demo@123`).
         </p>
       </Card>

@@ -25,7 +25,7 @@ export function RequireRole({ allow }: GuardProps) {
       action: 'rota_negada',
       entity: 'autorizacao',
       result: 'negado',
-      reason: 'Perfil sem permissao para a rota',
+      reason: 'Perfil sem permissão para a rota',
     });
     return <Navigate to="/acesso-negado" replace />;
   }

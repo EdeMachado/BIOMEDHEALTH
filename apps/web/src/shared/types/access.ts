@@ -16,6 +16,7 @@ export type SessionUser = {
   nome: string;
   email: string;
   role: Role;
+  roles: Role[];
   organizationId: string;
 };
 

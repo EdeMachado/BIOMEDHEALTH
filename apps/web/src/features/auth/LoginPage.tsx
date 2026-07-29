@@ -31,12 +31,14 @@ export function LoginPage() {
           className="space-y-3"
           onSubmit={(event) => {
             event.preventDefault();
-            const result = login({ email, password, organizationId });
-            if (!result.ok) {
-              setError(result.message ?? 'Falha de autenticação.');
-              return;
-            }
-            void navigate(result.redirectTo ?? '/');
+            void (async () => {
+              const result = await login({ email, password, organizationId });
+              if (!result.ok) {
+                setError(result.message ?? 'Falha de autenticação.');
+                return;
+              }
+              void navigate(result.redirectTo ?? '/');
+            })();
           }}
         >
           <label className="block space-y-1 text-sm">

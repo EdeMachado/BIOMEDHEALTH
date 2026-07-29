@@ -13,6 +13,21 @@ function setDemoSession(role: 'usuario' | 'medico' | 'gestor_institucional') {
       nome: 'Demo',
       email: 'demo@biomed.health',
       role,
+      roles: [role],
+      organizationId: 'org-1',
+    })
+  );
+}
+
+function setDemoSessionWithMultipleRoles(roles: Array<'usuario' | 'medico' | 'gestor_institucional'>) {
+  sessionStorage.setItem(
+    'biomed_demo_session',
+    JSON.stringify({
+      id: 'multi-role-user',
+      nome: 'Multi Role',
+      email: 'multi@biomed.health',
+      role: roles[0],
+      roles,
       organizationId: 'org-1',
     })
   );
@@ -74,5 +89,33 @@ describe('guards de autorizacao e roteamento protegido', () => {
     setDemoSession('usuario');
     renderRouter('/usuario-only');
     expect(await screen.findByRole('heading', { name: 'Area Usuario' })).toBeInTheDocument();
+  });
+
+  it('reconhece permissao cumulativa quando usuario possui multiplos papeis ativos', async () => {
+    const router = createMemoryRouter(
+      [
+        { path: '/login', element: <h1>Tela Login</h1> },
+        { path: '/acesso-negado', element: <h1>Acesso negado</h1> },
+        {
+          element: <RequireAuth />,
+          children: [
+            {
+              element: <RequireRole allow={['medico']} />,
+              children: [{ path: '/clinica-only', element: <h1>Area Clinica</h1> }],
+            },
+          ],
+        },
+      ],
+      { initialEntries: ['/clinica-only'] }
+    );
+
+    setDemoSessionWithMultipleRoles(['usuario', 'medico']);
+    render(
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Area Clinica' })).toBeInTheDocument();
   });
 });

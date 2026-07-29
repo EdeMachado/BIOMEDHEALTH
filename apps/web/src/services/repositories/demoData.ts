@@ -13,6 +13,7 @@ export const demoUsers: Array<SessionUser & { password: string }> = [
     email: 'usuario.demo@biomed.health',
     password: 'Demo@123',
     role: 'usuario',
+    roles: ['usuario'],
     organizationId: 'org-1',
   },
   {
@@ -21,6 +22,7 @@ export const demoUsers: Array<SessionUser & { password: string }> = [
     email: 'medico.demo@biomed.health',
     password: 'Demo@123',
     role: 'medico',
+    roles: ['medico'],
     organizationId: 'org-1',
   },
   {
@@ -29,6 +31,7 @@ export const demoUsers: Array<SessionUser & { password: string }> = [
     email: 'profissional.demo@biomed.health',
     password: 'Demo@123',
     role: 'profissional_saude',
+    roles: ['profissional_saude'],
     organizationId: 'org-1',
   },
   {
@@ -37,6 +40,7 @@ export const demoUsers: Array<SessionUser & { password: string }> = [
     email: 'gestor.clinico@biomed.health',
     password: 'Demo@123',
     role: 'gestor_clinico',
+    roles: ['gestor_clinico'],
     organizationId: 'org-1',
   },
   {
@@ -45,6 +49,7 @@ export const demoUsers: Array<SessionUser & { password: string }> = [
     email: 'gestor.demo@biomed.health',
     password: 'Demo@123',
     role: 'gestor_institucional',
+    roles: ['gestor_institucional'],
     organizationId: 'org-1',
   },
   {
@@ -53,6 +58,7 @@ export const demoUsers: Array<SessionUser & { password: string }> = [
     email: 'sst.demo@biomed.health',
     password: 'Demo@123',
     role: 'sst',
+    roles: ['sst'],
     organizationId: 'org-1',
   },
   {
@@ -61,6 +67,7 @@ export const demoUsers: Array<SessionUser & { password: string }> = [
     email: 'admin.cliente@biomed.health',
     password: 'Demo@123',
     role: 'admin_cliente',
+    roles: ['admin_cliente'],
     organizationId: 'org-1',
   },
   {
@@ -69,6 +76,7 @@ export const demoUsers: Array<SessionUser & { password: string }> = [
     email: 'admin.biomed@biomed.health',
     password: 'Demo@123',
     role: 'admin_biomed',
+    roles: ['admin_biomed'],
     organizationId: 'org-1',
   },
   {
@@ -77,6 +85,7 @@ export const demoUsers: Array<SessionUser & { password: string }> = [
     email: 'auditor.demo@biomed.health',
     password: 'Demo@123',
     role: 'auditor',
+    roles: ['auditor'],
     organizationId: 'org-1',
   },
   {
@@ -85,6 +94,7 @@ export const demoUsers: Array<SessionUser & { password: string }> = [
     email: 'usuario.org2@biomed.health',
     password: 'Demo@123',
     role: 'usuario',
+    roles: ['usuario'],
     organizationId: 'org-2',
   },
 ];

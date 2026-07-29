@@ -57,7 +57,9 @@ export function AreaLayout({ area, title }: AreaLayoutProps) {
             <Button
               variant="outline"
               size="sm"
-              onClick={logout}
+              onClick={() => {
+                void logout();
+              }}
               className="inline-flex items-center gap-1"
             >
               <LogOut className="h-4 w-4" />
@@ -101,7 +103,14 @@ export function AreaLayout({ area, title }: AreaLayoutProps) {
           </nav>
           <div className="mt-4 border-t pt-3 md:hidden">
             <p className="mb-2 text-xs text-[var(--muted-foreground)]">{user?.nome}</p>
-            <Button variant="outline" size="sm" className="w-full justify-center" onClick={logout}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-center"
+              onClick={() => {
+                void logout();
+              }}
+            >
               <LogOut className="h-4 w-4" />
               Sair
             </Button>

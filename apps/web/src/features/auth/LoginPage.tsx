@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { organizations } from '@/services/repositories/demoData';
 import { useAuth } from '@/services/auth/AuthContext';
 import { Button } from '@/shared/ui/button';

@@ -1,5 +1,5 @@
 import { lazy, Suspense, type ReactElement } from 'react';
-import { Navigate, createBrowserRouter } from 'react-router-dom';
+import { Navigate, createBrowserRouter } from 'react-router';
 import { AreaLayout } from '@/app/layouts/AreaLayout';
 import { RequireAuth, RequireRole } from '@/app/routes/guards';
 

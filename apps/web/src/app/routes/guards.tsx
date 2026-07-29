@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet } from 'react-router';
 import { registerAuditEvent } from '@/domains/audit/auditTrail';
 import { useAuth } from '@/services/auth/AuthContext';
 import { assignedPatientsByProfessional } from '@/services/repositories/demoData';

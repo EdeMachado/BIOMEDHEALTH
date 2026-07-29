@@ -1,4 +1,4 @@
-import { Link, Outlet } from 'react-router-dom';
+import { Link, Outlet } from 'react-router';
 import { LogOut } from 'lucide-react';
 import { useAuth } from '@/services/auth/AuthContext';
 import { Button } from '@/shared/ui/button';

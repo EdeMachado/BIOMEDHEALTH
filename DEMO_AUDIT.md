@@ -9,6 +9,7 @@ Escopo auditado: fundacao + primeira demo, sem conexao Supabase e sem dados reai
 - Node definido no projeto: `.nvmrc` = `22.13.1`
 - Regra adicionada em `package.json` (raiz e `apps/web`): `engines.node >=22.13.1 <23`
 - CI: nao ha workflow configurado ainda; ao criar CI, deve usar `22.13.1` explicitamente.
+- Nota: `react-router@8.3.0` declara suporte oficial a `node >= 22.22.0`.
 
 ## Vulnerabilidades de producao
 
@@ -21,29 +22,31 @@ Escopo auditado: fundacao + primeira demo, sem conexao Supabase e sem dados reai
 
 ### Verificacao de versao corrigida (GHSA-qwww-vcr4-c8h2)
 
-- Advisory indica correcoes em:
-  - `>= 7.18.2` (linha v7)
-  - `>= 8.3.0` (linha v8)
-- Projeto ja estava em `7.18.2` (versao corrigida na linha v7).
+- Advisory oficial:
+  - afetadas: `react-router >= 7.12.0 e < 8.3.0`
+  - corrigida: `8.3.0`
+- Portanto `7.18.2` continua formalmente na faixa afetada.
 
 ### Acoes executadas
 
-- Pin explicito para `react-router-dom@7.18.2` e `react-router@7.18.2`.
+- Migracao para `react-router@8.3.0`.
+- Remocao de `react-router-dom` (descontinuado na linha v8).
+- Ajuste de imports DOM para `react-router/dom` mantendo app em modo SPA.
 - Lockfile atualizado.
 - **Nao** foi usado `npm audit fix --force`.
-- **Nao** foi feita atualizacao major para v8.
 
 ### Depois
 
 - `npm audit --omit=dev --json`
-  - Continua reportando High: 2 (base de advisories npm ainda marcando faixa ampla de v7).
+  - High: 0
+  - Critical: 0
 
 ### Exploitabilidade neste sistema e mitigacao
 
-- Advisory relacionado a caminho de RSC instavel (nao utilizado neste MVP).
-- Aplicacao atual e SPA cliente, sem fluxo RSC/SSR ativo.
+- Advisory alcanca aplicacoes com APIs RSC instaveis.
+- O MVP atual nao usa APIs RSC instaveis e permanece em SPA cliente.
 - Mitigacao adotada:
-  - permanencia em `7.18.2` (patch v7 documentado),
+  - migracao para versao formalmente corrigida (`8.3.0`),
   - bloqueio de rotas por perfil/organizacao,
   - testes E2E de acesso direto por URL e negacao de acesso.
 

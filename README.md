@@ -25,13 +25,10 @@ Saude conectada. Decisoes inteligentes.
 
 ### Requisitos de ambiente
 
-- Node recomendado: `22.13.1` (registrado em `.nvmrc`)
+- Node requerido: `22.22.0` (registrado em `.nvmrc`)
 - npm: `11+`
 - Desenvolvedor deve executar com a versao definida em `.nvmrc` (`nvm use`).
-- CI deve usar a mesma versao (`22.13.1`) para evitar divergencias de lint/build.
-
-> Observacao: com Node `22.12.0` foram vistos avisos de engine em dependencias de lint.  
-> A recomendacao do projeto e usar `22.13.1` ou superior dentro da mesma linha LTS.
+- CI deve usar exatamente a mesma versao (`22.22.0`) para evitar divergencias de lint/build.
 
 1. Copie `.env.example` para `.env`.
 2. Instale dependencias:
@@ -65,12 +62,16 @@ Saude conectada. Decisoes inteligentes.
   - `/minha-biomed`
   - `/minha-biomed/jornada`
   - `/minha-biomed/atividades`
+  - `/minha-biomed/agenda`
   - `/minha-biomed/perfil`
 - BioMed Clinica:
   - `/clinica`
   - `/clinica/agenda`
   - `/clinica/carteira`
+  - `/clinica/avaliacoes`
   - `/clinica/ficha`
+  - `/clinica/plano-cuidado`
+  - `/clinica/registros`
 - BioMed Gestao:
   - `/gestao`
   - `/gestao/campanhas`
@@ -98,11 +99,11 @@ Nenhuma credencial real deve ser versionada.
 
 ## Seguranca de dependencias (decisao atual)
 
-- `npm audit` apontou vulnerabilidades altas majoritariamente em cadeia de desenvolvimento (lint/build/PWA).
-- Dependencias de producao com alerta atual:
-  - `react-router-dom`/`react-router` (advisory relacionado a modo RSC/CSRF).
-- Decisao nesta etapa:
-  - manter versoes atuais para estabilidade da demo;
-  - nao aplicar `npm audit fix --force` (evita downgrade/major destrutivo);
-  - mitigar por configuracao: sem uso de modo RSC no MVP atual;
-  - revisar novamente antes de deploy com janela dedicada de atualizacao segura.
+- O advisory `GHSA-qwww-vcr4-c8h2` afeta formalmente `react-router >= 7.12.0 e < 8.3.0`.
+- O MVP **nao** usa APIs RSC instaveis, reduzindo exposicao pratica, mas o alerta de dependencia foi tratado com migracao.
+- Migracao executada:
+  - `react-router-dom` removido (descontinuado na linha v8);
+  - `react-router` atualizado para `8.3.0`;
+  - imports DOM movidos para `react-router/dom`, mantendo app em modo SPA.
+- `npm audit --omit=dev` atual: `0` vulnerabilidades altas/criticas em producao.
+- Nao foi utilizado `npm audit fix --force`.

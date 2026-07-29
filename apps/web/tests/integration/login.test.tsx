@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { LoginPage } from '@/features/auth/LoginPage';
 import { AuthProvider } from '@/services/auth/AuthContext';
@@ -7,11 +7,11 @@ import { AuthProvider } from '@/services/auth/AuthContext';
 describe('LoginPage', () => {
   it('mostra erro para credenciais invalidas', async () => {
     render(
-      <BrowserRouter>
+      <MemoryRouter>
         <AuthProvider>
           <LoginPage />
         </AuthProvider>
-      </BrowserRouter>
+      </MemoryRouter>
     );
 
     const emailInput = screen.getByLabelText('E-mail');

@@ -18,8 +18,10 @@
   --gold: #c7a34b;
   --ring: #075e54;
   --destructive: #dc2626;
+  --info: #1d4f91;
   --radius: 0.75rem;
   --shadow-soft: 0 8px 24px rgba(7, 94, 84, 0.08);
+  --shadow-card: 0 2px 14px rgba(15, 23, 42, 0.06);
 }
 
 * {
@@ -46,4 +48,37 @@ body {
 .focus-ring {
   @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
   --tw-ring-color: var(--ring);
+}
+
+.status-badge {
+  border-radius: 9999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status-success {
+  background: #e6f4ef;
+  color: #0d5f4e;
+}
+
+.status-warning {
+  background: #fef3c7;
+  color: #8a5a00;
+}
+
+.status-info {
+  background: #e7eef9;
+  color: #17457d;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

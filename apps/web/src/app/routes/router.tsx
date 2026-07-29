@@ -43,6 +43,9 @@ const ClinicalAttendanceRecordPage = lazy(() =>
 const ManagementOverviewPage = lazy(() =>
   import('@/features/biomed-gestao/ManagementPages').then((m) => ({ default: m.ManagementOverviewPage }))
 );
+const ManagementIndicatorsPage = lazy(() =>
+  import('@/features/biomed-gestao/ManagementPages').then((m) => ({ default: m.ManagementIndicatorsPage }))
+);
 const ManagementCampaignsPage = lazy(() =>
   import('@/features/biomed-gestao/ManagementPages').then((m) => ({ default: m.ManagementCampaignsPage }))
 );
@@ -63,7 +66,7 @@ function AccessDeniedPage() {
       <div className="max-w-lg rounded-2xl border bg-white p-6">
         <h2 className="text-xl font-bold text-[var(--card-foreground)]">Acesso negado</h2>
         <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-          Seu perfil nao possui permissao para visualizar este recurso.
+          Seu perfil não possui permissão para visualizar este recurso.
         </p>
       </div>
     </div>
@@ -97,7 +100,7 @@ export const router = createBrowserRouter([
         children: [
           {
             path: '/clinica',
-            element: <AreaLayout area="clinica" title="BioMed Clinica" />,
+            element: <AreaLayout area="clinica" title="BioMed Clínica" />,
             children: [
               { index: true, element: withLoader(<ClinicalOverviewPage />) },
               { path: 'agenda', element: withLoader(<ClinicalAgendaPage />) },
@@ -115,11 +118,11 @@ export const router = createBrowserRouter([
         children: [
           {
             path: '/gestao',
-            element: <AreaLayout area="gestao" title="BioMed Gestao" />,
+            element: <AreaLayout area="gestao" title="BioMed Gestão" />,
             children: [
               { index: true, element: withLoader(<ManagementOverviewPage />) },
               { path: 'campanhas', element: withLoader(<ManagementCampaignsPage />) },
-              { path: 'indicadores', element: withLoader(<ManagementOverviewPage />) },
+              { path: 'indicadores', element: withLoader(<ManagementIndicatorsPage />) },
               { path: 'plano-acao', element: withLoader(<ManagementActionPlanPage />) },
               { path: 'auditoria', element: withLoader(<ManagementAuditPage />) },
             ],

@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 import { registerAuditEvent } from '@/domains/audit/auditTrail';
 import { demoUsers, getRoleHomePath } from '@/services/repositories/demoData';
+import { readSessionItem, removeSessionItem, writeSessionItem } from '@/shared/lib/sessionStorage';
 import type { SessionUser } from '@/shared/types/access';
 
 type LoginInput = {
@@ -20,7 +21,7 @@ const AUTH_STORAGE_KEY = 'biomed_demo_session';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(() => {
-    const raw = sessionStorage.getItem(AUTH_STORAGE_KEY);
+    const raw = readSessionItem(AUTH_STORAGE_KEY);
     if (!raw) return null;
     try {
       return JSON.parse(raw) as SessionUser;
@@ -48,9 +49,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             action: 'login',
             entity: 'auth',
             result: 'falha',
-            reason: 'Credenciais invalidas',
+            reason: 'Credenciais inválidas',
           });
-          return { ok: false, message: 'Credenciais invalidas para este ambiente demonstrativo.' };
+          return { ok: false, message: 'Credenciais inválidas para este ambiente demonstrativo.' };
         }
 
         const sessionUser: SessionUser = {
@@ -60,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role: found.role,
           organizationId: found.organizationId,
         };
-        sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(sessionUser));
+        writeSessionItem(AUTH_STORAGE_KEY, JSON.stringify(sessionUser));
         registerAuditEvent({
           actorEmail: sessionUser.email,
           actorRole: sessionUser.role,
@@ -83,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             result: 'sucesso',
           });
         }
-        sessionStorage.removeItem(AUTH_STORAGE_KEY);
+        removeSessionItem(AUTH_STORAGE_KEY);
         setUser(null);
       },
     }),

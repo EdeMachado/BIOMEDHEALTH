@@ -215,6 +215,42 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 13. **Estimativa**: media  
 14. **Ordem recomendada**: 5
 
+#### SUP-B01.3 - Fluxos funcionais de consentimento LGPD em runtime (aplicacao)
+
+1. **Identificador**: `SUP-B01.3`
+2. **Finalidade**: operacionalizar no frontend os fluxos de consulta, aceite, revogacao e historico do titular usando schema/RLS ja existentes.
+3. **Escopo incluido**:
+   - contratos e repositorios (mock/supabase) para consentimentos;
+   - consulta de documentos elegiveis;
+   - consulta de historico do titular autenticado;
+   - aceite vinculado a versao vigente do documento;
+   - revogacao sem exclusao do historico;
+   - integracao em `Minha BioMed > Perfil e privacidade`;
+   - tratamento de loading, vazio, sucesso e erro.
+4. **Fora do escopo**:
+   - novas migrations/rollback;
+   - alteracao de policies RLS;
+   - texto juridico definitivo;
+   - qualquer modulo clinico/gerencial.
+5. **Dependencias**:
+   - `SUP-B01.1` e `SUP-B01.2` concluidos;
+   - `SUP-E01` para auditoria persistente append-only via RPC controlada.
+6. **Auditoria**:
+   - nesta etapa, apenas contrato desacoplado de auditoria para eventos `consent_accepted` e `consent_revoked`;
+   - sem persistencia local/provisoria para substituir trilha append-only oficial.
+7. **Criterios de aceite**:
+   - titular autenticado consulta seus consentimentos e historico;
+   - titular aceita documento elegivel sem informar `user_id` arbitrario;
+   - titular revoga consentimento ativo com historico preservado;
+   - bloqueios cross-user/cross-tenant e de documento inelegivel cobertos por testes;
+   - sem uso de `service_role` no frontend.
+8. **Testes obrigatorios**:
+   - unitarios de elegibilidade, aceite versionado, revogacao, historico e erros;
+   - integracao de fluxos do titular e cenarios de negacao (cross-user/cross-tenant/inelegivel);
+   - regressao da suite existente da aplicacao;
+   - reuso de `SUP_B01_2_RLS_TEST_CASES.sql` quando ambiente SQL local estiver disponivel.
+9. **Necessidade de migration**: nao prevista; qualquer lacuna estrutural deve ser comprovada antes de propor nova migration.
+
 ### SUP-B02
 
 1. **Identificador**: `SUP-B02`  

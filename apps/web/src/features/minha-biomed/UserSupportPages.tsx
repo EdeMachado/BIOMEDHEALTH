@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Button } from '@/shared/ui/button';
 import { Card, CardDescription, CardTitle } from '@/shared/ui/card';
+import { ConsentManagementCard } from '@/features/minha-biomed/ConsentManagementCard';
 
 type ActivityState = {
   id: string;
@@ -162,7 +163,6 @@ export function UserActivitiesPage() {
 }
 
 export function UserProfilePrivacyPage() {
-  const [consentRevoked, setConsentRevoked] = useState(false);
   const [message, setMessage] = useState('');
 
   return (
@@ -179,32 +179,7 @@ export function UserProfilePrivacyPage() {
             Editar preferências
           </Button>
         </section>
-        <section className="rounded-xl border p-3">
-          <h4 className="font-semibold">Consentimentos</h4>
-          <p className="text-sm text-[var(--muted-foreground)]">
-            Consentimento v1.0 {consentRevoked ? 'revogado' : 'ativo'}.
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={() => setMessage('Consulta de consentimento aberta em modo demonstração.')}>
-              Consultar consentimento
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => {
-                const confirmed = window.confirm(
-                  'Revogar o consentimento pode limitar funcionalidades preventivas. Deseja continuar?'
-                );
-                if (confirmed) {
-                  setConsentRevoked(true);
-                  setMessage('Consentimento revogado em modo demonstração.');
-                }
-              }}
-            >
-              Revogar consentimento
-            </Button>
-          </div>
-        </section>
+        <ConsentManagementCard onMessage={setMessage} />
         <section className="rounded-xl border p-3">
           <h4 className="font-semibold">Direitos LGPD</h4>
           <p className="text-sm text-[var(--muted-foreground)]">Solicitações administrativas disponíveis.</p>

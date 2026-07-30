@@ -75,6 +75,7 @@ describe('refinamentos de UX nos ambientes', () => {
   it('solicita confirmação ao revogar consentimento', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderUserArea('/minha-biomed/perfil');
+    fireEvent.click(await screen.findByRole('button', { name: 'Aceitar documento vigente' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Revogar consentimento' }));
     expect(confirmSpy).toHaveBeenCalled();
     expect(await screen.findByText(/Consentimento revogado/i)).toBeInTheDocument();

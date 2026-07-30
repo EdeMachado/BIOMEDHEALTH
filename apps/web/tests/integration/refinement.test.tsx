@@ -68,11 +68,11 @@ describe('refinamentos de UX nos ambientes', () => {
     expect(await screen.findByText('Revisao e consentimento')).toBeInTheDocument();
   });
 
-  it('conclui atividade mock em memória', async () => {
+  it('conclui atividade com persistencia no repository mock', async () => {
     renderUserArea('/minha-biomed/atividades');
-    const completeButtons = await screen.findAllByRole('button', { name: 'Marcar como concluída' });
+    const completeButtons = await screen.findAllByRole('button', { name: 'Marcar como concluida' });
     fireEvent.click(completeButtons[0]);
-    expect(await screen.findByText('Concluídas')).toBeInTheDocument();
+    expect(await screen.findByText('Concluidas')).toBeInTheDocument();
   });
 
   it('solicita confirmação ao revogar consentimento', async () => {

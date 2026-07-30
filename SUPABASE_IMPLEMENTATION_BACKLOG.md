@@ -354,6 +354,33 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 13. **Estimativa**: media  
 14. **Ordem recomendada**: 7
 
+#### SUP-B03.1 - Persistencia runtime da jornada e do progresso (aplicacao + banco)
+
+1. **Status**: implementado em `feat/sup-b03-journey-runtime-persistence`.
+2. **Arquitetura aplicada**:
+   - repositorio `journey` em modo mock/supabase com factory dual-mode;
+   - service de dominio para carregamento, retomada, persistencia de progresso e conclusao da jornada;
+   - integracao das telas `UserJourneyPage` e `UserActivitiesPage` sem `sessionStorage` direto na UI.
+3. **Fluxos entregues**:
+   - criacao/retomada concorrente da jornada ativa via `public.create_or_get_active_user_journey`;
+   - restauracao de jornada e progresso persistidos apos recarregamento/sessao;
+   - persistencia idempotente por atividade em `user_activity_progress`;
+   - bloqueio de atualizacao para jornada concluida.
+4. **Seguranca/LGPD**:
+   - identidade e tenant derivados da sessao autenticada (`AuthContext` + validacao no repository);
+   - sem `service_role` no frontend;
+   - payload minimizado de progresso (apenas ids estruturais + percentual/status);
+   - erros de persistencia mapeados para mensagens publicas sem detalhes sensiveis do banco.
+5. **Necessidade estrutural comprovada**:
+   - migration incremental `0008_journey_runtime_integrity.sql` com rollback `0008_journey_runtime_integrity_rollback.sql`;
+   - lacunas cobertas: unicidade de progresso por `(user_journey_id, journey_activity_id)`, unicidade de jornada ativa por `(organization_id, user_id)` via indice parcial, RLS/grants para catalogo e progresso do titular.
+6. **Validacao de banco real executada**:
+   - validacao em PostgreSQL 16 descartavel com harness local para `auth.uid()`/claims;
+   - prechecks de duplicidade e de objeto preexistente exercitados com falhas esperadas;
+   - validacao de grants, `search_path`, policies, concorrencia (duas conexoes), rollback e reaplicacao.
+7. **Limitacao documentada**:
+   - a validacao SQL foi feita em PostgreSQL 16 com harness local e nao representa validacao no stack Supabase completo gerenciado.
+
 ### SUP-B04
 
 1. **Identificador**: `SUP-B04`  

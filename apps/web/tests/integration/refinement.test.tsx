@@ -5,6 +5,15 @@ import { AreaLayout } from '@/app/layouts/AreaLayout';
 import { UserDashboardPage } from '@/features/minha-biomed/UserDashboardPage';
 import { UserActivitiesPage, UserJourneyPage, UserProfilePrivacyPage } from '@/features/minha-biomed/UserSupportPages';
 import { AuthProvider } from '@/services/auth/AuthContext';
+import * as journeyService from '@/domains/journey/journeyService';
+
+vi.mock('@/domains/journey/journeyService', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/domains/journey/journeyService')>();
+  return {
+    ...actual,
+    registerJourneyActivityProgress: vi.fn(actual.registerJourneyActivityProgress),
+  };
+});
 
 function setDemoSession() {
   sessionStorage.setItem(
@@ -44,9 +53,15 @@ function renderUserArea(path = '/minha-biomed') {
 }
 
 describe('refinamentos de UX nos ambientes', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     sessionStorage.clear();
     setDemoSession();
+    const actual = await vi.importActual<typeof import('@/domains/journey/journeyService')>(
+      '@/domains/journey/journeyService'
+    );
+    vi.mocked(journeyService.registerJourneyActivityProgress).mockImplementation(
+      actual.registerJourneyActivityProgress
+    );
   });
 
   it('destaca item ativo no menu lateral', async () => {
@@ -68,11 +83,34 @@ describe('refinamentos de UX nos ambientes', () => {
     expect(await screen.findByText('Revisao e consentimento')).toBeInTheDocument();
   });
 
-  it('conclui atividade mock em memória', async () => {
+  it('conclui atividade com persistencia no repository mock', async () => {
+    renderUserArea('/minha-biomed/atividades');
+    expect(
+      await screen.findByRole('heading', { name: 'Pendentes e em andamento' })
+    ).toBeInTheDocument();
+    const completeButtons = await screen.findAllByRole('button', { name: 'Marcar como concluída' });
+    fireEvent.click(completeButtons[0]);
+    expect(await screen.findByRole('heading', { name: 'Concluídas' })).toBeInTheDocument();
+    expect(screen.getByText('Progresso da atividade persistido com sucesso.')).toBeInTheDocument();
+  });
+
+  it('nao apresenta confirmacao falsa quando persistencia falha', async () => {
+    vi.mocked(journeyService.registerJourneyActivityProgress).mockResolvedValue({
+      ok: false,
+      error: {
+        code: 'TECHNICAL_ERROR',
+        kind: 'technical',
+        transient: true,
+        message: 'falha simulada',
+      },
+    });
     renderUserArea('/minha-biomed/atividades');
     const completeButtons = await screen.findAllByRole('button', { name: 'Marcar como concluída' });
     fireEvent.click(completeButtons[0]);
-    expect(await screen.findByText('Concluídas')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Nao foi possivel persistir o progresso da jornada neste momento.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Progresso da atividade persistido com sucesso.')).not.toBeInTheDocument();
   });
 
   it('solicita confirmação ao revogar consentimento', async () => {

@@ -35,7 +35,9 @@ test('1) usuario realiza login e avaliacao inicial', async ({ page }) => {
 test('2) usuario ingressa/acompanha jornada', async ({ page }) => {
   await login(page, 'usuario.demo@biomed.health');
   await page.getByRole('link', { name: 'Jornada' }).click();
-  await expect(page.getByText('Minha jornada — Bem-estar e Prevenção')).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Minha jornada — Bem-estar e Prevenção' })
+  ).toBeVisible();
   await expect(page.getByText('Semana 8')).toBeVisible();
 });
 
@@ -105,7 +107,7 @@ test('usuario conclui atividade mock', async ({ page }) => {
   await login(page, 'usuario.demo@biomed.health');
   await page.getByRole('link', { name: 'Atividades' }).click();
   await page.getByRole('button', { name: 'Marcar como concluída' }).first().click();
-  await expect(page.getByText('Concluídas')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Concluídas' })).toBeVisible();
 });
 
 test('agenda clinica aplica filtros demonstrativos', async ({ page }) => {

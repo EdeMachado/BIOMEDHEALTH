@@ -11,7 +11,7 @@ import type {
 
 const CONTEXT_LOCKS = new Map<string, Promise<unknown>>();
 
-export type JourneyActivityStatus = 'Pendente' | 'Em andamento' | 'Concluida';
+export type JourneyActivityStatus = 'Pendente' | 'Em andamento' | 'Concluída';
 
 export type JourneyActivityView = {
   id: string;
@@ -141,7 +141,7 @@ function buildSnapshot(
       frequencia: item.periodicity,
       status:
         progressPercent >= 100
-          ? 'Concluida'
+          ? 'Concluída'
           : progressPercent > 0
             ? 'Em andamento'
             : 'Pendente',
@@ -217,8 +217,8 @@ function clampProgress(value: number): number {
 
 function formatCompletionDate(isoDate: string): string {
   const parsed = new Date(isoDate);
-  if (Number.isNaN(parsed.getTime())) return 'Concluida';
-  return `Concluida em ${parsed.toLocaleDateString('pt-BR')}`;
+  if (Number.isNaN(parsed.getTime())) return 'Concluída';
+  return `Concluída em ${parsed.toLocaleDateString('pt-BR')}`;
 }
 
 async function runLockedByContext<T>(

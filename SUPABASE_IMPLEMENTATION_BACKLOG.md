@@ -373,13 +373,16 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
    - erros de persistencia mapeados para mensagens publicas sem detalhes sensiveis do banco.
 5. **Necessidade estrutural comprovada**:
    - migration incremental `0008_journey_runtime_integrity.sql` com rollback `0008_journey_runtime_integrity_rollback.sql`;
-   - lacunas cobertas: unicidade de progresso por `(user_journey_id, journey_activity_id)`, unicidade de jornada ativa por `(organization_id, user_id)` via indice parcial, RLS/grants para catalogo e progresso do titular.
+   - lacunas cobertas: unicidade de progresso por `(user_journey_id, journey_activity_id)`, unicidade de jornada ativa por `(organization_id, user_id)` via indice parcial, RLS/grants para catalogo e progresso do titular;
+   - corretivo incremental `0009_journey_completion_immutability.sql` + rollback correspondente para impedir escrita/reabertura pos-conclusao via PostgREST autenticado (RLS USING/WITH CHECK; sem nova SECURITY DEFINER).
 6. **Validacao de banco real executada**:
    - validacao em PostgreSQL 16 descartavel com harness local para `auth.uid()`/claims;
    - prechecks de duplicidade e de objeto preexistente exercitados com falhas esperadas;
-   - validacao de grants, `search_path`, policies, concorrencia (duas conexoes), rollback e reaplicacao.
+   - validacao de grants, `search_path`, policies, concorrencia (duas conexoes), rollback e reaplicacao;
+   - validacao adicional da 0009: escrita em jornada ativa, bloqueio pos-conclusao, anti-reabertura, cross-user/tenant, leitura historica, rollback simetrico e reaplicacao.
 7. **Limitacao documentada**:
-   - a validacao SQL foi feita em PostgreSQL 16 com harness local e nao representa validacao no stack Supabase completo gerenciado.
+   - a validacao SQL foi feita em PostgreSQL 16 com harness local e nao representa validacao no stack Supabase completo gerenciado;
+   - testes Vitest com fake Supabase client nao substituem a prova RLS no Postgres.
 
 ### SUP-B04
 

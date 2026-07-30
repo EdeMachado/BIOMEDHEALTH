@@ -39,7 +39,7 @@ function defaultState(): PersistedState {
   const journey: HealthJourney = {
     id: JOURNEY_ID,
     organizationId: 'org-1',
-    name: 'Bem-estar e Prevencao',
+    name: 'Bem-estar e Prevenção',
     description: 'Jornada preventiva introdutoria.',
     targetAudience: 'Adultos ativos',
     durationWeeks: 8,
@@ -303,6 +303,10 @@ export function createMockJourneyRepository(
           item.userId === inputData.context.userId
       );
       if (!current) return Promise.resolve(fail('USER_JOURNEY_NOT_FOUND'));
+      if (current.completedAt !== null) return Promise.resolve(fail('USER_JOURNEY_COMPLETED'));
+      if (!inputData.completedAt || inputData.status !== 'concluida') {
+        return Promise.resolve(fail('INVALID_PROGRESS_PAYLOAD'));
+      }
       const updated: UserJourneyRecord = {
         ...current,
         status: inputData.status,

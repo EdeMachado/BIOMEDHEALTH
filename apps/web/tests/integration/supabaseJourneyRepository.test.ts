@@ -159,6 +159,19 @@ class UpsertQuery {
         error: { code: '42P10', message: 'invalid conflict target' },
       });
     }
+    // Simulacao local de imutabilidade pos-conclusao (NAO prova RLS real do Postgres).
+    const journey = this.client.fixtures.user_journeys.find(
+      (item) => item['id'] === this.values['user_journey_id']
+    );
+    if (!journey) {
+      return Promise.resolve({ data: null, error: { code: 'PGRST116', message: 'journey missing' } });
+    }
+    if (journey['completed_at'] !== null || journey['status'] !== 'ativo') {
+      return Promise.resolve({
+        data: null,
+        error: { code: '42501', message: 'progress write denied on completed journey' },
+      });
+    }
     const rows = this.client.fixtures.user_activity_progress;
     const index = rows.findIndex(
       (item) =>
@@ -213,6 +226,33 @@ class UpdateQuery {
       this.filters.every((filter) => row[filter.column] === filter.value)
     );
     if (index < 0) return Promise.resolve({ data: null, error: null });
+    // Simulacao local de bloqueio de reabertura (NAO prova RLS real do Postgres).
+    if (this.table === 'user_journeys') {
+      const current = rows[index];
+      if (current['completed_at'] !== null) {
+        return Promise.resolve({ data: null, error: null });
+      }
+      const nextCompletedAt = this.values['completed_at'];
+      const nextStatus = this.values['status'];
+      const completedAt = nextCompletedAt === undefined ? current['completed_at'] : nextCompletedAt;
+      const status = nextStatus === undefined ? current['status'] : nextStatus;
+      const coherent =
+        (completedAt === null && status === 'ativo') ||
+        (completedAt !== null && status === 'concluida');
+      if (!coherent) {
+        return Promise.resolve({
+          data: null,
+          error: { code: '42501', message: 'incoherent journey terminal state' },
+        });
+      }
+    }
+    if (this.table === 'user_activity_progress') {
+      const journeyId = rows[index]['user_journey_id'];
+      const journey = this.client.fixtures.user_journeys.find((item) => item['id'] === journeyId);
+      if (!journey || journey['completed_at'] !== null || journey['status'] !== 'ativo') {
+        return Promise.resolve({ data: null, error: null });
+      }
+    }
     rows[index] = { ...rows[index], ...this.values };
     return Promise.resolve({ data: rows[index], error: null });
   }
@@ -330,6 +370,17 @@ function createFixtures(): Fixtures {
         updated_at: '2026-07-01T00:00:00.000Z',
       },
       {
+        id: 'act-1b',
+        organization_id: 'org-1',
+        journey_step_id: 'step-1',
+        title: 'Atividade B',
+        periodicity: 'Diaria',
+        status: 'ativo',
+        version: 1,
+        created_at: '2026-07-01T00:00:00.000Z',
+        updated_at: '2026-07-01T00:00:00.000Z',
+      },
+      {
         id: 'act-2',
         organization_id: 'org-1',
         journey_step_id: 'step-2',
@@ -357,7 +408,7 @@ function createSut() {
   };
 }
 
-describe('supabaseJourneyRepository integration', () => {
+describe('supabaseJourneyRepository integration (fake Supabase client; nao prova RLS Postgres)', () => {
   it('resolve versao historica inativa sem bloquear retomada', async () => {
     const { repository } = createSut();
     const historical = await repository.resolveJourneyCatalogByVersion({
@@ -443,5 +494,69 @@ describe('supabaseJourneyRepository integration', () => {
     expect(noSession.ok).toBe(false);
     if (noSession.ok) return;
     expect(noSession.error.code).toBe('NO_SESSION');
+  });
+
+  it('permite conclusao legitima e bloqueia progresso/reabertura apos terminal', async () => {
+    const { repository, client } = createSut();
+    const created = await repository.createOrGetActiveUserJourney({
+      context: context(),
+      journeyVersionId: 'ver-1',
+      status: 'ativo',
+    });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const progress = await repository.upsertUserActivityProgress({
+      context: context(),
+      userJourneyId: created.data.id,
+      journeyVersionId: 'ver-1',
+      journeyActivityId: 'act-1',
+      progressPercent: 100,
+      status: 'concluida',
+    });
+    expect(progress.ok).toBe(true);
+    if (!progress.ok) return;
+
+    const completed = await repository.markUserJourneyCompletion({
+      context: context(),
+      userJourneyId: created.data.id,
+      completedAt: '2026-08-01T12:00:00.000Z',
+      status: 'concluida',
+    });
+    expect(completed.ok).toBe(true);
+    if (!completed.ok) return;
+    expect(completed.data.completedAt).toBe('2026-08-01T12:00:00.000Z');
+
+    const insertAfter = await repository.upsertUserActivityProgress({
+      context: context(),
+      userJourneyId: created.data.id,
+      journeyVersionId: 'ver-1',
+      journeyActivityId: 'act-1b',
+      progressPercent: 10,
+      status: 'em_andamento',
+    });
+    expect(insertAfter.ok).toBe(false);
+    if (insertAfter.ok) return;
+    expect(insertAfter.error.code).toBe('CROSS_TENANT_DATA');
+
+    const updateAfter = await repository.upsertUserActivityProgress({
+      context: context(),
+      userJourneyId: created.data.id,
+      journeyVersionId: 'ver-1',
+      journeyActivityId: 'act-1',
+      progressPercent: 50,
+      status: 'em_andamento',
+    });
+    expect(updateAfter.ok).toBe(false);
+
+    const reopen = await repository.markUserJourneyCompletion({
+      context: context(),
+      userJourneyId: created.data.id,
+      completedAt: '2026-08-01T11:00:00.000Z',
+      status: 'ativo',
+    });
+    expect(reopen.ok).toBe(false);
+    expect(client.fixtures.user_journeys[0]?.['completed_at']).toBe('2026-08-01T12:00:00.000Z');
+    expect(client.fixtures.user_activity_progress).toHaveLength(1);
   });
 });

@@ -31,7 +31,7 @@ export function UserJourneyPage() {
 
   return (
     <Card className="space-y-3">
-      <CardTitle>Minha jornada - Bem-estar e Prevencao</CardTitle>
+      <CardTitle>Minha jornada — Bem-estar e Prevenção</CardTitle>
       <CardDescription>
         Publico elegivel: adultos ativos. Duracao: 8 semanas. Proximo marco: reavaliacao preventiva.
       </CardDescription>
@@ -76,8 +76,8 @@ export function UserJourneyPage() {
 
 export function UserActivitiesPage() {
   const journey = useJourneyRuntime();
-  const pending = journey.runtime?.activities.filter((a) => a.status !== 'Concluida') ?? [];
-  const done = journey.runtime?.activities.filter((a) => a.status === 'Concluida') ?? [];
+  const pending = journey.runtime?.activities.filter((a) => a.status !== 'Concluída') ?? [];
+  const done = journey.runtime?.activities.filter((a) => a.status === 'Concluída') ?? [];
 
   return (
     <Card className="space-y-3">
@@ -116,7 +116,7 @@ export function UserActivitiesPage() {
                       onClick={() => void journey.updateActivity(activity.id, 'complete')}
                       disabled={journey.saving || journey.runtime?.completed === true}
                     >
-                      Marcar como concluida
+                      Marcar como concluída
                     </Button>
                     <Button
                       size="sm"
@@ -132,7 +132,7 @@ export function UserActivitiesPage() {
             </div>
           </section>
           <section className="space-y-2">
-            <h4 className="text-sm font-semibold">Concluidas</h4>
+            <h4 className="text-sm font-semibold">Concluídas</h4>
             <div className="grid gap-2">
               {done.map((activity) => (
                 <article key={activity.id} className="rounded-xl border bg-[var(--secondary)] p-3 text-sm">

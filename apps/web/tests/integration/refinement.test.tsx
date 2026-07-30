@@ -57,12 +57,15 @@ describe('refinamentos de UX nos ambientes', () => {
 
   it('avança avaliação inicial por etapas', async () => {
     renderUserArea('/minha-biomed');
-    expect(await screen.findByText('Hábitos e rotina')).toBeInTheDocument();
+    expect(await screen.findByText('Habitos e rotina')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
+    expect(await screen.findByText('Sono e recuperacao')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
+    expect(await screen.findByText('Movimento')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
+    expect(await screen.findByText('Bem-estar percebido')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
-    expect(await screen.findByText('Revisão e consentimento')).toBeInTheDocument();
+    expect(await screen.findByText('Revisao e consentimento')).toBeInTheDocument();
   });
 
   it('conclui atividade mock em memória', async () => {

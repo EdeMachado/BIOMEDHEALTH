@@ -11,10 +11,12 @@ alter table action_plans enable row level security;
 alter table audit_events enable row level security;
 alter table professional_assignments enable row level security;
 
-create policy if not exists org_isolation_user_consents on user_consents
+drop policy if exists org_isolation_user_consents on user_consents;
+create policy org_isolation_user_consents on user_consents
   using (organization_id::text = auth.jwt() ->> 'app.organization_id');
 
-create policy if not exists own_data_assessments on assessments
+drop policy if exists own_data_assessments on assessments;
+create policy own_data_assessments on assessments
   for select using (
     organization_id::text = auth.jwt() ->> 'app.organization_id'
     and (
@@ -23,7 +25,8 @@ create policy if not exists own_data_assessments on assessments
     )
   );
 
-create policy if not exists clinical_only_allowed_roles on clinical_records
+drop policy if exists clinical_only_allowed_roles on clinical_records;
+create policy clinical_only_allowed_roles on clinical_records
   for select using (
     organization_id::text = auth.jwt() ->> 'app.organization_id'
     and (
@@ -42,7 +45,8 @@ create policy if not exists clinical_only_allowed_roles on clinical_records
     )
   );
 
-create policy if not exists care_plan_only_allowed_roles on care_plans
+drop policy if exists care_plan_only_allowed_roles on care_plans;
+create policy care_plan_only_allowed_roles on care_plans
   for select using (
     organization_id::text = auth.jwt() ->> 'app.organization_id'
     and (
@@ -61,7 +65,8 @@ create policy if not exists care_plan_only_allowed_roles on care_plans
     )
   );
 
-create policy if not exists professional_assignment_scope on professional_assignments
+drop policy if exists professional_assignment_scope on professional_assignments;
+create policy professional_assignment_scope on professional_assignments
   for select using (
     organization_id::text = auth.jwt() ->> 'app.organization_id'
     and (
@@ -70,7 +75,8 @@ create policy if not exists professional_assignment_scope on professional_assign
     )
   );
 
-create policy if not exists risk_results_collective_or_owner on risk_results
+drop policy if exists risk_results_collective_or_owner on risk_results;
+create policy risk_results_collective_or_owner on risk_results
   for select using (
     organization_id::text = auth.jwt() ->> 'app.organization_id'
     and (
@@ -84,19 +90,22 @@ create policy if not exists risk_results_collective_or_owner on risk_results
     )
   );
 
-create policy if not exists manager_campaigns_same_org on campaigns
+drop policy if exists manager_campaigns_same_org on campaigns;
+create policy manager_campaigns_same_org on campaigns
   for all using (
     organization_id::text = auth.jwt() ->> 'app.organization_id'
     and (auth.jwt() ->> 'app.role') in ('gestor_institucional', 'sst', 'admin_cliente', 'admin_biomed')
   );
 
-create policy if not exists manager_action_plans_same_org on action_plans
+drop policy if exists manager_action_plans_same_org on action_plans;
+create policy manager_action_plans_same_org on action_plans
   for all using (
     organization_id::text = auth.jwt() ->> 'app.organization_id'
     and (auth.jwt() ->> 'app.role') in ('gestor_institucional', 'sst', 'admin_cliente', 'admin_biomed')
   );
 
-create policy if not exists audit_read_only_for_auditor on audit_events
+drop policy if exists audit_read_only_for_auditor on audit_events;
+create policy audit_read_only_for_auditor on audit_events
   for select using (
     organization_id::text = auth.jwt() ->> 'app.organization_id'
     and (auth.jwt() ->> 'app.role') in ('auditor', 'admin_biomed')

@@ -97,6 +97,7 @@ grant execute on function app_auth.has_active_org_link(uuid) to authenticated;
 grant execute on function app_auth.has_active_role(uuid, text[], uuid) to authenticated;
 grant execute on function app_auth.can_manage_access(uuid, uuid) to authenticated;
 grant execute on function app_auth.is_target_user_self(uuid) to authenticated;
+grant usage on schema app_auth to authenticated;
 
 alter table organizations enable row level security;
 alter table organization_units enable row level security;

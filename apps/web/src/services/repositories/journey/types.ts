@@ -12,6 +12,7 @@ export type JourneyErrorCode =
   | 'ACTIVITY_NOT_FOUND'
   | 'ACTIVITY_VERSION_MISMATCH'
   | 'INVALID_PROGRESS_PAYLOAD'
+  | 'CLINICAL_ACCESS_DENIED'
   | 'TECHNICAL_ERROR';
 
 export type JourneyErrorKind =
@@ -44,6 +45,14 @@ export type JourneyContext = {
   sessionUserId: string | null;
   userId: string | null;
   organizationId: string;
+};
+
+/** Contexto de leitura clinica vinculada (profissional != paciente). */
+export type ClinicalJourneyContext = {
+  sessionUserId: string | null;
+  professionalUserId: string | null;
+  organizationId: string;
+  patientUserId: string;
 };
 
 export type HealthJourney = {
@@ -130,4 +139,12 @@ export type JourneyCatalog = {
 export type UserJourneyState = {
   userJourney: UserJourneyRecord;
   progress: UserActivityProgressRecord[];
+};
+
+export type ClinicalPatientJourneyView = {
+  userJourney: UserJourneyRecord;
+  progress: UserActivityProgressRecord[];
+  catalogName: string | null;
+  completedActivityCount: number;
+  totalTrackedActivities: number;
 };

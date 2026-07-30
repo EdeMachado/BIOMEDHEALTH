@@ -39,10 +39,23 @@ class FakeSupabaseJourneyClient implements SupabaseJourneyClient {
       }),
   };
 
+  /** Simulacao local de vinculo clinico; NAO prova RLS Postgres. */
+  clinicalAccessAllowed = true;
+  forcedRpcError: FakeError | null = null;
+
   rpc(
     fn: string,
     args?: Record<string, unknown>
-  ): Promise<{ data: Record<string, unknown> | null; error: FakeError | null }> {
+  ): Promise<{ data: unknown; error: FakeError | null }> {
+    if (this.forcedRpcError) {
+      return Promise.resolve({ data: null, error: this.forcedRpcError });
+    }
+    if (fn === 'can_access_linked_patient_journey') {
+      if (!this.authUserId) {
+        return Promise.resolve({ data: null, error: { code: '42501', message: 'session required' } });
+      }
+      return Promise.resolve({ data: this.clinicalAccessAllowed, error: null });
+    }
     if (fn !== 'create_or_get_active_user_journey') {
       return Promise.resolve({
         data: null,
@@ -558,5 +571,89 @@ describe('supabaseJourneyRepository integration (fake Supabase client; nao prova
     expect(reopen.ok).toBe(false);
     expect(client.fixtures.user_journeys[0]?.['completed_at']).toBe('2026-08-01T12:00:00.000Z');
     expect(client.fixtures.user_activity_progress).toHaveLength(1);
+  });
+
+  it('listLinkedPatientJourneys consulta RPC + jornadas do paciente (fake client; nao prova RLS)', async () => {
+    const { repository, client } = createSut();
+    client.authUserId = 'pro-1';
+    client.fixtures.user_journeys = [
+      {
+        id: 'uj-patient',
+        organization_id: 'org-1',
+        user_id: 'usr-1',
+        journey_version_id: 'ver-1',
+        started_at: '2026-08-01T10:00:00.000Z',
+        completed_at: null,
+        status: 'ativo',
+        version: 1,
+        created_at: '2026-08-01T10:00:00.000Z',
+        updated_at: '2026-08-01T10:00:00.000Z',
+      },
+      {
+        id: 'uj-other',
+        organization_id: 'org-1',
+        user_id: 'usr-2',
+        journey_version_id: 'ver-1',
+        started_at: '2026-08-01T10:00:00.000Z',
+        completed_at: null,
+        status: 'ativo',
+        version: 1,
+        created_at: '2026-08-01T10:00:00.000Z',
+        updated_at: '2026-08-01T10:00:00.000Z',
+      },
+    ];
+    client.fixtures.user_activity_progress = [
+      {
+        id: 'uap-1',
+        organization_id: 'org-1',
+        user_journey_id: 'uj-patient',
+        journey_activity_id: 'act-1',
+        progress_percent: 50,
+        status: 'em_andamento',
+        version: 1,
+        created_at: '2026-08-01T10:00:00.000Z',
+        updated_at: '2026-08-01T10:00:00.000Z',
+      },
+    ];
+
+    const listed = await repository.listLinkedPatientJourneys({
+      context: {
+        sessionUserId: 'pro-1',
+        professionalUserId: 'pro-1',
+        organizationId: 'org-1',
+        patientUserId: 'usr-1',
+      },
+    });
+    expect(listed.ok).toBe(true);
+    if (!listed.ok) return;
+    expect(listed.data).toHaveLength(1);
+    expect(listed.data[0]?.userJourney.id).toBe('uj-patient');
+    expect(listed.data[0]?.catalogName).toBe('Journey');
+    expect(listed.data[0]?.progress).toHaveLength(1);
+
+    client.clinicalAccessAllowed = false;
+    const denied = await repository.listLinkedPatientJourneys({
+      context: {
+        sessionUserId: 'pro-1',
+        professionalUserId: 'pro-1',
+        organizationId: 'org-1',
+        patientUserId: 'usr-1',
+      },
+    });
+    expect(denied.ok).toBe(false);
+    if (denied.ok) return;
+    expect(denied.error.code).toBe('CLINICAL_ACCESS_DENIED');
+
+    client.clinicalAccessAllowed = true;
+    client.forcedRpcError = { code: '42501', message: 'backend denied' };
+    const backendError = await repository.listLinkedPatientJourneys({
+      context: {
+        sessionUserId: 'pro-1',
+        professionalUserId: 'pro-1',
+        organizationId: 'org-1',
+        patientUserId: 'usr-1',
+      },
+    });
+    expect(backendError.ok).toBe(false);
   });
 });

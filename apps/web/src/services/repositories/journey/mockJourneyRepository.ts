@@ -1,15 +1,18 @@
 import { generateId } from '@/shared/lib/id';
 import { readSessionItem, writeSessionItem } from '@/shared/lib/sessionStorage';
+import { assignedPatientsByProfessional } from '@/services/repositories/demoData';
 import { fail, ok } from '@/services/repositories/journey/errors';
 import type {
   CreateOrGetActiveUserJourneyInput,
   JourneyRepository,
+  ListLinkedPatientJourneysInput,
   MarkUserJourneyCompletionInput,
   ResolveJourneyCatalogByVersionInput,
   ResolveOperationalJourneyCatalogInput,
   UpsertUserActivityProgressInput,
 } from '@/services/repositories/journey/contracts';
 import type {
+  ClinicalPatientJourneyView,
   HealthJourney,
   JourneyActivity,
   JourneyCatalog,
@@ -25,6 +28,13 @@ const STORAGE_KEY = 'biomed_mock_journey_runtime_v1';
 const JOURNEY_ID = 'hj-org1-preventive';
 const JOURNEY_VERSION_ID = 'jv-org1-preventive-v1';
 
+type MockClinicalAssignment = {
+  organizationId: string;
+  professionalId: string;
+  userId: string;
+  status: 'ativo' | 'inativo';
+};
+
 type PersistedState = {
   journeys: HealthJourney[];
   versions: JourneyVersion[];
@@ -32,6 +42,7 @@ type PersistedState = {
   activities: JourneyActivity[];
   userJourneys: UserJourneyRecord[];
   progress: UserActivityProgressRecord[];
+  clinicalAssignments: MockClinicalAssignment[];
 };
 
 function defaultState(): PersistedState {
@@ -122,6 +133,16 @@ function defaultState(): PersistedState {
     activities,
     userJourneys: [],
     progress: [],
+    // Single mock source with demoData.assignedPatientsByProfessional (org-1).
+    clinicalAssignments: Object.entries(assignedPatientsByProfessional).flatMap(
+      ([professionalId, userIds]) =>
+        userIds.map((userId) => ({
+          organizationId: 'org-1',
+          professionalId,
+          userId,
+          status: 'ativo' as const,
+        }))
+    ),
   };
 }
 
@@ -318,6 +339,49 @@ export function createMockJourneyRepository(
       writeState(state);
       return Promise.resolve(ok(updated));
     },
+
+    listLinkedPatientJourneys(inputData: ListLinkedPatientJourneysInput) {
+      const clinicalValidation = validateClinicalContext(inputData.context);
+      if (!clinicalValidation.ok) return Promise.resolve(clinicalValidation);
+      const state = readState(seed);
+      const ctx = inputData.context;
+      const assignment = state.clinicalAssignments.find(
+        (item) =>
+          item.organizationId === ctx.organizationId &&
+          item.professionalId === ctx.professionalUserId &&
+          item.userId === ctx.patientUserId &&
+          item.status === 'ativo'
+      );
+      if (!assignment) return Promise.resolve(fail('CLINICAL_ACCESS_DENIED'));
+
+      // Read-only: never create/update journeys, progress, assignments, or storage.
+      const ordered = sortJourneysForClinicalView(
+        state.userJourneys.filter(
+          (item) => item.organizationId === ctx.organizationId && item.userId === ctx.patientUserId
+        )
+      );
+
+      const views: ClinicalPatientJourneyView[] = ordered.map((userJourney) => {
+        const progress = state.progress
+          .filter(
+            (item) =>
+              item.organizationId === ctx.organizationId && item.userJourneyId === userJourney.id
+          )
+          .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+        const version = state.versions.find((item) => item.id === userJourney.journeyVersionId);
+        const journey = version
+          ? state.journeys.find((item) => item.id === version.journeyId)
+          : undefined;
+        return {
+          userJourney,
+          progress,
+          catalogName: journey?.name ?? null,
+          completedActivityCount: progress.filter((item) => item.progressPercent >= 100).length,
+          totalTrackedActivities: progress.length,
+        };
+      });
+      return Promise.resolve(ok(views));
+    },
   };
 }
 
@@ -326,6 +390,29 @@ function validateContext(context: JourneyContext): JourneyResult<true> {
   if (context.sessionUserId !== context.userId) return fail('IDENTITY_MISMATCH');
   if (!context.organizationId) return fail('NO_ACTIVE_MEMBERSHIP');
   return ok(true);
+}
+
+function validateClinicalContext(
+  context: ListLinkedPatientJourneysInput['context']
+): JourneyResult<true> {
+  if (!context.sessionUserId || !context.professionalUserId) return fail('NO_SESSION');
+  if (context.sessionUserId !== context.professionalUserId) return fail('IDENTITY_MISMATCH');
+  if (!context.organizationId) return fail('NO_ACTIVE_MEMBERSHIP');
+  if (!context.patientUserId) return fail('CLINICAL_ACCESS_DENIED');
+  if (context.patientUserId === context.professionalUserId) return fail('CLINICAL_ACCESS_DENIED');
+  return ok(true);
+}
+
+function sortJourneysForClinicalView(items: UserJourneyRecord[]): UserJourneyRecord[] {
+  return [...items].sort((a, b) => {
+    const aActive = a.completedAt === null && a.status === 'ativo' ? 0 : 1;
+    const bActive = b.completedAt === null && b.status === 'ativo' ? 0 : 1;
+    if (aActive !== bActive) return aActive - bActive;
+    const aCompleted = a.completedAt ?? '';
+    const bCompleted = b.completedAt ?? '';
+    if (aCompleted !== bCompleted) return bCompleted.localeCompare(aCompleted);
+    return b.updatedAt.localeCompare(a.updatedAt);
+  });
 }
 
 function buildCatalog(state: PersistedState, organizationId: string, version: JourneyVersion): JourneyResult<JourneyCatalog> {
@@ -357,6 +444,7 @@ function readState(seed?: Partial<PersistedState>): PersistedState {
       activities: parsed.activities ?? base.activities,
       userJourneys: parsed.userJourneys ?? base.userJourneys,
       progress: parsed.progress ?? base.progress,
+      clinicalAssignments: parsed.clinicalAssignments ?? base.clinicalAssignments,
     };
   } catch {
     return base;

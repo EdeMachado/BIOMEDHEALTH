@@ -1,4 +1,6 @@
 import type {
+  ClinicalJourneyContext,
+  ClinicalPatientJourneyView,
   JourneyCatalog,
   JourneyContext,
   JourneyResult,
@@ -37,6 +39,10 @@ export type MarkUserJourneyCompletionInput = {
   status: string;
 };
 
+export type ListLinkedPatientJourneysInput = {
+  context: ClinicalJourneyContext;
+};
+
 export interface JourneyRepository {
   resolveOperationalJourneyCatalog(
     input: ResolveOperationalJourneyCatalogInput
@@ -56,4 +62,8 @@ export interface JourneyRepository {
   markUserJourneyCompletion(
     input: MarkUserJourneyCompletionInput
   ): Promise<JourneyResult<UserJourneyState['userJourney']>>;
+  /** Leitura clinica vinculada read-only; nunca escreve progresso/jornada. */
+  listLinkedPatientJourneys(
+    input: ListLinkedPatientJourneysInput
+  ): Promise<JourneyResult<ClinicalPatientJourneyView[]>>;
 }

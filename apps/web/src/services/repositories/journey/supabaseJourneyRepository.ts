@@ -2,12 +2,14 @@ import { fail, ok } from '@/services/repositories/journey/errors';
 import type {
   CreateOrGetActiveUserJourneyInput,
   JourneyRepository,
+  ListLinkedPatientJourneysInput,
   MarkUserJourneyCompletionInput,
   ResolveJourneyCatalogByVersionInput,
   ResolveOperationalJourneyCatalogInput,
   UpsertUserActivityProgressInput,
 } from '@/services/repositories/journey/contracts';
 import type {
+  ClinicalPatientJourneyView,
   JourneyActivity,
   JourneyCatalog,
   JourneyContext,
@@ -261,12 +263,10 @@ export class SupabaseJourneyRepository implements JourneyRepository {
         'id, organization_id, user_id, journey_version_id, started_at, completed_at, status, version, created_at, updated_at'
       )
       .eq('organization_id', context.organizationId)
-      .eq('user_id', context.userId)
-      .order('completed_at', { ascending: true })
-      .order('updated_at', { ascending: false });
+      .eq('user_id', context.userId);
     const userJourneyResponse = await safeQuery<UserJourneyRow[]>(userJourneyQuery);
     if (userJourneyResponse.error) return mapBackendError(userJourneyResponse.error);
-    const selected = (userJourneyResponse.data ?? [])[0];
+    const selected = sortUserJourneyRows(userJourneyResponse.data ?? [])[0];
     if (!selected) return ok(null);
     if (selected.organization_id !== context.organizationId || selected.user_id !== context.userId) {
       return fail('CROSS_TENANT_DATA');
@@ -390,6 +390,86 @@ export class SupabaseJourneyRepository implements JourneyRepository {
     return ok(mapUserJourneyRow(updateResponse.data));
   }
 
+  async listLinkedPatientJourneys(
+    input: ListLinkedPatientJourneysInput
+  ): Promise<JourneyResult<ClinicalPatientJourneyView[]>> {
+    const validation = await this.validateClinicalContext(input.context);
+    if (!validation.ok) return validation;
+
+    const accessResponse = await safeRpc<boolean>(this.client, 'can_access_linked_patient_journey', {
+      p_organization_id: input.context.organizationId,
+      p_patient_user_id: input.context.patientUserId,
+    });
+    if (accessResponse.error) return mapBackendError(accessResponse.error);
+    if (accessResponse.data !== true) return fail('CLINICAL_ACCESS_DENIED');
+
+    const journeysQuery = this.client
+      .from('user_journeys')
+      .select(
+        'id, organization_id, user_id, journey_version_id, started_at, completed_at, status, version, created_at, updated_at'
+      )
+      .eq('organization_id', input.context.organizationId)
+      .eq('user_id', input.context.patientUserId);
+    const journeysResponse = await safeQuery<UserJourneyRow[]>(journeysQuery);
+    if (journeysResponse.error) return mapBackendError(journeysResponse.error);
+
+    const ordered = sortUserJourneyRows(journeysResponse.data ?? []).filter(
+      (row) =>
+        row.organization_id === input.context.organizationId &&
+        row.user_id === input.context.patientUserId
+    );
+
+    const views: ClinicalPatientJourneyView[] = [];
+    for (const row of ordered) {
+      const progressQuery = this.client
+        .from('user_activity_progress')
+        .select(
+          'id, organization_id, user_journey_id, journey_activity_id, progress_percent, status, version, created_at, updated_at'
+        )
+        .eq('organization_id', input.context.organizationId)
+        .eq('user_journey_id', row.id)
+        .order('created_at', { ascending: true });
+      const progressResponse = await safeQuery<UserActivityProgressRow[]>(progressQuery);
+      if (progressResponse.error) return mapBackendError(progressResponse.error);
+      const progress = (progressResponse.data ?? []).map(mapUserActivityProgressRow);
+
+      let catalogName: string | null = null;
+      const versionQuery = this.client
+        .from('journey_versions')
+        .select(
+          'id, organization_id, journey_id, code, status, version, created_at, updated_at'
+        )
+        .eq('id', row.journey_version_id)
+        .eq('organization_id', input.context.organizationId)
+        .maybeSingle();
+      const versionResponse = await safeQuery<JourneyVersionRow>(versionQuery);
+      if (!versionResponse.error && versionResponse.data) {
+        const journeyQuery = this.client
+          .from('health_journeys')
+          .select(
+            'id, organization_id, name, description, target_audience, duration_weeks, technical_owner, status, version, created_at, updated_at'
+          )
+          .eq('id', versionResponse.data.journey_id)
+          .eq('organization_id', input.context.organizationId)
+          .maybeSingle();
+        const journeyResponse = await safeQuery<HealthJourneyRow>(journeyQuery);
+        if (!journeyResponse.error && journeyResponse.data) {
+          catalogName = journeyResponse.data.name;
+        }
+      }
+
+      views.push({
+        userJourney: mapUserJourneyRow(row),
+        progress,
+        catalogName,
+        completedActivityCount: progress.filter((item) => item.progressPercent >= 100).length,
+        totalTrackedActivities: progress.length,
+      });
+    }
+
+    return ok(views);
+  }
+
   private async validateContext(context: JourneyContext): Promise<JourneyResult<true>> {
     if (!context.sessionUserId || !context.userId) return fail('NO_SESSION');
     if (context.sessionUserId !== context.userId) return fail('IDENTITY_MISMATCH');
@@ -404,6 +484,37 @@ export class SupabaseJourneyRepository implements JourneyRepository {
     if (authResponse.data.user.id !== context.userId) return fail('IDENTITY_MISMATCH');
     return ok(true);
   }
+
+  private async validateClinicalContext(
+    context: ListLinkedPatientJourneysInput['context']
+  ): Promise<JourneyResult<true>> {
+    if (!context.sessionUserId || !context.professionalUserId) return fail('NO_SESSION');
+    if (context.sessionUserId !== context.professionalUserId) return fail('IDENTITY_MISMATCH');
+    if (!context.organizationId || !context.patientUserId) return fail('CLINICAL_ACCESS_DENIED');
+    if (context.patientUserId === context.professionalUserId) return fail('CLINICAL_ACCESS_DENIED');
+    let authResponse: SupabaseAuthResponse;
+    try {
+      authResponse = await this.client.auth.getUser();
+    } catch (error: unknown) {
+      authResponse = { data: { user: null }, error: normalizeThrownError(error) };
+    }
+    if (authResponse.error) return mapBackendError(authResponse.error);
+    if (!authResponse.data.user?.id) return fail('NO_SESSION');
+    if (authResponse.data.user.id !== context.professionalUserId) return fail('IDENTITY_MISMATCH');
+    return ok(true);
+  }
+}
+
+function sortUserJourneyRows(rows: UserJourneyRow[]): UserJourneyRow[] {
+  return [...rows].sort((a, b) => {
+    const aActive = a.completed_at === null && a.status === 'ativo' ? 0 : 1;
+    const bActive = b.completed_at === null && b.status === 'ativo' ? 0 : 1;
+    if (aActive !== bActive) return aActive - bActive;
+    const aCompleted = a.completed_at ?? '';
+    const bCompleted = b.completed_at ?? '';
+    if (aCompleted !== bCompleted) return bCompleted.localeCompare(aCompleted);
+    return b.updated_at.localeCompare(a.updated_at);
+  });
 }
 
 export function createSupabaseJourneyRepository(

@@ -344,6 +344,8 @@ $cdh$), '[^a-z0-9_]+', '', 'g');
   end if;
   v_pol_qual_expr := pg_get_expr(v_pol_qual, 'public.user_consents'::regclass);
   v_pol_qual_norm := regexp_replace(lower(coalesce(v_pol_qual_expr, '')), '[^a-z0-9_]+', '', 'g');
+  v_pol_qual_norm := replace(v_pol_qual_norm, 'publicuser_consents', 'user_consents');
+  v_exp_uc_select_qual_norm := replace(v_exp_uc_select_qual_norm, 'publicuser_consents', 'user_consents');
   if v_pol_qual_norm <> v_exp_uc_select_qual_norm then
     raise exception 'Rollback 0006 bloqueado: expressao policy user_consents_select_self divergente.';
   end if;
@@ -368,6 +370,13 @@ $cdh$), '[^a-z0-9_]+', '', 'g');
   end if;
   v_pol_check_expr := pg_get_expr(v_pol_check, 'public.user_consents'::regclass);
   v_pol_check_norm := regexp_replace(lower(coalesce(v_pol_check_expr, '')), '[^a-z0-9_]+', '', 'g');
+  -- Canonicalizacao minima para variacoes estaveis do PG:
+  -- - qualificador de schema em FROM (public.consent_documents)
+  -- - cast explicito de literal ('ativo'::text)
+  v_pol_check_norm := replace(v_pol_check_norm, 'publicconsent_documents', 'consent_documents');
+  v_pol_check_norm := replace(v_pol_check_norm, 'statusativotext', 'statusativo');
+  v_exp_uc_insert_check_norm := replace(v_exp_uc_insert_check_norm, 'publicconsent_documents', 'consent_documents');
+  v_exp_uc_insert_check_norm := replace(v_exp_uc_insert_check_norm, 'statusativotext', 'statusativo');
   if v_pol_check_norm <> v_exp_uc_insert_check_norm then
     raise exception 'Rollback 0006 bloqueado: expressao WITH CHECK de user_consents_insert_self divergente.';
   end if;
@@ -391,6 +400,10 @@ $cdh$), '[^a-z0-9_]+', '', 'g');
   v_pol_check_expr := pg_get_expr(v_pol_check, 'public.user_consents'::regclass);
   v_pol_qual_norm := regexp_replace(lower(coalesce(v_pol_qual_expr, '')), '[^a-z0-9_]+', '', 'g');
   v_pol_check_norm := regexp_replace(lower(coalesce(v_pol_check_expr, '')), '[^a-z0-9_]+', '', 'g');
+  v_pol_qual_norm := replace(v_pol_qual_norm, 'publicuser_consents', 'user_consents');
+  v_exp_uc_update_qual_norm := replace(v_exp_uc_update_qual_norm, 'publicuser_consents', 'user_consents');
+  v_pol_check_norm := replace(v_pol_check_norm, 'publicuser_consents', 'user_consents');
+  v_exp_uc_update_check_norm := replace(v_exp_uc_update_check_norm, 'publicuser_consents', 'user_consents');
   if v_pol_qual_norm <> v_exp_uc_update_qual_norm or v_pol_check_norm <> v_exp_uc_update_check_norm then
     raise exception 'Rollback 0006 bloqueado: expressoes USING/WITH CHECK de user_consents_update_revoke_self divergentes.';
   end if;
@@ -415,6 +428,10 @@ $cdh$), '[^a-z0-9_]+', '', 'g');
   end if;
   v_pol_qual_expr := pg_get_expr(v_pol_qual, 'public.consent_documents'::regclass);
   v_pol_qual_norm := regexp_replace(lower(coalesce(v_pol_qual_expr, '')), '[^a-z0-9_]+', '', 'g');
+  v_pol_qual_norm := replace(v_pol_qual_norm, 'statusativotext', 'statusativo');
+  v_exp_cd_select_eligible_qual_norm := replace(v_exp_cd_select_eligible_qual_norm, 'statusativotext', 'statusativo');
+  v_pol_qual_norm := replace(v_pol_qual_norm, 'publicconsent_documents', 'consent_documents');
+  v_exp_cd_select_eligible_qual_norm := replace(v_exp_cd_select_eligible_qual_norm, 'publicconsent_documents', 'consent_documents');
   if v_pol_qual_norm <> v_exp_cd_select_eligible_qual_norm then
     raise exception 'Rollback 0006 bloqueado: expressao policy consent_documents_select_eligible divergente.';
   end if;
@@ -439,6 +456,10 @@ $cdh$), '[^a-z0-9_]+', '', 'g');
   end if;
   v_pol_qual_expr := pg_get_expr(v_pol_qual, 'public.consent_documents'::regclass);
   v_pol_qual_norm := regexp_replace(lower(coalesce(v_pol_qual_expr, '')), '[^a-z0-9_]+', '', 'g');
+  v_pol_qual_norm := replace(v_pol_qual_norm, 'publicuser_consents', 'user_consents');
+  v_exp_cd_select_history_qual_norm := replace(v_exp_cd_select_history_qual_norm, 'publicuser_consents', 'user_consents');
+  v_pol_qual_norm := replace(v_pol_qual_norm, 'publicconsent_documents', 'consent_documents');
+  v_exp_cd_select_history_qual_norm := replace(v_exp_cd_select_history_qual_norm, 'publicconsent_documents', 'consent_documents');
   if v_pol_qual_norm <> v_exp_cd_select_history_qual_norm then
     raise exception 'Rollback 0006 bloqueado: expressao policy consent_documents_select_history_self divergente.';
   end if;

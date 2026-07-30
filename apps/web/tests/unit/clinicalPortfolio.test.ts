@@ -85,6 +85,7 @@ describe('carteira clinica vinculada', () => {
   });
 
   it('repository supabase falha fechado sem fallback ficticio (fake client; nao prova RLS)', async () => {
+    const rpcCalls: Array<{ fn: string; args?: Record<string, unknown> }> = [];
     const client = {
       authUserId: 'pro-1' as string | null,
       canList: true as boolean,
@@ -97,7 +98,8 @@ describe('carteira clinica vinculada', () => {
             error: null,
           }),
       },
-      rpc(fn: string) {
+      rpc(fn: string, args?: Record<string, unknown>) {
+        rpcCalls.push({ fn, args });
         if (client.forcedError) return Promise.resolve({ data: null, error: client.forcedError });
         if (fn === 'can_list_linked_clinical_portfolio') {
           return Promise.resolve({ data: client.canList, error: null });
@@ -114,6 +116,11 @@ describe('carteira clinica vinculada', () => {
     expect(empty.ok).toBe(true);
     if (!empty.ok) return;
     expect(empty.data).toHaveLength(0);
+    expect(rpcCalls.some((call) => call.fn === 'can_list_linked_clinical_portfolio')).toBe(true);
+    expect(rpcCalls.some((call) => call.fn === 'list_linked_clinical_patients')).toBe(true);
+    expect(
+      rpcCalls.every((call) => call.args?.['p_organization_id'] === 'org-1')
+    ).toBe(true);
 
     client.canList = false;
     const denied = await repository.listLinkedClinicalPatients({ context: context() });

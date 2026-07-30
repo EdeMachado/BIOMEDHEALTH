@@ -21,6 +21,7 @@ declare
   v_uo_pro uuid;
   v_uo_pro2 uuid;
   v_uo_mgr uuid;
+  v_uo_pro_b_membership uuid;
   v_count int;
   v_rows int;
   v_hj uuid := 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2';
@@ -63,27 +64,28 @@ begin
     (v_org_a, v_pro_a2, 'ativo'),
     (v_org_a, v_mgr, 'ativo'),
     (v_org_b, v_user_b, 'ativo'),
-    (v_org_b, v_pro_b, 'ativo')
+    (v_org_b, v_pro_b, 'ativo'),
+    -- profissional multi-org: medico tambem na org B
+    (v_org_b, v_pro_a, 'ativo')
   on conflict (organization_id, user_id) do nothing;
 
   select id into v_uo_user from public.user_organizations where organization_id = v_org_a and user_id = v_user_a;
   select id into v_uo_pro from public.user_organizations where organization_id = v_org_a and user_id = v_pro_a;
   select id into v_uo_pro2 from public.user_organizations where organization_id = v_org_a and user_id = v_pro_a2;
   select id into v_uo_mgr from public.user_organizations where organization_id = v_org_a and user_id = v_mgr;
+  select id into v_uo_pro_b_membership
+    from public.user_organizations
+   where organization_id = v_org_b and user_id = v_pro_a;
 
   insert into public.user_roles (organization_id, user_organization_id, role_id, status)
   values
     (v_org_a, v_uo_user, v_role_usuario, 'ativo'),
     (v_org_a, v_uo_pro, v_role_medico, 'ativo'),
     (v_org_a, v_uo_pro2, v_role_prof, 'ativo'),
-    (v_org_a, v_uo_mgr, v_role_gestor, 'ativo')
+    (v_org_a, v_uo_mgr, v_role_gestor, 'ativo'),
+    (v_org_b, v_uo_pro_b_membership, v_role_medico, 'ativo')
   on conflict do nothing;
 
-  insert into public.user_organizations (organization_id, user_id, status)
-  select v_org_b, v_pro_b, 'ativo'
-  where not exists (
-    select 1 from public.user_organizations where organization_id = v_org_b and user_id = v_pro_b
-  );
   insert into public.user_roles (organization_id, user_organization_id, role_id, status)
   select v_org_b, uo.id, v_role_medico, 'ativo'
   from public.user_organizations uo
@@ -100,24 +102,53 @@ begin
     organization_id, professional_id, user_id, assignment_reason, status
   ) values
     (v_org_a, v_pro_a, v_user_a, 'acompanhamento', 'ativo'),
-    (v_org_a, v_pro_a2, v_user_a, 'acompanhamento', 'ativo');
+    (v_org_a, v_pro_a2, v_user_a, 'acompanhamento', 'ativo'),
+    (v_org_b, v_pro_a, v_user_b, 'multi-org', 'ativo');
 
-  -- medico vinculado ve paciente
+  -- medico vinculado ve paciente na org da sessao
   perform set_config('request.jwt.claim.sub', v_pro_a::text, true);
   perform set_config('request.jwt.claims', json_build_object('sub', v_pro_a::text)::text, true);
   execute 'set local role authenticated';
-  if public.can_list_linked_clinical_portfolio() is not true then
-    raise exception 'VALIDACAO 0011 FALHOU: medico deveria listar carteira';
+  if public.can_list_linked_clinical_portfolio(v_org_a) is not true then
+    raise exception 'VALIDACAO 0011 FALHOU: medico deveria listar carteira na org A';
   end if;
-  select count(*) into v_count from public.list_linked_clinical_patients();
+  select count(*) into v_count from public.list_linked_clinical_patients(v_org_a);
   if v_count <> 1 then
-    raise exception 'VALIDACAO 0011 FALHOU: medico deveria ver 1 paciente, viu %', v_count;
+    raise exception 'VALIDACAO 0011 FALHOU: medico deveria ver 1 paciente na org A, viu %', v_count;
   end if;
   if not exists (
-    select 1 from public.list_linked_clinical_patients()
+    select 1 from public.list_linked_clinical_patients(v_org_a)
     where patient_user_id = v_user_a and organization_id = v_org_a and display_name = 'Paciente A'
   ) then
     raise exception 'VALIDACAO 0011 FALHOU: dados minimos do paciente incorretos';
+  end if;
+  -- multi-org: org B nao vaza no escopo da org A
+  if exists (
+    select 1 from public.list_linked_clinical_patients(v_org_a) where patient_user_id = v_user_b
+  ) then
+    raise exception 'VALIDACAO 0011 FALHOU: paciente org B vazou na carteira org A';
+  end if;
+  -- multi-org: mesma sessao na org B ve apenas paciente B
+  if public.can_list_linked_clinical_portfolio(v_org_b) is not true then
+    raise exception 'VALIDACAO 0011 FALHOU: medico multi-org deveria listar org B';
+  end if;
+  select count(*) into v_count from public.list_linked_clinical_patients(v_org_b);
+  if v_count <> 1 then
+    raise exception 'VALIDACAO 0011 FALHOU: medico multi-org deveria ver 1 paciente na org B';
+  end if;
+  if exists (
+    select 1 from public.list_linked_clinical_patients(v_org_b) where patient_user_id = v_user_a
+  ) then
+    raise exception 'VALIDACAO 0011 FALHOU: paciente org A vazou na carteira org B';
+  end if;
+  -- org_id arbitrario sem membership clinica
+  if public.can_list_linked_clinical_portfolio('ffffffff-ffff-ffff-ffff-ffffffffffff'::uuid) then
+    raise exception 'VALIDACAO 0011 FALHOU: org arbitraria nao deveria autorizar';
+  end if;
+  select count(*) into v_count
+    from public.list_linked_clinical_patients('ffffffff-ffff-ffff-ffff-ffffffffffff'::uuid);
+  if v_count <> 0 then
+    raise exception 'VALIDACAO 0011 FALHOU: org arbitraria retornou linhas';
   end if;
   execute 'reset role';
 
@@ -125,51 +156,58 @@ begin
   perform set_config('request.jwt.claim.sub', v_pro_a2::text, true);
   perform set_config('request.jwt.claims', json_build_object('sub', v_pro_a2::text)::text, true);
   execute 'set local role authenticated';
-  select count(*) into v_count from public.list_linked_clinical_patients();
+  select count(*) into v_count from public.list_linked_clinical_patients(v_org_a);
   if v_count <> 1 then
     raise exception 'VALIDACAO 0011 FALHOU: profissional_saude deveria ver 1 paciente';
   end if;
   execute 'reset role';
 
-  -- sem vinculo
+  -- sem vinculo na org B (carteira vazia autorizada)
   perform set_config('request.jwt.claim.sub', v_pro_b::text, true);
   perform set_config('request.jwt.claims', json_build_object('sub', v_pro_b::text)::text, true);
   execute 'set local role authenticated';
-  if public.can_list_linked_clinical_portfolio() is not true then
+  if public.can_list_linked_clinical_portfolio(v_org_b) is not true then
     raise exception 'VALIDACAO 0011 FALHOU: medico org B deveria poder listar (papel clinico)';
   end if;
-  select count(*) into v_count from public.list_linked_clinical_patients();
+  select count(*) into v_count from public.list_linked_clinical_patients(v_org_b);
   if v_count <> 0 then
     raise exception 'VALIDACAO 0011 FALHOU: carteira vazia autorizada esperada para pro B';
   end if;
-  -- cross-tenant: paciente org A nao aparece
-  if exists (select 1 from public.list_linked_clinical_patients() where patient_user_id = v_user_a) then
+  if exists (select 1 from public.list_linked_clinical_patients(v_org_b) where patient_user_id = v_user_a) then
     raise exception 'VALIDACAO 0011 FALHOU: cross-tenant vazou paciente A';
+  end if;
+  -- pro B nao lista org A sem membership
+  if public.can_list_linked_clinical_portfolio(v_org_a) then
+    raise exception 'VALIDACAO 0011 FALHOU: pro B nao deveria listar org A';
+  end if;
+  select count(*) into v_count from public.list_linked_clinical_patients(v_org_a);
+  if v_count <> 0 then
+    raise exception 'VALIDACAO 0011 FALHOU: pro B obteve linhas da org A';
   end if;
   execute 'reset role';
 
   -- vinculo inativo
   update public.professional_assignments
      set status = 'inativo'
-   where professional_id = v_pro_a and user_id = v_user_a;
+   where professional_id = v_pro_a and user_id = v_user_a and organization_id = v_org_a;
   perform set_config('request.jwt.claim.sub', v_pro_a::text, true);
   perform set_config('request.jwt.claims', json_build_object('sub', v_pro_a::text)::text, true);
   execute 'set local role authenticated';
-  select count(*) into v_count from public.list_linked_clinical_patients();
+  select count(*) into v_count from public.list_linked_clinical_patients(v_org_a);
   if v_count <> 0 then
     raise exception 'VALIDACAO 0011 FALHOU: vinculo inativo nao deveria listar';
   end if;
   execute 'reset role';
   update public.professional_assignments
      set status = 'ativo'
-   where professional_id = v_pro_a and user_id = v_user_a;
+   where professional_id = v_pro_a and user_id = v_user_a and organization_id = v_org_a;
 
-  -- profissional nao ve carteira de outro (pro_a2 nao ve assignment exclusivo se removido)
+  -- profissional nao ve carteira de outro
   delete from public.professional_assignments where professional_id = v_pro_a2;
   perform set_config('request.jwt.claim.sub', v_pro_a2::text, true);
   perform set_config('request.jwt.claims', json_build_object('sub', v_pro_a2::text)::text, true);
   execute 'set local role authenticated';
-  select count(*) into v_count from public.list_linked_clinical_patients();
+  select count(*) into v_count from public.list_linked_clinical_patients(v_org_a);
   if v_count <> 0 then
     raise exception 'VALIDACAO 0011 FALHOU: profissional sem assignment proprio nao deveria ver carteira alheia';
   end if;
@@ -182,10 +220,10 @@ begin
   perform set_config('request.jwt.claim.sub', v_mgr::text, true);
   perform set_config('request.jwt.claims', json_build_object('sub', v_mgr::text)::text, true);
   execute 'set local role authenticated';
-  if public.can_list_linked_clinical_portfolio() then
+  if public.can_list_linked_clinical_portfolio(v_org_a) then
     raise exception 'VALIDACAO 0011 FALHOU: gestor nao deveria listar carteira';
   end if;
-  select count(*) into v_count from public.list_linked_clinical_patients();
+  select count(*) into v_count from public.list_linked_clinical_patients(v_org_a);
   if v_count <> 0 then
     raise exception 'VALIDACAO 0011 FALHOU: gestor obteve linhas nominais';
   end if;
@@ -195,10 +233,10 @@ begin
   perform set_config('request.jwt.claim.sub', v_user_a::text, true);
   perform set_config('request.jwt.claims', json_build_object('sub', v_user_a::text)::text, true);
   execute 'set local role authenticated';
-  if public.can_list_linked_clinical_portfolio() then
+  if public.can_list_linked_clinical_portfolio(v_org_a) then
     raise exception 'VALIDACAO 0011 FALHOU: usuario comum nao deveria listar carteira';
   end if;
-  select count(*) into v_count from public.list_linked_clinical_patients();
+  select count(*) into v_count from public.list_linked_clinical_patients(v_org_a);
   if v_count <> 0 then
     raise exception 'VALIDACAO 0011 FALHOU: usuario comum obteve carteira';
   end if;

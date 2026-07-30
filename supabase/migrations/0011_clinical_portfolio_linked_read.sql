@@ -5,7 +5,9 @@
 -- 1) professional_assignments ainda usa RLS legada (0002) por claims JWT;
 -- 2) a identidade do profissional deve decorrer exclusivamente de auth.uid();
 -- 3) o cliente nao pode informar professional_id para ler carteira alheia;
--- 4) display_name minimo via auth.users, apenas para pacientes ja autorizados pelo vinculo.
+-- 4) organization_id e parametro de escopo da sessao e so e aceito apos
+--    has_active_org_link + papel clinico na mesma org (padrao 0010);
+-- 5) display_name minimo via auth.users, apenas para pacientes ja autorizados.
 
 begin;
 
@@ -29,17 +31,17 @@ begin
   if to_regclass('auth.users') is null then
     raise exception 'SUP-C01.1: auth.users ausente (dependencia Supabase para display_name minimo).';
   end if;
-  if to_regprocedure('public.can_list_linked_clinical_portfolio()') is not null then
-    raise exception 'SUP-C01.1: funcao public.can_list_linked_clinical_portfolio() ja existe.';
+  if to_regprocedure('public.can_list_linked_clinical_portfolio(uuid)') is not null then
+    raise exception 'SUP-C01.1: funcao public.can_list_linked_clinical_portfolio(uuid) ja existe.';
   end if;
-  if to_regprocedure('public.list_linked_clinical_patients()') is not null then
-    raise exception 'SUP-C01.1: funcao public.list_linked_clinical_patients() ja existe.';
+  if to_regprocedure('public.list_linked_clinical_patients(uuid)') is not null then
+    raise exception 'SUP-C01.1: funcao public.list_linked_clinical_patients(uuid) ja existe.';
   end if;
 end $$;
 
--- True quando o autenticado possui papel clinico ativo em alguma organizacao.
--- Distingue "carteira autorizada vazia" de "acesso clinico negado".
-create function public.can_list_linked_clinical_portfolio()
+-- True quando o autenticado possui papel clinico ativo na organizacao informada.
+-- Distingue "carteira autorizada vazia" de "acesso clinico negado" por org da sessao.
+create function public.can_list_linked_clinical_portfolio(p_organization_id uuid)
 returns boolean
 language sql
 stable
@@ -48,36 +50,27 @@ set search_path = pg_catalog, public
 as $$
   select
     auth.uid() is not null
-    and exists (
-      select 1
-      from public.user_organizations uo
-      join public.user_roles ur
-        on ur.user_organization_id = uo.id
-       and ur.organization_id = uo.organization_id
-       and ur.status = 'ativo'
-      join public.roles r
-        on r.id = ur.role_id
-       and r.status = 'ativo'
-       and r.code in ('medico', 'profissional_saude')
-      where uo.user_id = auth.uid()
-        and uo.status = 'ativo'
-        and app_auth.has_active_org_link(uo.organization_id)
+    and p_organization_id is not null
+    and app_auth.has_active_org_link(p_organization_id)
+    and app_auth.has_active_role(
+      p_organization_id,
+      array['medico', 'profissional_saude']::text[],
+      null::uuid
     );
 $$;
 
-revoke all on function public.can_list_linked_clinical_portfolio() from public;
+revoke all on function public.can_list_linked_clinical_portfolio(uuid) from public;
 do $$
 begin
   if exists (select 1 from pg_roles where rolname = 'anon') then
-    execute 'revoke all on function public.can_list_linked_clinical_portfolio() from anon';
+    execute 'revoke all on function public.can_list_linked_clinical_portfolio(uuid) from anon';
   end if;
 end $$;
-grant execute on function public.can_list_linked_clinical_portfolio() to authenticated;
+grant execute on function public.can_list_linked_clinical_portfolio(uuid) to authenticated;
 
--- Lista somente pacientes com assignment ativo do auth.uid(), mesma org ativa,
--- paciente com membership ativo, papel clinico do profissional na org do vinculo.
--- Sem parametros de identidade: impede consulta da carteira de outro profissional.
-create function public.list_linked_clinical_patients()
+-- Lista somente pacientes com assignment ativo do auth.uid() na organizacao
+-- autorizada da sessao. organization_id nao e confiado sem membership+papel clinico.
+create function public.list_linked_clinical_patients(p_organization_id uuid)
 returns table (
   patient_user_id uuid,
   organization_id uuid,
@@ -91,50 +84,54 @@ security definer
 set search_path = pg_catalog, public, auth
 as $$
   select
-    pa.user_id as patient_user_id,
-    pa.organization_id,
-    pa.status as assignment_status,
-    pa.assignment_reason,
-    coalesce(
-      nullif(au.raw_user_meta_data ->> 'full_name', ''),
-      nullif(au.raw_user_meta_data ->> 'name', ''),
-      nullif(au.email, ''),
-      'Paciente'
-    ) as display_name
-  from public.professional_assignments pa
-  join public.user_organizations patient_uo
-    on patient_uo.organization_id = pa.organization_id
-   and patient_uo.user_id = pa.user_id
-   and patient_uo.status = 'ativo'
-  left join auth.users au
-    on au.id = pa.user_id
-  where auth.uid() is not null
-    and pa.professional_id = auth.uid()
-    and pa.status = 'ativo'
-    and app_auth.has_active_org_link(pa.organization_id)
-    and app_auth.has_active_role(
+    scoped.patient_user_id,
+    scoped.organization_id,
+    scoped.assignment_status,
+    scoped.assignment_reason,
+    scoped.display_name
+  from (
+    select distinct on (pa.user_id)
+      pa.user_id as patient_user_id,
       pa.organization_id,
-      array['medico', 'profissional_saude']::text[],
-      null::uuid
-    )
-  order by
-    coalesce(
-      nullif(au.raw_user_meta_data ->> 'full_name', ''),
-      nullif(au.raw_user_meta_data ->> 'name', ''),
-      nullif(au.email, ''),
-      'Paciente'
-    ) asc,
-    pa.user_id asc;
+      pa.status as assignment_status,
+      pa.assignment_reason,
+      coalesce(
+        nullif(au.raw_user_meta_data ->> 'full_name', ''),
+        nullif(au.raw_user_meta_data ->> 'name', ''),
+        nullif(au.email, ''),
+        'Paciente'
+      ) as display_name
+    from public.professional_assignments pa
+    join public.user_organizations patient_uo
+      on patient_uo.organization_id = pa.organization_id
+     and patient_uo.user_id = pa.user_id
+     and patient_uo.status = 'ativo'
+    left join auth.users au
+      on au.id = pa.user_id
+    where auth.uid() is not null
+      and p_organization_id is not null
+      and pa.organization_id = p_organization_id
+      and pa.professional_id = auth.uid()
+      and pa.status = 'ativo'
+      and app_auth.has_active_org_link(p_organization_id)
+      and app_auth.has_active_role(
+        p_organization_id,
+        array['medico', 'profissional_saude']::text[],
+        null::uuid
+      )
+    order by pa.user_id asc
+  ) scoped
+  order by scoped.display_name asc, scoped.patient_user_id asc;
 $$;
 
-revoke all on function public.list_linked_clinical_patients() from public;
+revoke all on function public.list_linked_clinical_patients(uuid) from public;
 do $$
 begin
   if exists (select 1 from pg_roles where rolname = 'anon') then
-    execute 'revoke all on function public.list_linked_clinical_patients() from anon';
+    execute 'revoke all on function public.list_linked_clinical_patients(uuid) from anon';
   end if;
 end $$;
-grant execute on function public.list_linked_clinical_patients() to authenticated;
+grant execute on function public.list_linked_clinical_patients(uuid) to authenticated;
 
 -- Sem grants/policies de escrita. Sem SELECT amplo em professional_assignments.
 

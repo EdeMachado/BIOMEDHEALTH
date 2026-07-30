@@ -87,9 +87,11 @@ export function createSupabaseClinicalPortfolioRepository(input: {
       if (!authResponse.data.user?.id) return fail('NO_SESSION');
       if (authResponse.data.user.id !== context.professionalUserId) return fail('IDENTITY_MISMATCH');
 
+      const orgArgs = { p_organization_id: context.organizationId };
+
       let canListResponse: SupabaseQueryResponse<unknown>;
       try {
-        canListResponse = await client.rpc('can_list_linked_clinical_portfolio');
+        canListResponse = await client.rpc('can_list_linked_clinical_portfolio', orgArgs);
       } catch (error: unknown) {
         return mapBackendError(normalizeThrownError(error));
       }
@@ -98,13 +100,14 @@ export function createSupabaseClinicalPortfolioRepository(input: {
 
       let listResponse: SupabaseQueryResponse<unknown>;
       try {
-        listResponse = await client.rpc('list_linked_clinical_patients');
+        listResponse = await client.rpc('list_linked_clinical_patients', orgArgs);
       } catch (error: unknown) {
         return mapBackendError(normalizeThrownError(error));
       }
       if (listResponse.error) return mapBackendError(listResponse.error);
 
       const rows = Array.isArray(listResponse.data) ? (listResponse.data as PortfolioRow[]) : [];
+      // Defesa em profundidade: a RPC ja restringe a p_organization_id autorizado.
       const patients = sortPatients(
         rows
           .filter(

@@ -118,4 +118,16 @@ describe('integracao da carteira clinica persistida', () => {
     expect(screen.getByTestId('clinical-patient-context-header')).not.toHaveTextContent(/Faixa etária/i);
     expect(screen.queryByText(/BM-CLI-001/i)).not.toBeInTheDocument();
   });
+
+  it('busca sem resultados e distinta da carteira vazia autorizada', async () => {
+    setClinicalSession('pro-1');
+    renderPortfolio();
+    expect(await screen.findByTestId('clinical-portfolio-card-usr-1')).toBeInTheDocument();
+    await userEvent.type(screen.getByTestId('clinical-portfolio-search'), 'zzzz-inexistente');
+    expect(await screen.findByTestId('clinical-portfolio-search-empty')).toHaveTextContent(
+      'Nenhum paciente correspondente à busca.'
+    );
+    expect(screen.queryByTestId('clinical-portfolio-empty')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('clinical-portfolio-card-usr-1')).not.toBeInTheDocument();
+  });
 });

@@ -173,6 +173,16 @@ describe('header clinico da carteira no modo Supabase', () => {
     expect(screen.getByTestId('clinical-patient-context-header')).not.toHaveTextContent('Ana Demo');
   });
 
+  it('carteira autorizada vazia mostra estado sem vinculos (nao busca)', async () => {
+    setClinicalSession();
+    portfolioResult = { ok: true, data: [] };
+    renderAt('/clinica/carteira');
+    expect(await screen.findByTestId('clinical-portfolio-empty')).toHaveTextContent(
+      'Nenhum paciente vinculado para acompanhamento.'
+    );
+    expect(screen.queryByTestId('clinical-portfolio-search-empty')).not.toBeInTheDocument();
+  });
+
   it('troca de paciente atualiza imediatamente o header', async () => {
     setClinicalSession();
     portfolioResult = {

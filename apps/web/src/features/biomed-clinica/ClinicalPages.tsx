@@ -192,9 +192,17 @@ export function ClinicalPortfolioPage() {
             {error}
           </p>
         ) : null}
-        {!loading && !error && list.length === 0 ? (
+        {!loading && !error && patients.length === 0 ? (
           <p className="text-sm text-[var(--muted-foreground)]" data-testid="clinical-portfolio-empty">
             Nenhum paciente vinculado para acompanhamento.
+          </p>
+        ) : null}
+        {!loading && !error && patients.length > 0 && list.length === 0 ? (
+          <p
+            className="text-sm text-[var(--muted-foreground)]"
+            data-testid="clinical-portfolio-search-empty"
+          >
+            Nenhum paciente correspondente à busca.
           </p>
         ) : null}
         <div className="grid gap-2">

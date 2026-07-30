@@ -288,6 +288,35 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 13. **Estimativa**: grande  
 14. **Ordem recomendada**: 6
 
+#### SUP-B02.1 - Persistencia runtime da avaliacao inicial (aplicacao)
+
+1. **Status**: implementado em `feat/sup-b02-assessment-runtime-persistence`.
+2. **Arquitetura aplicada**:
+   - repositorio `assessment` em modo mock/supabase com factory dual-mode;
+   - service de dominio com resolucao de versao, mapeamento estavel de perguntas e regras de conclusao;
+   - integracao progressiva em Minha BioMed sem criar camada paralela.
+3. **Fluxos entregues**:
+   - criacao/retomada de avaliacao por titular autenticado;
+   - persistencia idempotente de respostas em `assessment_responses`;
+   - persistencia de resultado orientativo em `risk_results` com racional serializado;
+   - restauracao de estado incompleto e de avaliacao concluida.
+4. **Seguranca/LGPD**:
+   - identidade de `userId`/`organizationId` derivada exclusivamente da sessao autenticada;
+   - sem `service_role` no frontend;
+   - payload de respostas minimizado (`answer_value` + `answer_text` nulo);
+   - linguagem de resultado mantida como orientativa e nao diagnostica.
+5. **Testes adicionados**:
+   - unitarios de service (`assessmentService`) cobrindo versao, persistencia, retomada, conclusao e historico;
+   - integracao de repositorio Supabase com cliente simulado (`supabaseAssessmentRepository`).
+6. **Limitacao documentada**:
+   - os testes de repositorio Supabase utilizam fake client e nao constituem nova validacao runtime de RLS em PostgreSQL/Supabase real.
+7. **Necessidade de migration/policy**:
+   - migration incremental `0007_assessment_runtime_integrity.sql` e rollback `0007_assessment_runtime_integrity_rollback.sql` adicionados para garantir:
+     - unicidade estrutural de `assessment_responses` por `(assessment_id, assessment_question_id)`;
+     - unicidade estrutural de `risk_results` por `(assessment_id)`;
+     - criacao/retomada concorrente segura de avaliacao em andamento por `(organization_id, user_id, assessment_version_id)` via `public.create_or_get_active_assessment`.
+   - validacao SQL executada em PostgreSQL 16 descartavel com harness local de `auth.uid()`/claims; nao representa validacao de stack Supabase completo.
+
 ### SUP-B03
 
 1. **Identificador**: `SUP-B03`  

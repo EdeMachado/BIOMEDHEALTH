@@ -14,6 +14,7 @@ function setDemoSession() {
       nome: 'Ana Demo',
       email: 'usuario.demo@biomed.health',
       role: 'usuario',
+      roles: ['usuario'],
       organizationId: 'org-1',
     })
   );

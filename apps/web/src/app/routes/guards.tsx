@@ -17,7 +17,9 @@ export function RequireAuth() {
 export function RequireRole({ allow }: GuardProps) {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
-  if (!allow.includes(user.role)) {
+  const activeRoles = user.roles?.length ? user.roles : [user.role];
+  const allowed = allow.some((role) => activeRoles.includes(role));
+  if (!allowed) {
     registerAuditEvent({
       actorEmail: user.email,
       actorRole: user.role,

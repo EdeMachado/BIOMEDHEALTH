@@ -4,14 +4,17 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { listAuditEvents } from '@/domains/audit/auditTrail';
 import { RequireAuth, RequireRole } from '@/app/routes/guards';
 import { AuthProvider } from '@/services/auth/AuthContext';
+import { demoUsers } from '@/services/repositories/demoData';
 
 function setDemoSession(role: 'usuario' | 'medico' | 'gestor_institucional') {
+  const source = demoUsers.find((user) => user.role === role && user.organizationId === 'org-1');
+  if (!source) throw new Error(`Usuário demo não encontrado para role=${role}`);
   sessionStorage.setItem(
     'biomed_demo_session',
     JSON.stringify({
-      id: 'demo-user',
-      nome: 'Demo',
-      email: 'demo@biomed.health',
+      id: source.id,
+      nome: source.nome,
+      email: source.email,
       role,
       roles: [role],
       organizationId: 'org-1',
@@ -20,12 +23,14 @@ function setDemoSession(role: 'usuario' | 'medico' | 'gestor_institucional') {
 }
 
 function setDemoSessionWithMultipleRoles(roles: Array<'usuario' | 'medico' | 'gestor_institucional'>) {
+  const baseUser = demoUsers.find((user) => user.role === roles[0] && user.organizationId === 'org-1');
+  if (!baseUser) throw new Error(`Usuário demo não encontrado para role=${roles[0]}`);
   sessionStorage.setItem(
     'biomed_demo_session',
     JSON.stringify({
-      id: 'multi-role-user',
-      nome: 'Multi Role',
-      email: 'multi@biomed.health',
+      id: baseUser.id,
+      nome: baseUser.nome,
+      email: baseUser.email,
       role: roles[0],
       roles,
       organizationId: 'org-1',
@@ -109,7 +114,7 @@ describe('guards de autorizacao e roteamento protegido', () => {
       { initialEntries: ['/clinica-only'] }
     );
 
-    setDemoSessionWithMultipleRoles(['usuario', 'medico']);
+    setDemoSessionWithMultipleRoles(['medico', 'usuario']);
     render(
       <AuthProvider>
         <RouterProvider router={router} />

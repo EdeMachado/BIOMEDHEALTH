@@ -1,9 +1,17 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { registerAuditEvent } from '@/domains/audit/auditTrail';
-import { getSupabaseClient, isSupabaseAuthEnabled, validateSupabaseConfiguration } from '@/services/api/supabaseClient';
+import { getSupabaseClient, validateSupabaseConfiguration } from '@/services/api/supabaseClient';
 import { demoUsers, getRoleHomePath } from '@/services/repositories/demoData';
+import {
+  createAccessContextRepositoryFactory,
+  resolveAccessRepositoryMode,
+  resolveRuntimeEnvironment,
+  type AccessRepositoryMode,
+} from '@/services/repositories/access/factory';
+import type { SupabaseAccessClient } from '@/services/repositories/access/supabaseAccessRepository';
 import { readSessionItem, removeSessionItem, writeSessionItem } from '@/shared/lib/sessionStorage';
 import type { Role, SessionUser } from '@/shared/types/access';
+import type { AccessContext, AccessErrorCode, AccessIdentity } from '@/services/repositories/access/types';
 
 type LoginInput = {
   email: string;
@@ -22,30 +30,29 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 const AUTH_STORAGE_KEY = 'biomed_demo_session';
 const SUPABASE_ORG_STORAGE_KEY = 'biomed_supabase_org_selection';
-type SessionRoleBinding = {
-  role: Role;
-  unitId: string | null;
-};
-
-const ROLE_PRIORITY: Role[] = [
-  'admin_biomed',
-  'admin_cliente',
-  'gestor_clinico',
-  'medico',
-  'profissional_saude',
-  'gestor_institucional',
-  'sst',
-  'auditor',
-  'usuario',
-];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const supabaseEnabled = isSupabaseAuthEnabled();
-  const supabaseConfigError = validateSupabaseConfiguration();
-  const supabaseClient = supabaseEnabled && !supabaseConfigError ? getSupabaseClient() : null;
+  const resolutionNonceRef = useRef(0);
 
+  const modeResolution = useMemo(() => {
+    try {
+      return {
+        mode: resolveAccessRepositoryMode(import.meta.env),
+        error: null as string | null,
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Modo de acesso inválido.';
+      return {
+        mode: null as AccessRepositoryMode | null,
+        error: message,
+      };
+    }
+  }, []);
+
+  const mode = modeResolution.mode;
+  const modeResolutionError = modeResolution.error;
   const [user, setUser] = useState<SessionUser | null>(() => {
-    if (supabaseEnabled) return null;
+    if (mode !== 'mock') return null;
     const raw = readSessionItem(AUTH_STORAGE_KEY);
     if (!raw) return null;
     try {
@@ -55,25 +62,121 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   });
 
+  const supabaseConfigError = mode === 'supabase' ? validateSupabaseConfiguration() : null;
+  const supabaseClient = mode === 'supabase' && !supabaseConfigError ? getSupabaseClient() : null;
+
+  const accessRepository = useMemo(() => {
+    if (!mode) return null;
+    const injectedSupabaseClient = supabaseClient as unknown as SupabaseAccessClient | null;
+    try {
+      return createAccessContextRepositoryFactory({
+        mode,
+        supabaseClient: injectedSupabaseClient,
+        fallbackPolicy: {
+          enableTransientFallback: false,
+          runtime: resolveRuntimeEnvironment(import.meta.env),
+        },
+      });
+    } catch {
+      return null;
+    }
+  }, [mode, supabaseClient]);
+
   useEffect(() => {
-    if (!supabaseClient) return;
+    if (!accessRepository || !mode) {
+      setUser(null);
+      return;
+    }
+
+    const nonce = beginResolution(resolutionNonceRef);
+    let disposed = false;
+
+    const applyResolvedUser = (resolvedUser: SessionUser | null) => {
+      if (disposed || !isResolutionCurrent(resolutionNonceRef, nonce)) return;
+      setUser(resolvedUser);
+    };
+
+    const hydrate = async () => {
+      if (mode === 'mock') {
+        const restored = await hydrateMockUser(accessRepository);
+        applyResolvedUser(restored);
+        return;
+      }
+
+      if (!supabaseClient) {
+        applyResolvedUser(null);
+        return;
+      }
+
+      const selectedOrganizationId = readSessionItem(SUPABASE_ORG_STORAGE_KEY);
+      if (!selectedOrganizationId) {
+        applyResolvedUser(null);
+        return;
+      }
+
+      const authSession = await supabaseClient.auth.getUser();
+      const authUser = authSession.data.user;
+      if (!authUser?.id) {
+        applyResolvedUser(null);
+        return;
+      }
+
+      const identity: AccessIdentity = {
+        sessionUserId: authUser.id,
+        userId: authUser.id,
+        organizationId: selectedOrganizationId,
+        selectedUnitId: null,
+      };
+      const resolved = await accessRepository.resolveAccessContext(identity);
+      if (!resolved.ok) {
+        applyResolvedUser(null);
+        return;
+      }
+
+      const sessionUser = buildSessionUserFromAccessContext({
+        context: resolved.data,
+        nome: resolveDisplayName(authUser.email ?? '', authUser.user_metadata),
+        email: authUser.email ?? '',
+      });
+      applyResolvedUser(sessionUser);
+    };
+
+    void hydrate();
+
+    if (!supabaseClient || mode !== 'supabase') {
+      return () => {
+        disposed = true;
+        invalidateResolution(resolutionNonceRef);
+      };
+    }
+
     const {
       data: { subscription },
     } = supabaseClient.auth.onAuthStateChange(() => {
-      void hydrateSupabaseUser(supabaseClient, setUser);
+      void hydrate();
     });
 
-    void hydrateSupabaseUser(supabaseClient, setUser);
     return () => {
+      disposed = true;
+      invalidateResolution(resolutionNonceRef);
       subscription.unsubscribe();
     };
-  }, [supabaseClient]);
+  }, [accessRepository, mode, supabaseClient]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
       async login(input) {
-        if (supabaseEnabled) {
+        if (modeResolutionError || !mode || !accessRepository) {
+          return {
+            ok: false,
+            message: modeResolutionError ?? 'Não foi possível inicializar o resolvedor de acesso.',
+          };
+        }
+
+        const nonce = beginResolution(resolutionNonceRef);
+
+        if (mode === 'supabase') {
           if (supabaseConfigError || !supabaseClient) {
             return {
               ok: false,
@@ -100,9 +203,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           writeSessionItem(SUPABASE_ORG_STORAGE_KEY, input.organizationId);
-          const sessionUser = await resolveSupabaseSessionUser(supabaseClient, input.organizationId);
-          if (!sessionUser) {
+
+          const authSession = await supabaseClient.auth.getUser();
+          const authUser = authSession.data.user;
+          if (!authUser?.id) {
             await supabaseClient.auth.signOut();
+            removeSessionItem(SUPABASE_ORG_STORAGE_KEY);
+            return { ok: false, message: 'Sessão Supabase inválida após autenticação.' };
+          }
+
+          const identity: AccessIdentity = {
+            sessionUserId: authUser.id,
+            userId: authUser.id,
+            organizationId: input.organizationId,
+            selectedUnitId: null,
+          };
+          const resolved = await accessRepository.resolveAccessContext(identity);
+          if (!resolved.ok) {
+            await supabaseClient.auth.signOut();
+            removeSessionItem(SUPABASE_ORG_STORAGE_KEY);
             registerAuditEvent({
               actorEmail: input.email,
               actorRole: 'nao_autenticado',
@@ -110,9 +229,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               action: 'login',
               entity: 'auth',
               result: 'negado',
-              reason: 'Usuário sem vínculo ativo na organização selecionada',
+              reason: resolved.error.code,
             });
-            return { ok: false, message: 'Seu usuário não possui vínculo ativo nesta organização.' };
+            return {
+              ok: false,
+              message: toPublicAccessFailureMessage(resolved.error.code),
+            };
+          }
+
+          const sessionUser = buildSessionUserFromAccessContext({
+            context: resolved.data,
+            nome: resolveDisplayName(authUser.email ?? input.email, authUser.user_metadata),
+            email: authUser.email ?? input.email,
+          });
+          if (!isResolutionCurrent(resolutionNonceRef, nonce)) {
+            return { ok: false, message: 'Sessão alterada durante autenticação.' };
           }
 
           setUser(sessionUser);
@@ -127,14 +258,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { ok: true, redirectTo: getRoleHomePath(sessionUser.role) };
         }
 
-        const found = demoUsers.find(
+        const foundCredentialUser = demoUsers.find(
           (candidate) =>
             candidate.email === input.email &&
             candidate.password === input.password &&
             candidate.organizationId === input.organizationId
         );
 
-        if (!found) {
+        if (!foundCredentialUser) {
           registerAuditEvent({
             actorEmail: input.email,
             actorRole: 'nao_autenticado',
@@ -147,14 +278,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { ok: false, message: 'Credenciais inválidas para este ambiente demonstrativo.' };
         }
 
-        const sessionUser: SessionUser = {
-          id: found.id,
-          nome: found.nome,
-          email: found.email,
-          role: found.role,
-          roles: [found.role],
-          organizationId: found.organizationId,
+        const identity: AccessIdentity = {
+          sessionUserId: foundCredentialUser.id,
+          userId: foundCredentialUser.id,
+          organizationId: foundCredentialUser.organizationId,
+          selectedUnitId: null,
         };
+        const resolved = await accessRepository.resolveAccessContext(identity);
+        if (!resolved.ok) {
+          registerAuditEvent({
+            actorEmail: input.email,
+            actorRole: 'nao_autenticado',
+            organizationId: input.organizationId,
+            action: 'login',
+            entity: 'auth',
+            result: 'negado',
+            reason: resolved.error.code,
+          });
+          return {
+            ok: false,
+            message: toPublicAccessFailureMessage(resolved.error.code),
+          };
+        }
+
+        const sessionUser = buildSessionUserFromAccessContext({
+          context: resolved.data,
+          nome: foundCredentialUser.nome,
+          email: foundCredentialUser.email,
+        });
+
+        if (!isResolutionCurrent(resolutionNonceRef, nonce)) {
+          return { ok: false, message: 'Sessão alterada durante autenticação.' };
+        }
+
         writeSessionItem(AUTH_STORAGE_KEY, JSON.stringify(sessionUser));
         registerAuditEvent({
           actorEmail: sessionUser.email,
@@ -165,7 +321,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           result: 'sucesso',
         });
         setUser(sessionUser);
-        return { ok: true, redirectTo: getRoleHomePath(found.role) };
+        return { ok: true, redirectTo: getRoleHomePath(foundCredentialUser.role) };
       },
       async logout() {
         if (user) {
@@ -178,18 +334,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             result: 'sucesso',
           });
         }
-        if (supabaseClient) {
-          await supabaseClient.auth.signOut();
-          removeSessionItem(SUPABASE_ORG_STORAGE_KEY);
-        }
+
+        const nonce = beginResolution(resolutionNonceRef);
         removeSessionItem(AUTH_STORAGE_KEY);
+        removeSessionItem(SUPABASE_ORG_STORAGE_KEY);
         setUser(null);
+
+        if (supabaseClient) await supabaseClient.auth.signOut();
+        if (!isResolutionCurrent(resolutionNonceRef, nonce)) return;
       },
     }),
-    [supabaseClient, supabaseConfigError, supabaseEnabled, user]
+    [accessRepository, mode, modeResolutionError, supabaseClient, supabaseConfigError, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+async function hydrateMockUser(
+  accessRepository: NonNullable<ReturnType<typeof createAccessContextRepositoryFactory>>
+): Promise<SessionUser | null> {
+  const raw = readSessionItem(AUTH_STORAGE_KEY);
+  if (!raw) return null;
+
+  let restored: SessionUser | null = null;
+  try {
+    restored = normalizeSessionUser(JSON.parse(raw));
+  } catch {
+    restored = null;
+  }
+
+  if (!restored) {
+    removeSessionItem(AUTH_STORAGE_KEY);
+    return null;
+  }
+
+  const identity: AccessIdentity = {
+    sessionUserId: restored.id,
+    userId: restored.id,
+    organizationId: restored.organizationId,
+    selectedUnitId: null,
+  };
+
+  const resolved = await accessRepository.resolveAccessContext(identity);
+  if (!resolved.ok) {
+    removeSessionItem(AUTH_STORAGE_KEY);
+    return null;
+  }
+
+  const source = demoUsers.find((item) => item.id === restored.id);
+  return buildSessionUserFromAccessContext({
+    context: resolved.data,
+    nome: source?.nome ?? restored.nome,
+    email: source?.email ?? restored.email,
+  });
 }
 
 export function useAuth() {
@@ -198,96 +395,40 @@ export function useAuth() {
   return context;
 }
 
-async function hydrateSupabaseUser(
-  client: NonNullable<ReturnType<typeof getSupabaseClient>>,
-  setUser: (user: SessionUser | null) => void
-) {
-  const selectedOrganizationId = readSessionItem(SUPABASE_ORG_STORAGE_KEY);
-  if (!selectedOrganizationId) {
-    setUser(null);
-    return;
-  }
-  const resolved = await resolveSupabaseSessionUser(client, selectedOrganizationId);
-  setUser(resolved);
-}
-
-async function resolveSupabaseSessionUser(
-  client: NonNullable<ReturnType<typeof getSupabaseClient>>,
-  organizationId: string
-): Promise<SessionUser | null> {
-  const {
-    data: { user: authUser },
-  } = await client.auth.getUser();
-  if (!authUser) return null;
-
-  const { data: userOrganization } = await client
-    .from('user_organizations')
-    .select('id, organization_id, status')
-    .eq('organization_id', organizationId)
-    .eq('user_id', authUser.id)
-    .eq('status', 'ativo')
-    .maybeSingle();
-
-  if (!userOrganization?.id) return null;
-
-  const { data: roleRows } = await client
-    .from('user_roles')
-    .select('role_id, status, unit_id, roles(code)')
-    .eq('user_organization_id', userOrganization.id)
-    .eq('organization_id', organizationId)
-    .eq('status', 'ativo');
-
-  const roleBindings = resolveRoleBindings(roleRows ?? []);
-  if (roleBindings.length === 0) return null;
-  const role = resolveHighestRole(roleBindings);
-  if (!role) return null;
-  const roles = roleBindings.map((binding) => binding.role);
-
-  const displayName =
-    typeof authUser.user_metadata?.['nome'] === 'string' && authUser.user_metadata['nome'].length > 0
-      ? authUser.user_metadata['nome']
-      : authUser.email?.split('@')[0] ?? 'Usuário';
-
+function buildSessionUserFromAccessContext(input: {
+  context: AccessContext;
+  nome: string;
+  email: string;
+}): SessionUser {
   return {
-    id: authUser.id,
-    nome: displayName,
-    email: authUser.email ?? '',
-    role,
-    roles,
-    organizationId,
+    id: input.context.identity.userId as string,
+    nome: input.nome,
+    email: input.email,
+    role: input.context.effectiveRole,
+    roles: input.context.roles,
+    organizationId: input.context.organization.id,
   };
 }
 
-function resolveRoleBindings(rows: Array<{ unit_id?: string | null; roles?: { code?: string } | Array<{ code?: string }> }>): SessionRoleBinding[] {
-  const entries = rows.flatMap((row) => {
-    const unitId = typeof row.unit_id === 'string' ? row.unit_id : null;
-    const value = row.roles;
-    if (Array.isArray(value)) {
-      return value
-        .map((item) => item.code)
-        .filter(isRoleCode)
-        .map((role) => ({ role, unitId }));
-    }
-    if (value?.code && isKnownRole(value.code)) {
-      return [{ role: value.code, unitId }];
-    }
-    return [];
-  });
-
-  const dedup = new Map<string, SessionRoleBinding>();
-  for (const entry of entries) {
-    dedup.set(`${entry.role}:${entry.unitId ?? 'global'}`, entry);
+function resolveDisplayName(email: string, metadata: unknown): string {
+  if (metadata && typeof metadata === 'object') {
+    const source = metadata as Record<string, unknown>;
+    if (typeof source['nome'] === 'string' && source['nome'].length > 0) return source['nome'];
   }
-  return [...dedup.values()];
+  return email.split('@')[0] ?? 'Usuário';
 }
 
-function resolveHighestRole(bindings: SessionRoleBinding[]): Role | null {
-  const roleCodes = bindings.map((binding) => binding.role);
+function beginResolution(resolutionNonceRef: { current: number }): number {
+  resolutionNonceRef.current += 1;
+  return resolutionNonceRef.current;
+}
 
-  for (const priorityRole of ROLE_PRIORITY) {
-    if (roleCodes.includes(priorityRole)) return priorityRole;
-  }
-  return null;
+function invalidateResolution(resolutionNonceRef: { current: number }) {
+  resolutionNonceRef.current += 1;
+}
+
+function isResolutionCurrent(resolutionNonceRef: { current: number }, nonce: number): boolean {
+  return resolutionNonceRef.current === nonce;
 }
 
 function normalizeSessionUser(raw: unknown): SessionUser | null {
@@ -319,6 +460,17 @@ function normalizeSessionUser(raw: unknown): SessionUser | null {
 
 function isRoleCode(value: string | undefined): value is Role {
   return typeof value === 'string' && isKnownRole(value);
+}
+
+function toPublicAccessFailureMessage(errorCode: AccessErrorCode): string {
+  if (
+    errorCode === 'NO_ACTIVE_MEMBERSHIP' ||
+    errorCode === 'MEMBERSHIP_INACTIVE' ||
+    errorCode === 'NO_ACTIVE_ROLES'
+  ) {
+    return 'Seu usuário não possui vínculo ativo nesta organização.';
+  }
+  return 'Não foi possível resolver seu acesso para a organização selecionada.';
 }
 
 function isKnownRole(value: string): value is Role {

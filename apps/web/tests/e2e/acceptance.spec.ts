@@ -51,16 +51,24 @@ test('3) profissional visualiza usuario vinculado', async ({ page }) => {
 
   await login(page, 'medico.demo@biomed.health');
   await page.getByRole('link', { name: 'Minha Carteira' }).click();
-  await expect(page.getByRole('heading', { name: /Ana Demo • Faixa etária/i })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Abrir acompanhamento' }).first()).toBeVisible();
+  await expect(page.getByTestId('clinical-portfolio-card-usr-1')).toBeVisible();
+  await expect(page.getByTestId('clinical-portfolio-card-usr-3')).toBeVisible();
+  await page.getByTestId('clinical-portfolio-select-usr-1').click();
+  await expect(page.getByTestId('clinical-patient-context-name')).toHaveText('Ana Demo');
   await expect(page.getByTestId('clinical-journey-label-usr-1')).toContainText(/Bem-estar e Prevenção/);
   await expect(page.getByRole('button', { name: /Marcar como concluída/i })).toHaveCount(0);
+  await page.getByTestId('clinical-portfolio-select-usr-3').click();
+  await expect(page.getByTestId('clinical-patient-context-name')).toHaveText('Carlos Exemplo');
+  await expect(page.getByTestId('clinical-journey-label-usr-3')).toContainText(/Sem jornada registrada/);
+  await expect(page.getByTestId('clinical-patient-context-header')).not.toContainText('BM-CLI-001');
 });
 
 test('4) profissional nao visualiza usuario nao vinculado', async ({ page }) => {
   await login(page, 'medico.demo@biomed.health');
   await page.getByRole('link', { name: 'Minha Carteira' }).click();
   await expect(page.getByText(/Usuário não vinculado/i)).toHaveCount(0);
+  await expect(page.getByTestId('clinical-portfolio-card-usr-1')).toBeVisible();
+  await expect(page.locator('[data-testid^="clinical-portfolio-card-usr-999"]')).toHaveCount(0);
 });
 
 test('5) RH acessa indicador coletivo', async ({ page }) => {

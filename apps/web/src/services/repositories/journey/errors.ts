@@ -76,6 +76,11 @@ const ERROR_DEFAULTS: ErrorDefaults = {
     transient: false,
     message: 'Carga de progresso invalida.',
   },
+  CLINICAL_ACCESS_DENIED: {
+    kind: 'authorization',
+    transient: false,
+    message: 'Acesso clinico a jornada nao autorizado para o vinculo atual.',
+  },
   TECHNICAL_ERROR: {
     kind: 'technical',
     transient: true,

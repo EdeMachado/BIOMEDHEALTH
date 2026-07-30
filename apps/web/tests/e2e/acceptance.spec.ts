@@ -42,10 +42,19 @@ test('2) usuario ingressa/acompanha jornada', async ({ page }) => {
 });
 
 test('3) profissional visualiza usuario vinculado', async ({ page }) => {
+  // Seed explícito via fluxo autorizado do titular (não via leitura clínica).
+  await login(page, 'usuario.demo@biomed.health');
+  await page.getByRole('link', { name: 'Jornada' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Minha jornada — Bem-estar e Prevenção' })
+  ).toBeVisible();
+
   await login(page, 'medico.demo@biomed.health');
   await page.getByRole('link', { name: 'Minha Carteira' }).click();
   await expect(page.getByRole('heading', { name: /Ana Demo • Faixa etária/i })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Abrir acompanhamento' }).first()).toBeVisible();
+  await expect(page.getByTestId('clinical-journey-label-usr-1')).toContainText(/Bem-estar e Prevenção/);
+  await expect(page.getByRole('button', { name: /Marcar como concluída/i })).toHaveCount(0);
 });
 
 test('4) profissional nao visualiza usuario nao vinculado', async ({ page }) => {

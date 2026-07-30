@@ -384,6 +384,41 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
    - a validacao SQL foi feita em PostgreSQL 16 com harness local e nao representa validacao no stack Supabase completo gerenciado;
    - testes Vitest com fake Supabase client nao substituem a prova RLS no Postgres.
 
+#### SUP-B03.2 - Leitura clinica vinculada de jornada e progresso
+
+1. **Status**: implementacao validada localmente na branch `feat/sup-b03-2-clinical-journey-read` (aguardando revisao pre-commit; nao marcada como implementada).
+2. **Objetivo**: permitir que profissional clinico (`medico`, `profissional_saude`) com `professional_assignments` ativo na mesma organizacao consulte, em modo estritamente read-only, a jornada e o progresso persistidos do titular vinculado.
+3. **Dependencias**: `SUP-B03.1` (persistencia titular + imutabilidade `0008`/`0009`).
+4. **Escopo incluido**:
+   - SELECT clinico vinculado em `user_journeys` e `user_activity_progress` via RLS;
+   - helper `app_auth.has_active_clinical_assignment` (SECURITY DEFINER auditavel);
+   - contratos/repository/service de leitura clinica distintos do fluxo do titular;
+   - substituicao do trecho ficticio de jornada/progresso em `ClinicalPages` no modo Supabase;
+   - mock equivalente com vinculo/negacoes;
+   - ordenacao deterministica (ativa primeiro; concluidas por `completed_at` desc).
+5. **Escopo excluido**:
+   - escrita clinica de progresso/jornada;
+   - acesso nominal a gestao administrativa (`gestor_institucional`, `admin_*`, etc.);
+   - leitura coletiva/agregada;
+   - consolidacao completa de vinculo/agenda (SUP-C01);
+   - SUP-B04.
+6. **Criterios de aceite**:
+   - profissional vinculado da mesma org le jornada/progresso do paciente;
+   - nao vinculado, vinculo inativo, cross-tenant e gestao nominal sao negados;
+   - titular preserva leitura/escrita e imutabilidade pos-conclusao;
+   - UI clinica nao usa `patient.jornadaAtiva` como fallback no modo Supabase;
+   - sem botoes de escrita na visao clinica;
+   - sem confirmacao falsa.
+7. **Migration prevista**: incremental `0010_clinical_journey_linked_read.sql` + rollback correspondente (conferir numero na implementacao).
+8. **Testes necessarios**: unitarios; fake client (nao-RLS); integracao app; PostgreSQL descartavel; E2E Playwright clinico.
+9. **Divida tecnica registrada (nao corrigir automaticamente nesta entrega)**:
+   - E2E fragil da secao “Concluidas” no fluxo do titular;
+   - monotonicidade de `progress_percent`;
+   - semantica generica de certos erros RLS;
+   - CHECK de coerencia `status`/`completed_at`;
+   - decisao de produto sobre multiplas jornadas ativas.
+10. **Nota**: a SUP-B03 parent permanece nao marcada como integralmente implementada ate validacao completa desta filha.
+
 ### SUP-B04
 
 1. **Identificador**: `SUP-B04`  

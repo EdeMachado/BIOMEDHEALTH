@@ -1,8 +1,18 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { NavLink } from 'react-router';
 import { canProfessionalAccessUser } from '@/app/routes/guards';
+import {
+  loadLinkedPatientJourneyViews,
+  summarizeClinicalJourneyViews,
+} from '@/domains/journey/journeyService';
 import { useAuth } from '@/services/auth/AuthContext';
+import { getSupabaseClient } from '@/services/api/supabaseClient';
 import { clinicalPatients } from '@/services/repositories/demoData';
+import {
+  createJourneyRepositoryFactory,
+  resolveJourneyRepositoryMode,
+} from '@/services/repositories/journey/factory';
+import type { SupabaseJourneyClient } from '@/services/repositories/journey/supabaseJourneyRepository';
 import { Button } from '@/shared/ui/button';
 import { Card, CardDescription, CardTitle } from '@/shared/ui/card';
 
@@ -10,6 +20,9 @@ export function ClinicalOverviewPage() {
   return (
     <div className="space-y-4">
       <ClinicalPatientContextHeader />
+      <Card className="space-y-3">
+        <ClinicalPatientJourneyPanel patientUserId="usr-1" patientName="Ana Demo" />
+      </Card>
       <Card className="space-y-3">
       <CardTitle>Painel profissional</CardTitle>
       <CardDescription>Agenda, carteira de usuários vinculados e plano de cuidado.</CardDescription>
@@ -149,9 +162,8 @@ export function ClinicalPortfolioPage() {
                 {patient.statusAcompanhamento}
               </span>
             </div>
-            <p className="text-[var(--muted-foreground)]">
-              Faixa etária: {patient.faixaEtaria} • Jornada: {patient.jornadaAtiva}
-            </p>
+            <p className="text-[var(--muted-foreground)]">Faixa etária: {patient.faixaEtaria}</p>
+            <ClinicalPatientJourneyPanel patientUserId={patient.id} patientName={patient.nome} />
             <p className="text-[var(--muted-foreground)]">Última avaliação: {patient.ultimaAvaliacao}</p>
             <p>Próxima ação: {patient.proximaAcao}</p>
             <Button className="mt-2" size="sm" asChild>
@@ -348,9 +360,7 @@ function ClinicalPatientContextHeader() {
         <div>
           <p className="text-xs uppercase tracking-wide text-[var(--muted-foreground)]">Dados fictícios</p>
           <h3 className="text-lg font-semibold">Ana Demo • Faixa etária 35-44</h3>
-          <p className="text-sm text-[var(--muted-foreground)]">
-            ID demonstrativo: BM-CLI-001 • Jornada ativa: Bem-estar e Prevenção
-          </p>
+          <p className="text-sm text-[var(--muted-foreground)]">ID demonstrativo: BM-CLI-001</p>
         </div>
         <span className="status-badge status-info">Acompanhamento ativo</span>
       </div>
@@ -362,6 +372,105 @@ function ClinicalPatientContextHeader() {
         <NavLink to="/clinica/registros" className={tabLinkClass}>Registros</NavLink>
       </div>
     </Card>
+  );
+}
+
+function ClinicalPatientJourneyPanel({
+  patientUserId,
+  patientName,
+}: {
+  patientUserId: string;
+  patientName: string;
+}) {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [label, setLabel] = useState<string | null>(null);
+  const [detail, setDetail] = useState<string | null>(null);
+
+  const repositoryConfig = useMemo(() => {
+    try {
+      const mode = resolveJourneyRepositoryMode(import.meta.env);
+      if (mode === 'supabase') {
+        return {
+          mode,
+          repository: createJourneyRepositoryFactory({
+            mode: 'supabase',
+            supabaseClient: getSupabaseClient() as unknown as SupabaseJourneyClient,
+          }),
+        };
+      }
+      return {
+        mode,
+        repository: createJourneyRepositoryFactory({ mode: 'mock' }),
+      };
+    } catch {
+      return { mode: 'mock' as const, repository: null, configError: true };
+    }
+  }, []);
+
+  useEffect(() => {
+    let disposed = false;
+    if (!user || !repositoryConfig.repository) {
+      setLoading(false);
+      setError('Nao foi possivel carregar a jornada clinica neste momento.');
+      return;
+    }
+    if (!canProfessionalAccessUser(user.id, patientUserId) && repositoryConfig.mode === 'mock') {
+      setLoading(false);
+      setError('Acesso clinico nao autorizado para este usuario.');
+      setLabel(null);
+      setDetail(null);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    void loadLinkedPatientJourneyViews(repositoryConfig.repository, {
+      sessionUserId: user.id,
+      professionalUserId: user.id,
+      organizationId: user.organizationId,
+      patientUserId,
+    }).then((result) => {
+      if (disposed) return;
+      setLoading(false);
+      if (!result.ok) {
+        setLabel(null);
+        setDetail(null);
+        if (result.error.code === 'CLINICAL_ACCESS_DENIED' || result.error.code === 'CROSS_TENANT_DATA') {
+          setError('Acesso clinico nao autorizado para este usuario.');
+          return;
+        }
+        setError('Nao foi possivel carregar a jornada clinica neste momento.');
+        return;
+      }
+      const summary = summarizeClinicalJourneyViews(result.data);
+      setLabel(summary.label);
+      setDetail(summary.detail);
+      setError(null);
+    });
+
+    return () => {
+      disposed = true;
+    };
+  }, [user, patientUserId, repositoryConfig]);
+
+  return (
+    <div className="mt-1 space-y-1 text-sm" data-testid={`clinical-journey-${patientUserId}`}>
+      <p className="font-medium">Jornada de {patientName}</p>
+      {loading ? <p className="text-[var(--muted-foreground)]">Carregando jornada persistida...</p> : null}
+      {!loading && error ? <p className="text-red-600">{error}</p> : null}
+      {!loading && !error && label ? (
+        <>
+          <p data-testid={`clinical-journey-label-${patientUserId}`}>{label}</p>
+          {detail ? (
+            <p className="text-[var(--muted-foreground)]" data-testid={`clinical-journey-detail-${patientUserId}`}>
+              {detail}
+            </p>
+          ) : null}
+        </>
+      ) : null}
+    </div>
   );
 }
 

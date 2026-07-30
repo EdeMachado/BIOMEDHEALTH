@@ -1,6 +1,8 @@
 import { fail, ok } from '@/services/repositories/journey/errors';
 import type { JourneyRepository } from '@/services/repositories/journey/contracts';
 import type {
+  ClinicalJourneyContext,
+  ClinicalPatientJourneyView,
   JourneyActivity,
   JourneyCatalog,
   JourneyContext,
@@ -234,4 +236,45 @@ async function runLockedByContext<T>(
   } finally {
     if (CONTEXT_LOCKS.get(key) === pending) CONTEXT_LOCKS.delete(key);
   }
+}
+
+/** Leitura clinica vinculada read-only. Nao expoe APIs de escrita. */
+export async function loadLinkedPatientJourneyViews(
+  repository: JourneyRepository,
+  context: ClinicalJourneyContext
+): Promise<JourneyResult<ClinicalPatientJourneyView[]>> {
+  if (!context.sessionUserId || !context.professionalUserId) return fail('NO_SESSION');
+  if (context.sessionUserId !== context.professionalUserId) return fail('IDENTITY_MISMATCH');
+  if (!context.organizationId || !context.patientUserId) return fail('CLINICAL_ACCESS_DENIED');
+  if (context.patientUserId === context.professionalUserId) return fail('CLINICAL_ACCESS_DENIED');
+  return repository.listLinkedPatientJourneys({ context });
+}
+
+export function summarizeClinicalJourneyViews(views: ClinicalPatientJourneyView[]): {
+  primary: ClinicalPatientJourneyView | null;
+  label: string;
+  detail: string;
+} {
+  const primary = views[0] ?? null;
+  if (!primary) {
+    return {
+      primary: null,
+      label: 'Sem jornada registrada',
+      detail: 'Nenhuma jornada persistida para este usuario vinculado.',
+    };
+  }
+  const name = primary.catalogName ?? 'Jornada preventiva';
+  const statusLabel =
+    primary.userJourney.completedAt !== null || primary.userJourney.status === 'concluida'
+      ? 'Concluída'
+      : 'Ativa';
+  const progressLabel =
+    primary.totalTrackedActivities > 0
+      ? `${primary.completedActivityCount}/${primary.totalTrackedActivities} atividades concluidas`
+      : 'Sem atividades registradas';
+  return {
+    primary,
+    label: `${name} (${statusLabel})`,
+    detail: progressLabel,
+  };
 }

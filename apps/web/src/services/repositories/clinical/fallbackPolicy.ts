@@ -4,11 +4,9 @@
  * Mock data fallback is intentionally gated and OFF by default (C04.2a).
  * Auth/RLS/validation/integrity and all writes never fall back.
  *
- * C04.2b precondition (do not enable mock data switch before this):
- * normalize PostgreSQL/PostgREST `42501` mapping across clinical repositories.
- * Today agenda/portfolio map 42501 → CROSS_TENANT_DATA, while care plan/record
- * may map it to PLAN_CLOSED / RECORD_CONCLUDED. Enabling data fallback without
- * that normalization risks treating permission denials as technical outages.
+ * C04.2b remains gated: mock data switch stays OFF. Clinical repositories map
+ * PostgreSQL/PostgREST `42501` to CROSS_TENANT_DATA (authorization, non-transient)
+ * so permission denials stay ineligible for any future data fallback.
  */
 
 export type ClinicalRuntimeEnvironment = 'production' | 'non-production';

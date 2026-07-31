@@ -51,6 +51,18 @@ describe('clinical fallback policy (SUP-C04.2a)', () => {
     }
   });
 
+  it('keeps CROSS_TENANT_DATA (42501 canonical) ineligible with blocked_error_code', () => {
+    expect(CLINICAL_FALLBACK_BLOCKED_CODES.has('CROSS_TENANT_DATA')).toBe(true);
+    expect(
+      evaluateClinicalFallback({
+        errorCode: 'CROSS_TENANT_DATA',
+        transient: false,
+        operationKind: 'read',
+        policy: enabledNonProd,
+      })
+    ).toEqual({ allow: false, reason: 'blocked_error_code' });
+  });
+
   it('blocks write operations even for transient technical errors', () => {
     const decision = evaluateClinicalFallback({
       errorCode: 'TECHNICAL_ERROR',

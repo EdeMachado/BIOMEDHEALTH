@@ -4,17 +4,19 @@ import {
   type SupabaseClinicalRecordClient,
 } from '@/services/repositories/clinicalRecord/supabaseClinicalRecordRepository';
 import type { ClinicalRecordRepository } from '@/services/repositories/clinicalRecord/contracts';
+import {
+  resolveClinicalRepositoryMode,
+  type ClinicalRepositoryMode,
+  type ClinicalRepositoryModeEnvironment,
+} from '@/services/repositories/clinical/repositoryMode';
 
-type ClinicalRecordRepositoryMode = 'mock' | 'supabase';
-type ClinicalRecordModeEnvironment = { VITE_ENABLE_SUPABASE_AUTH?: string };
+export type ClinicalRecordRepositoryMode = ClinicalRepositoryMode;
+export type ClinicalRecordModeEnvironment = ClinicalRepositoryModeEnvironment;
 
 export function resolveClinicalRecordRepositoryMode(
   env: ClinicalRecordModeEnvironment
 ): ClinicalRecordRepositoryMode {
-  const value = env.VITE_ENABLE_SUPABASE_AUTH;
-  if (value === undefined || value === 'false') return 'mock';
-  if (value === 'true') return 'supabase';
-  throw new Error(`Valor invalido para VITE_ENABLE_SUPABASE_AUTH: "${value}"`);
+  return resolveClinicalRepositoryMode('record', env);
 }
 
 export function createClinicalRecordRepositoryFactory(input: {

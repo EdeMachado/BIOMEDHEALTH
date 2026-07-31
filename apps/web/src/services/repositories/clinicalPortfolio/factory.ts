@@ -4,17 +4,19 @@ import {
   type SupabaseClinicalPortfolioClient,
 } from '@/services/repositories/clinicalPortfolio/supabaseClinicalPortfolioRepository';
 import type { ClinicalPortfolioRepository } from '@/services/repositories/clinicalPortfolio/contracts';
+import {
+  resolveClinicalRepositoryMode,
+  type ClinicalRepositoryMode,
+  type ClinicalRepositoryModeEnvironment,
+} from '@/services/repositories/clinical/repositoryMode';
 
-type ClinicalPortfolioRepositoryMode = 'mock' | 'supabase';
-type ClinicalPortfolioModeEnvironment = { VITE_ENABLE_SUPABASE_AUTH?: string };
+export type ClinicalPortfolioRepositoryMode = ClinicalRepositoryMode;
+export type ClinicalPortfolioModeEnvironment = ClinicalRepositoryModeEnvironment;
 
 export function resolveClinicalPortfolioRepositoryMode(
   env: ClinicalPortfolioModeEnvironment
 ): ClinicalPortfolioRepositoryMode {
-  const value = env.VITE_ENABLE_SUPABASE_AUTH;
-  if (value === undefined || value === 'false') return 'mock';
-  if (value === 'true') return 'supabase';
-  throw new Error(`Valor invalido para VITE_ENABLE_SUPABASE_AUTH: "${value}"`);
+  return resolveClinicalRepositoryMode('portfolio', env);
 }
 
 export function createClinicalPortfolioRepositoryFactory(input: {

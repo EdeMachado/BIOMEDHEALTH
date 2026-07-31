@@ -4,15 +4,17 @@ import {
   type SupabaseCarePlanClient,
 } from '@/services/repositories/carePlan/supabaseCarePlanRepository';
 import type { CarePlanRepository } from '@/services/repositories/carePlan/contracts';
+import {
+  resolveClinicalRepositoryMode,
+  type ClinicalRepositoryMode,
+  type ClinicalRepositoryModeEnvironment,
+} from '@/services/repositories/clinical/repositoryMode';
 
-type CarePlanRepositoryMode = 'mock' | 'supabase';
-type CarePlanModeEnvironment = { VITE_ENABLE_SUPABASE_AUTH?: string };
+export type CarePlanRepositoryMode = ClinicalRepositoryMode;
+export type CarePlanModeEnvironment = ClinicalRepositoryModeEnvironment;
 
 export function resolveCarePlanRepositoryMode(env: CarePlanModeEnvironment): CarePlanRepositoryMode {
-  const value = env.VITE_ENABLE_SUPABASE_AUTH;
-  if (value === undefined || value === 'false') return 'mock';
-  if (value === 'true') return 'supabase';
-  throw new Error(`Valor invalido para VITE_ENABLE_SUPABASE_AUTH: "${value}"`);
+  return resolveClinicalRepositoryMode('carePlan', env);
 }
 
 export function createCarePlanRepositoryFactory(input: {

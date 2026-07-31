@@ -192,6 +192,83 @@ describe('plano de cuidado e evolucoes', () => {
     expect(updated.data.planStatus).toBe('em_andamento');
   });
 
+  it('permite novo plano apos conclusao e apos suspensao', async () => {
+    const repository = createMockCarePlanRepository();
+    const first = await createLinkedCarePlan(repository, context(), {
+      patientId: 'usr-1',
+      title: 'Plano 1',
+      generalObjective: 'Obj',
+      startsOn: '2026-07-31',
+    });
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+
+    const concluded = await closeLinkedCarePlan(repository, context(), {
+      planId: first.data.id,
+      expectedVersion: first.data.version,
+      mode: 'conclude',
+    });
+    expect(concluded.ok).toBe(true);
+
+    const second = await createLinkedCarePlan(repository, context(), {
+      patientId: 'usr-1',
+      title: 'Plano 2',
+      generalObjective: 'Obj 2',
+      startsOn: '2026-08-01',
+    });
+    expect(second.ok).toBe(true);
+    if (!second.ok) return;
+
+    const suspended = await closeLinkedCarePlan(repository, context(), {
+      planId: second.data.id,
+      expectedVersion: second.data.version,
+      mode: 'suspend',
+      suspensionReason: 'Pausa clinica',
+    });
+    expect(suspended.ok).toBe(true);
+
+    const third = await createLinkedCarePlan(repository, context(), {
+      patientId: 'usr-1',
+      title: 'Plano 3',
+      generalObjective: 'Obj 3',
+      startsOn: '2026-08-02',
+    });
+    expect(third.ok).toBe(true);
+  });
+
+  it('reavaliacao incrementa versao e cria exatamente um evento', async () => {
+    const repository = createMockCarePlanRepository();
+    const created = await createLinkedCarePlan(repository, context(), {
+      patientId: 'usr-1',
+      title: 'Plano',
+      generalObjective: 'Obj',
+      startsOn: '2026-07-31',
+    });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const note = await addLinkedCarePlanNote(repository, context(), {
+      planId: created.data.id,
+      note: 'Reavaliacao valida',
+      kind: 'reassessment',
+      expectedPlanVersion: created.data.version,
+    });
+    expect(note.ok).toBe(true);
+    if (!note.ok) return;
+    expect(note.data.eventKind).toBe('reassessment');
+    expect(note.data.versionAfter).toBe(created.data.version + 1);
+
+    const conflict = await addLinkedCarePlanNote(repository, context(), {
+      planId: created.data.id,
+      note: 'stale',
+      kind: 'reassessment',
+      expectedPlanVersion: created.data.version,
+    });
+    expect(conflict.ok).toBe(false);
+    if (conflict.ok) return;
+    expect(conflict.error.code).toBe('VERSION_CONFLICT');
+  });
+
   it('nega paciente fora da carteira e identidade cruzada', async () => {
     const repository = createMockCarePlanRepository();
     const denied = await createLinkedCarePlan(repository, context(), {

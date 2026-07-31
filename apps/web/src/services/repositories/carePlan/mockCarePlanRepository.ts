@@ -165,7 +165,6 @@ export function createMockCarePlanRepository(input: { seed?: Partial<MockState> 
           item.organizationId === context.organizationId &&
           item.professionalId === context.professionalUserId &&
           item.patientId === plan.patientId &&
-          item.status === 'ativo' &&
           isOpenCarePlanStatus(item.planStatus)
       );
       if (open) return Promise.resolve(fail('OPEN_PLAN_EXISTS'));
@@ -450,6 +449,7 @@ export function createMockCarePlanRepository(input: { seed?: Partial<MockState> 
         return Promise.resolve(fail('VERSION_CONFLICT'));
       }
 
+      // Reavaliacao atomica em memoria: update + event no mesmo passo (sem fallback parcial).
       if (note.kind === 'reassessment') {
         const updated: CarePlan = {
           ...current,
@@ -461,6 +461,22 @@ export function createMockCarePlanRepository(input: { seed?: Partial<MockState> 
           updatedAt: new Date().toISOString(),
         };
         state.plans[index] = updated;
+        const event = pushEvent(state, {
+          carePlanId: current.id,
+          carePlanActionId: null,
+          organizationId: current.organizationId,
+          patientId: current.patientId,
+          professionalId: current.professionalId,
+          eventKind: 'reassessment',
+          eventCategory: 'reassessment',
+          payload: { text: note.note.trim() },
+          note: note.note.trim(),
+          versionBefore: current.version,
+          versionAfter: updated.version,
+          authoredBy: context.professionalUserId,
+        });
+        persist();
+        return Promise.resolve(ok(event));
       }
 
       const event = pushEvent(state, {
@@ -469,12 +485,12 @@ export function createMockCarePlanRepository(input: { seed?: Partial<MockState> 
         organizationId: current.organizationId,
         patientId: current.patientId,
         professionalId: current.professionalId,
-        eventKind: note.kind === 'evolution' ? 'evolution' : 'reassessment',
-        eventCategory: note.kind === 'evolution' ? 'clinical_evolution' : 'reassessment',
+        eventKind: 'evolution',
+        eventCategory: 'clinical_evolution',
         payload: { text: note.note.trim() },
         note: note.note.trim(),
         versionBefore: current.version,
-        versionAfter: note.kind === 'reassessment' ? current.version + 1 : current.version,
+        versionAfter: current.version,
         authoredBy: context.professionalUserId,
       });
       persist();

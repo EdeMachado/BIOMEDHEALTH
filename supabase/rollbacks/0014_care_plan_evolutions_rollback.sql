@@ -20,12 +20,15 @@ drop trigger if exists trg_snapshot_care_plan_action_event on public.care_plan_a
 drop trigger if exists trg_guard_care_plan_action_mutability on public.care_plan_actions;
 
 drop policy if exists care_plans_select_own on public.care_plans;
+drop policy if exists care_plans_select_supervisor on public.care_plans;
 drop policy if exists care_plans_insert_own on public.care_plans;
 drop policy if exists care_plans_update_own on public.care_plans;
 drop policy if exists care_plan_actions_select_own on public.care_plan_actions;
+drop policy if exists care_plan_actions_select_supervisor on public.care_plan_actions;
 drop policy if exists care_plan_actions_insert_own on public.care_plan_actions;
 drop policy if exists care_plan_actions_update_own on public.care_plan_actions;
 drop policy if exists care_plan_events_select_own on public.care_plan_events;
+drop policy if exists care_plan_events_select_supervisor on public.care_plan_events;
 drop policy if exists care_plan_events_insert_clinical_notes on public.care_plan_events;
 
 do $$
@@ -43,11 +46,13 @@ begin
   end if;
 end $$;
 
+drop function if exists public.reassess_clinical_care_plan(uuid, integer, text, date);
 drop function if exists app_auth.snapshot_care_plan_event();
 drop function if exists app_auth.snapshot_care_plan_action_event();
 drop function if exists app_auth.guard_care_plan_mutability();
 drop function if exists app_auth.guard_care_plan_action_mutability();
 drop function if exists app_auth.append_care_plan_event(uuid,uuid,uuid,uuid,uuid,text,text,jsonb,text,int,int,uuid);
+drop function if exists public.can_supervise_clinical_care_plan(uuid);
 drop function if exists public.can_manage_clinical_care_plan(uuid);
 
 drop table if exists public.care_plan_events;
@@ -59,13 +64,17 @@ drop index if exists public.care_plans_organization_id_idx;
 drop index if exists public.care_plan_actions_plan_id_idx;
 drop index if exists public.care_plan_actions_org_pro_user_idx;
 
+alter table public.care_plans drop constraint if exists care_plans_clinical_record_context_fk;
 alter table public.care_plans drop constraint if exists care_plans_clinical_record_fk;
+alter table public.care_plans drop constraint if exists care_plans_open_requires_ativo_check;
 alter table public.care_plans drop constraint if exists care_plans_closed_consistency_check;
 alter table public.care_plans drop constraint if exists care_plans_schema_version_check;
 alter table public.care_plans drop constraint if exists care_plans_plan_status_check;
 
 alter table public.care_plan_actions drop constraint if exists care_plan_actions_completed_consistency_check;
 alter table public.care_plan_actions drop constraint if exists care_plan_actions_action_status_check;
+
+drop index if exists public.clinical_records_id_org_user_uidx;
 
 alter table public.care_plans drop column if exists clinical_record_id;
 alter table public.care_plans drop column if exists schema_version;

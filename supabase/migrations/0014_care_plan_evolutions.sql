@@ -5,8 +5,11 @@
 -- 1) care_plans = cabecalho clinico (plan_status) + lifecycle status (ativo/inativo);
 -- 2) care_plan_actions = itens com action_status + lifecycle status;
 -- 3) care_plan_events = historico append-only (estrutural/evolucao/reavaliacao/status);
--- 4) no maximo um plano nao encerrado por (org, professional, patient) quando status=ativo;
--- 5) plano encerrado e imutavel; novo plano apos conclusao/suspensao.
+-- 4) no maximo um plano clinicamente aberto (plan_status planejado|em_andamento)
+--    por (org, professional, patient), independente do lifecycle status;
+-- 5) plano aberto exige status=ativo (CHECK); status fora do GRANT UPDATE da app;
+-- 6) plano encerrado e imutavel; novo plano apos conclusao/suspensao;
+-- 7) reavaliacao atomica via RPC reassess_clinical_care_plan.
 --
 -- Justificativa SECURITY DEFINER / helpers:
 -- 1) professional_assignments ainda usa RLS legada (0002) por claims JWT;
@@ -81,6 +84,12 @@ alter table public.care_plans alter column created_by set not null;
 alter table public.care_plans alter column updated_by set not null;
 alter table public.care_plans alter column schema_version set not null;
 
+-- Plano clinicamente aberto exige lifecycle ativo (antes do CHECK).
+update public.care_plans
+   set status = 'ativo'
+ where plan_status in ('planejado', 'em_andamento')
+   and status is distinct from 'ativo';
+
 do $$
 begin
   if not exists (
@@ -135,12 +144,34 @@ begin
 
   if not exists (
     select 1 from pg_constraint
-    where conname = 'care_plans_clinical_record_fk'
+    where conname = 'care_plans_open_requires_ativo_check'
       and conrelid = 'public.care_plans'::regclass
   ) then
     alter table public.care_plans
-      add constraint care_plans_clinical_record_fk
-      foreign key (clinical_record_id) references public.clinical_records(id);
+      add constraint care_plans_open_requires_ativo_check
+      check (
+        plan_status not in ('planejado', 'em_andamento')
+        or status = 'ativo'
+      );
+  end if;
+end $$;
+
+-- Indice unico auxiliar em clinical_records para FK composta de contexto (nao altera modelo C02).
+create unique index if not exists clinical_records_id_org_user_uidx
+  on public.clinical_records (id, organization_id, user_id);
+
+alter table public.care_plans drop constraint if exists care_plans_clinical_record_fk;
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'care_plans_clinical_record_context_fk'
+      and conrelid = 'public.care_plans'::regclass
+  ) then
+    alter table public.care_plans
+      add constraint care_plans_clinical_record_context_fk
+      foreign key (clinical_record_id, organization_id, user_id)
+      references public.clinical_records (id, organization_id, user_id);
   end if;
 end $$;
 
@@ -149,7 +180,7 @@ create index if not exists care_plans_professional_id_idx on public.care_plans (
 create index if not exists care_plans_user_id_idx on public.care_plans (user_id);
 
 -- Reapply/legado: apos rollback, plan_status some e o backfill reabre todos como planejado.
--- Sem inventar conteudo clinico: demove lifecycle status=inativo nos duplicados, mantendo o mais recente.
+-- Unicidade clinica nao depende de lifecycle: encerra duplicados mais antigos como suspensos tecnicos.
 with ranked as (
   select id,
          row_number() over (
@@ -157,18 +188,25 @@ with ranked as (
            order by updated_at desc nulls last, created_at desc nulls last, id desc
          ) as rn
     from public.care_plans
-   where status = 'ativo'
-     and plan_status in ('planejado', 'em_andamento')
+   where plan_status in ('planejado', 'em_andamento')
 )
 update public.care_plans p
-   set status = 'inativo'
+   set plan_status = 'suspenso',
+       closed_at = coalesce(p.closed_at, now()),
+       closed_by = coalesce(p.closed_by, p.professional_id),
+       suspension_reason = coalesce(
+         nullif(btrim(p.suspension_reason), ''),
+         'consolidacao_legado_unico_aberto'
+       ),
+       status = 'ativo'
   from ranked r
  where p.id = r.id
    and r.rn > 1;
 
-create unique index if not exists care_plans_one_open_unique_idx
+drop index if exists public.care_plans_one_open_unique_idx;
+create unique index care_plans_one_open_unique_idx
   on public.care_plans (organization_id, professional_id, user_id)
-  where status = 'ativo' and plan_status in ('planejado', 'em_andamento');
+  where plan_status in ('planejado', 'em_andamento');
 
 -- ===== care_plan_actions: colunas clinicas =====
 alter table public.care_plan_actions add column if not exists user_id uuid;
@@ -318,6 +356,33 @@ begin
 end $$;
 grant execute on function public.can_manage_clinical_care_plan(uuid) to authenticated;
 
+create function public.can_supervise_clinical_care_plan(p_organization_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = pg_catalog, public
+as $$
+  select
+    auth.uid() is not null
+    and p_organization_id is not null
+    and app_auth.has_active_org_link(p_organization_id)
+    and app_auth.has_active_role(
+      p_organization_id,
+      array['gestor_clinico']::text[],
+      null::uuid
+    );
+$$;
+
+revoke all on function public.can_supervise_clinical_care_plan(uuid) from public;
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'anon') then
+    execute 'revoke all on function public.can_supervise_clinical_care_plan(uuid) from anon';
+  end if;
+end $$;
+grant execute on function public.can_supervise_clinical_care_plan(uuid) to authenticated;
+
 create function app_auth.append_care_plan_event(
   p_care_plan_id uuid,
   p_care_plan_action_id uuid,
@@ -392,6 +457,13 @@ begin
       v_kind := 'plan_status';
     end if;
     v_category := 'status_change';
+  elsif old.last_reassessed_at is distinct from new.last_reassessed_at
+     and old.title is not distinct from new.title
+     and old.general_objective is not distinct from new.general_objective
+     and old.plan_status is not distinct from new.plan_status
+     and old.clinical_notes is not distinct from new.clinical_notes then
+    -- Reavaliacao atomica: evento clinico e inserido por reassess_clinical_care_plan.
+    return new;
   else
     v_kind := 'plan_update';
     v_category := 'structural';
@@ -502,6 +574,11 @@ begin
       using errcode = '23514';
   end if;
 
+  if new.plan_status in ('planejado', 'em_andamento') and new.status = 'inativo' then
+    raise exception 'SUP-C03: plano clinicamente aberto nao pode receber status=inativo'
+      using errcode = '23514';
+  end if;
+
   return new;
 end;
 $$;
@@ -567,8 +644,129 @@ create trigger trg_guard_care_plan_action_mutability
 before insert or update on public.care_plan_actions
 for each row execute function app_auth.guard_care_plan_action_mutability();
 
+-- Reavaliacao atomica: update do plano + evento em uma unica transacao.
+create or replace function public.reassess_clinical_care_plan(
+  p_plan_id uuid,
+  p_expected_version integer,
+  p_note text,
+  p_reassessment_due_on date default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_plan public.care_plans%rowtype;
+  v_event public.care_plan_events%rowtype;
+  v_note text := btrim(coalesce(p_note, ''));
+begin
+  if v_uid is null then
+    raise exception 'SUP-C03: sessao ausente' using errcode = '42501';
+  end if;
+  if p_plan_id is null or p_expected_version is null then
+    raise exception 'SUP-C03: parametros obrigatorios ausentes' using errcode = '23514';
+  end if;
+  if v_note = '' then
+    raise exception 'SUP-C03: nota de reavaliacao obrigatoria' using errcode = '23514';
+  end if;
+
+  select * into v_plan
+    from public.care_plans
+   where id = p_plan_id
+   for update;
+
+  if not found then
+    raise exception 'SUP-C03: plano nao encontrado' using errcode = 'P0002';
+  end if;
+
+  if v_plan.professional_id is distinct from v_uid then
+    raise exception 'SUP-C03: professional_id diverge de auth.uid()' using errcode = '42501';
+  end if;
+
+  if not public.can_manage_clinical_care_plan(v_plan.organization_id) then
+    raise exception 'SUP-C03: gestao clinica do plano nao autorizada' using errcode = '42501';
+  end if;
+
+  if not app_auth.has_active_clinical_assignment(v_plan.organization_id, v_plan.user_id) then
+    raise exception 'SUP-C03: assignment clinico ausente' using errcode = '42501';
+  end if;
+
+  if v_plan.plan_status in ('concluido', 'suspenso') then
+    raise exception 'SUP-C03: plano encerrado e imutavel' using errcode = '42501';
+  end if;
+
+  if v_plan.version is distinct from p_expected_version then
+    raise exception 'SUP-C03: conflito de versao na reavaliacao'
+      using errcode = '40001';
+  end if;
+
+  update public.care_plans
+     set last_reassessed_at = now(),
+         reassessment_due_on = coalesce(p_reassessment_due_on, reassessment_due_on),
+         version = version + 1,
+         updated_by = v_uid,
+         updated_at = now()
+   where id = p_plan_id
+     and version = p_expected_version
+  returning * into v_plan;
+
+  if not found then
+    raise exception 'SUP-C03: conflito de versao na reavaliacao'
+      using errcode = '40001';
+  end if;
+
+  insert into public.care_plan_events (
+    care_plan_id,
+    care_plan_action_id,
+    organization_id,
+    user_id,
+    professional_id,
+    event_kind,
+    event_category,
+    payload,
+    note,
+    version_before,
+    version_after,
+    authored_by
+  ) values (
+    v_plan.id,
+    null,
+    v_plan.organization_id,
+    v_plan.user_id,
+    v_plan.professional_id,
+    'reassessment',
+    'reassessment',
+    jsonb_build_object('text', v_note),
+    v_note,
+    p_expected_version,
+    v_plan.version,
+    v_uid
+  )
+  returning * into v_event;
+
+  return jsonb_build_object(
+    'plan', to_jsonb(v_plan),
+    'event', to_jsonb(v_event)
+  );
+end;
+$$;
+
+revoke all on function public.reassess_clinical_care_plan(uuid, integer, text, date) from public;
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'anon') then
+    execute 'revoke all on function public.reassess_clinical_care_plan(uuid, integer, text, date) from anon';
+  end if;
+end $$;
+grant execute on function public.reassess_clinical_care_plan(uuid, integer, text, date) to authenticated;
+
 -- Policies: substitui legado 0002
 drop policy if exists care_plan_only_allowed_roles on public.care_plans;
+drop policy if exists care_plans_select_supervisor on public.care_plans;
+drop policy if exists care_plan_actions_select_supervisor on public.care_plan_actions;
+drop policy if exists care_plan_events_select_supervisor on public.care_plan_events;
 
 alter table public.care_plans enable row level security;
 alter table public.care_plan_actions enable row level security;
@@ -582,6 +780,13 @@ using (
   and app_auth.has_active_clinical_assignment(organization_id, user_id)
 );
 
+create policy care_plans_select_supervisor on public.care_plans
+for select to authenticated
+using (
+  auth.uid() is not null
+  and public.can_supervise_clinical_care_plan(organization_id)
+);
+
 create policy care_plans_insert_own on public.care_plans
 for insert to authenticated
 with check (
@@ -589,6 +794,7 @@ with check (
   and professional_id = auth.uid()
   and created_by = auth.uid()
   and updated_by = auth.uid()
+  and status = 'ativo'
   and plan_status in ('planejado', 'em_andamento')
   and closed_at is null
   and closed_by is null
@@ -627,6 +833,13 @@ using (
   auth.uid() is not null
   and professional_id = auth.uid()
   and app_auth.has_active_clinical_assignment(organization_id, user_id)
+);
+
+create policy care_plan_actions_select_supervisor on public.care_plan_actions
+for select to authenticated
+using (
+  auth.uid() is not null
+  and public.can_supervise_clinical_care_plan(organization_id)
 );
 
 create policy care_plan_actions_insert_own on public.care_plan_actions
@@ -682,6 +895,13 @@ using (
   and app_auth.has_active_clinical_assignment(organization_id, user_id)
 );
 
+create policy care_plan_events_select_supervisor on public.care_plan_events
+for select to authenticated
+using (
+  auth.uid() is not null
+  and public.can_supervise_clinical_care_plan(organization_id)
+);
+
 -- Evolucao/reavaliacao clinicas inseridas pela app (demais eventos via trigger SECURITY DEFINER).
 create policy care_plan_events_insert_clinical_notes on public.care_plan_events
 for insert to authenticated
@@ -722,12 +942,13 @@ grant select on table public.care_plans to authenticated;
 grant insert (
   organization_id, user_id, professional_id, title, status, version,
   plan_status, general_objective, starts_on, target_date, reassessment_due_on,
-  last_reassessed_at, clinical_notes, created_by, updated_by, closed_at, closed_by,
-  suspension_reason, schema_version, clinical_record_id
+  clinical_notes, created_by, updated_by, schema_version, clinical_record_id
 ) on table public.care_plans to authenticated;
+-- status e last_reassessed_at fora do GRANT UPDATE:
+-- lifecycle nao e mutavel pelo fluxo autenticado; reavaliacao apenas via RPC atomica.
 grant update (
-  title, status, version, plan_status, general_objective, starts_on, target_date,
-  reassessment_due_on, last_reassessed_at, clinical_notes, updated_by, updated_at,
+  title, version, plan_status, general_objective, starts_on, target_date,
+  reassessment_due_on, clinical_notes, updated_by, updated_at,
   closed_at, closed_by, suspension_reason, schema_version, clinical_record_id
 ) on table public.care_plans to authenticated;
 

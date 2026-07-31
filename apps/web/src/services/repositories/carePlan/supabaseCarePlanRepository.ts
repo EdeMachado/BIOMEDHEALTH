@@ -71,7 +71,14 @@ function mapBackendError(error: SupabaseLikeError): CarePlanResult<never> {
   if (code === '42501' || message.includes('imutavel') || message.includes('encerrado')) {
     return fail('PLAN_CLOSED', { cause });
   }
-  if (code === '23514' && message.includes('version')) return fail('VERSION_CONFLICT', { cause });
+  if (
+    code === '40001' ||
+    (code === '23514' && message.includes('version')) ||
+    message.includes('conflito de versao')
+  ) {
+    return fail('VERSION_CONFLICT', { cause });
+  }
+  if (code === 'P0002' || message.includes('nao encontrado')) return fail('NOT_FOUND', { cause });
   if (code === '23514') return fail('INVALID_INPUT', { cause });
   return fail('TECHNICAL_ERROR', { cause });
 }
@@ -599,27 +606,31 @@ export function createSupabaseCarePlanRepository(input: {
       }
 
       if (note.kind === 'reassessment') {
-        let updateResponse: SupabaseQueryResponse<unknown>;
+        let response: SupabaseQueryResponse<unknown>;
         try {
-          updateResponse = await client
-            .from('care_plans')
-            .update({
-              last_reassessed_at: new Date().toISOString(),
-              reassessment_due_on:
-                note.reassessmentDueOn !== undefined ? note.reassessmentDueOn : plan.reassessmentDueOn,
-              version: plan.version + 1,
-              updated_by: context.professionalUserId,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', plan.id)
-            .eq('version', plan.version)
-            .select(PLAN_SELECT)
-            .maybeSingle();
+          response = await client.rpc('reassess_clinical_care_plan', {
+            p_plan_id: plan.id,
+            p_expected_version: note.expectedPlanVersion ?? plan.version,
+            p_note: note.note.trim(),
+            p_reassessment_due_on:
+              note.reassessmentDueOn !== undefined ? note.reassessmentDueOn : null,
+          });
         } catch (error: unknown) {
           return mapBackendError(normalizeThrownError(error));
         }
-        if (updateResponse.error) return mapBackendError(updateResponse.error);
-        if (!updateResponse.data) return fail('VERSION_CONFLICT');
+        if (response.error) return mapBackendError(response.error);
+        const payload =
+          response.data && typeof response.data === 'object'
+            ? (response.data as Record<string, unknown>)
+            : null;
+        const eventRow =
+          payload?.['event'] && typeof payload['event'] === 'object'
+            ? (payload['event'] as Record<string, unknown>)
+            : null;
+        if (!eventRow) return fail('TECHNICAL_ERROR');
+        const mapped = mapEvent(eventRow);
+        if (!mapped) return fail('TECHNICAL_ERROR');
+        return ok(mapped);
       }
 
       let response: SupabaseQueryResponse<unknown>;
@@ -631,8 +642,8 @@ export function createSupabaseCarePlanRepository(input: {
             organization_id: plan.organizationId,
             user_id: plan.patientId,
             professional_id: plan.professionalId,
-            event_kind: note.kind === 'evolution' ? 'evolution' : 'reassessment',
-            event_category: note.kind === 'evolution' ? 'clinical_evolution' : 'reassessment',
+            event_kind: 'evolution',
+            event_category: 'clinical_evolution',
             payload: { text: note.note.trim() },
             note: note.note.trim(),
             authored_by: context.professionalUserId,

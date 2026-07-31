@@ -45,6 +45,8 @@ class FakeCarePlanClient {
       }),
   };
 
+  forceReassessEventError: FakeError | null = null;
+
   rpc(fn: string, args?: Record<string, unknown>) {
     if (fn === 'can_manage_clinical_care_plan') {
       return Promise.resolve({ data: this.canManage, error: null });
@@ -53,6 +55,51 @@ class FakeCarePlanClient {
       const raw = args?.['p_patient_user_id'];
       const patientId = typeof raw === 'string' ? raw : '';
       return Promise.resolve({ data: this.linkedPatients.has(patientId), error: null });
+    }
+    if (fn === 'reassess_clinical_care_plan') {
+      if (this.forceReassessEventError) {
+        return Promise.resolve({ data: null, error: this.forceReassessEventError });
+      }
+      const planId = typeof args?.['p_plan_id'] === 'string' ? args['p_plan_id'] : '';
+      const expected =
+        typeof args?.['p_expected_version'] === 'number' ? args['p_expected_version'] : -1;
+      const note = typeof args?.['p_note'] === 'string' ? args['p_note'] : '';
+      const index = this.plans.findIndex((item) => item['id'] === planId);
+      if (index < 0) {
+        return Promise.resolve({ data: null, error: { code: 'P0002', message: 'plano nao encontrado' } });
+      }
+      const current = this.plans[index];
+      if (current['version'] !== expected) {
+        return Promise.resolve({
+          data: null,
+          error: { code: '40001', message: 'SUP-C03: conflito de versao na reavaliacao' },
+        });
+      }
+      const updated = {
+        ...current,
+        last_reassessed_at: now(),
+        version: Number(current['version'] ?? 1) + 1,
+        updated_at: now(),
+      };
+      this.plans[index] = updated;
+      const event = {
+        id: `cpe-${this.events.length + 1}`,
+        care_plan_id: planId,
+        care_plan_action_id: null,
+        organization_id: current['organization_id'],
+        user_id: current['user_id'],
+        professional_id: current['professional_id'],
+        event_kind: 'reassessment',
+        event_category: 'reassessment',
+        payload: { text: note },
+        note,
+        version_before: expected,
+        version_after: updated['version'],
+        authored_by: this.authUserId,
+        created_at: now(),
+      };
+      this.events.push(event);
+      return Promise.resolve({ data: { plan: updated, event }, error: null });
     }
     return Promise.resolve({ data: null, error: { code: '42883', message: `missing ${fn}` } });
   }
@@ -388,5 +435,51 @@ describe('supabaseCarePlanRepository integration (fake client; nao prova RLS Pos
     if (conflict.ok) return;
     expect(conflict.error.code).toBe('VERSION_CONFLICT');
     expect(client.deleted).toBe(false);
+  });
+
+  it('usa RPC atomica de reavaliacao e mapeia conflito tipado', async () => {
+    const client = new FakeCarePlanClient();
+    const repository = createSupabaseCarePlanRepository({
+      client: client as unknown as SupabaseCarePlanClient,
+    });
+    const created = await createLinkedCarePlan(repository, context(), {
+      patientId: 'usr-1',
+      title: 'Plano',
+      generalObjective: 'Obj',
+      startsOn: '2026-07-31',
+    });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const { addLinkedCarePlanNote } = await import('@/domains/carePlan/carePlanService');
+    const okNote = await addLinkedCarePlanNote(repository, context(), {
+      planId: created.data.id,
+      note: 'Reavaliacao atomica',
+      kind: 'reassessment',
+      expectedPlanVersion: created.data.version,
+    });
+    expect(okNote.ok).toBe(true);
+    if (!okNote.ok) return;
+    expect(okNote.data.eventKind).toBe('reassessment');
+    expect(client.events.filter((item) => item['event_kind'] === 'reassessment')).toHaveLength(1);
+
+    const conflict = await addLinkedCarePlanNote(repository, context(), {
+      planId: created.data.id,
+      note: 'stale',
+      kind: 'reassessment',
+      expectedPlanVersion: created.data.version,
+    });
+    expect(conflict.ok).toBe(false);
+    if (conflict.ok) return;
+    expect(conflict.error.code).toBe('VERSION_CONFLICT');
+
+    client.forceReassessEventError = { code: '40001', message: 'forced fail' };
+    const failed = await addLinkedCarePlanNote(repository, context(), {
+      planId: created.data.id,
+      note: 'falha',
+      kind: 'reassessment',
+      expectedPlanVersion: Number(client.plans[0]?.['version'] ?? 0),
+    });
+    expect(failed.ok).toBe(false);
   });
 });

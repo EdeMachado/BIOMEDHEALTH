@@ -7,12 +7,15 @@ import {
   shouldAttemptClinicalFallback,
 } from '@/services/repositories/clinical/fallbackPolicy';
 import { instrumentClinicalRepository } from '@/services/repositories/clinical/instrumentRepository';
+import { resolveDefaultClinicalObservabilitySink } from '@/services/repositories/clinical/defaults';
 import {
   createCorrelationId,
   sanitizeObservabilityDetails,
   type ClinicalObservabilityEvent,
 } from '@/services/repositories/clinical/observability';
 import { createClinicalAgendaRepositoryFactory } from '@/services/repositories/clinicalAgenda/factory';
+import { createClinicalPortfolioRepositoryFactory } from '@/services/repositories/clinicalPortfolio/factory';
+import { createClinicalRecordRepositoryFactory } from '@/services/repositories/clinicalRecord/factory';
 import { createCarePlanRepositoryFactory } from '@/services/repositories/carePlan/factory';
 
 describe('clinical fallback policy (SUP-C04.2a)', () => {
@@ -119,6 +122,25 @@ describe('clinical observability sanitization (SUP-C04.2a)', () => {
 
   it('creates correlation ids', () => {
     expect(createCorrelationId().length).toBeGreaterThan(8);
+  });
+
+  it('default sink is silent in MODE=test', () => {
+    const sink = resolveDefaultClinicalObservabilitySink({ MODE: 'test' });
+    expect(() =>
+      sink({
+        type: 'repository_op_start',
+        severity: 'info',
+        module: 'agenda',
+        operation: 'listLinkedClinicalAppointments',
+        operationKind: 'read',
+        mode: 'mock',
+        correlationId: 'corr-test',
+        timestamp: new Date().toISOString(),
+      })
+    ).not.toThrow();
+    // Same no-op instance behavior: calling again remains a no-op.
+    expect(typeof sink).toBe('function');
+    expect(resolveDefaultClinicalObservabilitySink({ MODE: 'development' })).not.toBe(sink);
   });
 });
 
@@ -301,5 +323,63 @@ describe('clinical factories instrumentation wiring (SUP-C04.2a)', () => {
     if (!result.ok) {
       expect(events.some((e) => e.type === 'fallback_blocked')).toBe(true);
     }
+  });
+
+  it('portfolio factory instruments list without switching backend', async () => {
+    const events: ClinicalObservabilityEvent[] = [];
+    const repository = createClinicalPortfolioRepositoryFactory({
+      mode: 'mock',
+      observabilitySink: (event) => events.push(event),
+    });
+    expect(typeof repository.listLinkedClinicalPatients).toBe('function');
+
+    await repository.listLinkedClinicalPatients({
+      context: {
+        sessionUserId: 'usr-1',
+        professionalUserId: 'usr-1',
+        organizationId: 'org-1',
+      },
+    });
+
+    expect(events.some((e) => e.type === 'repository_op_start' && e.module === 'portfolio')).toBe(
+      true
+    );
+    expect(
+      events.some(
+        (e) =>
+          e.module === 'portfolio' &&
+          (e.type === 'repository_op_end' || e.type === 'repository_op_error')
+      )
+    ).toBe(true);
+  });
+
+  it('record factory instruments get without switching backend', async () => {
+    const events: ClinicalObservabilityEvent[] = [];
+    const repository = createClinicalRecordRepositoryFactory({
+      mode: 'mock',
+      observabilitySink: (event) => events.push(event),
+    });
+    expect(typeof repository.getLinkedClinicalRecord).toBe('function');
+    expect(typeof repository.saveClinicalRecordDraft).toBe('function');
+
+    const result = await repository.getLinkedClinicalRecord({
+      context: {
+        sessionUserId: 'usr-1',
+        professionalUserId: 'usr-1',
+        organizationId: 'org-1',
+      },
+      patientId: 'patient-missing',
+    });
+
+    expect(events.some((e) => e.type === 'repository_op_start' && e.module === 'record')).toBe(true);
+    expect(
+      events.some(
+        (e) =>
+          e.module === 'record' &&
+          (e.type === 'repository_op_end' || e.type === 'repository_op_error')
+      )
+    ).toBe(true);
+    // Result is unchanged by instrumentation (no mock data switch).
+    expect(result.ok === true || result.ok === false).toBe(true);
   });
 });

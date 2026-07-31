@@ -62,25 +62,24 @@ export function sanitizeObservabilityDetails(
 export function createConsoleClinicalObservabilitySink(): ClinicalObservabilitySink {
   return (event) => {
     const line = `[clinical-repo] ${event.type} module=${event.module} op=${event.operation} mode=${event.mode} corr=${event.correlationId}`;
+    // Only allowlisted scalar fields reach the console; sanitize strips sensitive keys if added later.
+    const details = sanitizeObservabilityDetails({
+      errorCode: event.errorCode,
+      errorKind: event.errorKind,
+      transient: event.transient,
+      durationMs: event.durationMs,
+      blockReason: event.blockReason,
+      outcome: event.outcome,
+    });
     if (event.severity === 'error') {
-      console.error(line, {
-        errorCode: event.errorCode,
-        errorKind: event.errorKind,
-        transient: event.transient,
-        durationMs: event.durationMs,
-        blockReason: event.blockReason,
-      });
+      console.error(line, details);
       return;
     }
     if (event.severity === 'warn') {
-      console.warn(line, {
-        errorCode: event.errorCode,
-        blockReason: event.blockReason,
-        durationMs: event.durationMs,
-      });
+      console.warn(line, details);
       return;
     }
-    console.info(line, { durationMs: event.durationMs, outcome: event.outcome });
+    console.info(line, details);
   };
 }
 

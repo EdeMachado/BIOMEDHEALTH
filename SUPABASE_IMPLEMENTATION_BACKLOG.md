@@ -386,7 +386,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 
 #### SUP-B03.2 - Leitura clinica vinculada de jornada e progresso
 
-1. **Status**: implementacao validada localmente na branch `feat/sup-b03-2-clinical-journey-read` (aguardando revisao pre-commit; nao marcada como implementada).
+1. **Status**: CONCLUIDA e integrada em `main` via PR #6 (`d8399ca13537b66cf8ad2d927684a76b6dec8266`).
 2. **Objetivo**: permitir que profissional clinico (`medico`, `profissional_saude`) com `professional_assignments` ativo na mesma organizacao consulte, em modo estritamente read-only, a jornada e o progresso persistidos do titular vinculado.
 3. **Dependencias**: `SUP-B03.1` (persistencia titular + imutabilidade `0008`/`0009`).
 4. **Escopo incluido**:
@@ -417,35 +417,38 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
    - semantica generica de certos erros RLS;
    - CHECK de coerencia `status`/`completed_at`;
    - decisao de produto sobre multiplas jornadas ativas.
-10. **Nota**: a SUP-B03 parent permanece nao marcada como integralmente implementada ate validacao completa desta filha.
+10. **Nota**: filha B03.2 concluida (PR #6). A parent SUP-B03 permanece com residual documentado (dividas tecnicas da filha e eventual fechamento formal do parent); nao bloquear C01+ por status obsoleto desta filha.
 
 ### SUP-B04
 
 1. **Identificador**: `SUP-B04`  
 2. **Titulo**: Repositorios preventivos e rollout por feature flag  
 3. **Finalidade**: habilitar troca gradual dos mocks do dominio preventivo.  
-4. **Escopo incluido**:
+4. **Status**: ABERTO — alternativa posterior a consolidacao documental; **nao iniciar** antes de revisar qualquer linguagem ou mecanismo de fallback inseguro (proibicoes clinicas de C04.2b aplicam-se por analogia a dados sensiveis do titular).
+5. **Escopo incluido**:
    - repositorios supabase para consentimento, avaliacao e jornada;
-   - fallback mock controlado por modulo;
+   - selecao explicita de modo por modulo (feature flag), sem troca dinamica silenciosa para fixture mock sob falha;
    - observabilidade de erros de integracao.  
-5. **Fora do escopo**:
+6. **Fora do escopo**:
    - remocao definitiva dos mocks;
-   - ativacao global sem piloto.  
-6. **Dependencias**: `SUP-B01`, `SUP-B02`, `SUP-B03`.  
-7. **Entidades/tabelas**: todas da fase B + camada de repositorios.  
-8. **Perfis/permissoes afetados**: usuario e equipe clinica (apenas leitura adequada).  
-9. **RLS necessaria**: validacao de consultas de cada repositorio com teste deny-by-default.  
-10. **Criterios de aceite**:
+   - ativacao global sem piloto;
+   - retornar fixture mock / colecao vazia / null como “sucesso degradado” sob falha de backend.
+7. **Dependencias**: `SUP-B01`, `SUP-B02`, `SUP-B03` (+ revisao de politica de fallback alinhada a C04.2a/C04.2b).
+8. **Entidades/tabelas**: todas da fase B + camada de repositorios.
+9. **Perfis/permissoes afetados**: usuario e equipe clinica (apenas leitura adequada).
+10. **RLS necessaria**: validacao de consultas de cada repositorio com teste deny-by-default.
+11. **Criterios de aceite**:
    - modulo preventivo opera em real/mock sem quebrar contrato;
-   - erro de backend nao expoe detalhes sensiveis na UI.  
-11. **Testes obrigatorios**:
+   - erro de backend nao expoe detalhes sensiveis na UI;
+   - ausencia de falsa percepcao de persistencia.
+12. **Testes obrigatorios**:
    - suite de integracao dual-mode;
    - E2E principal de Minha BioMed.  
-12. **Riscos de seguranca/LGPD**:
+13. **Riscos de seguranca/LGPD**:
    - fallback incorreto exibir dados de origem errada;
    - risco de logs com payload sensivel.  
-13. **Estimativa**: media  
-14. **Ordem recomendada**: 8
+14. **Estimativa**: media
+15. **Ordem recomendada**: 8 (apos D01 recomendado; ver `PROJECT_MASTER_HANDOFF.md`)
 
 ---
 
@@ -477,7 +480,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 9. **Perfis/permissoes afetados**:
    - medico, profissional_saude;
    - gestores sem papel clinico sem carteira nominal.
-10. **Nota**: parent permanece parcial enquanto `unit_id` operacional e consolidacao final de vinculo/agenda nao forem fechados; C02 continua dependente de C01 + aprovacao clinica.
+10. **Nota**: parent permanece parcial enquanto `unit_id` operacional e consolidacao final de vinculo/agenda nao forem fechados; C02/C03 ja concluidas em `main` (PR #9/#10); gap `unit_id` segue como dependencia arquitetural residual.
 
 #### SUP-C01.1 - Carteira clinica persistida por vinculo ativo
 
@@ -579,7 +582,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 
 #### SUP-C02 - Ficha clinica modular versionada (implementacao)
 
-1. **Status**: implementacao local na branch `feat/sup-c02-clinical-record-versioned` (aguardando autorizacao de commit/PR).
+1. **Status**: CONCLUIDA e integrada em `main` via PR #9 (`2ab6546f9411c165f4b47d4bc56acbda8c139439`).
 2. **Objetivo**: persistir ficha clinica modular (`clinical_record.v1`) com rascunho, conclusao, historico append-only e nova revisao sem sobrescrita opaca.
 3. **Dependencias**: `SUP-C01.1`, `SUP-C01.2`, `app_auth.has_active_clinical_assignment`.
 4. **Escopo incluido**:
@@ -635,7 +638,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 
 #### SUP-C03 - Plano de cuidado e evolucoes (implementacao)
 
-1. **Status**: implementacao local na branch `feat/sup-c03-care-plan-evolutions` (aguardando autorizacao de commit/PR).
+1. **Status**: CONCLUIDA e integrada em `main` via PR #10 (`eac8685e0e7c235792885fc11c6b107db73c6bf2`); hardening follow-up PR #11 (`2511bba…`) e PR #12 (`bf4384f…`).
 2. **Objetivo**: plano de cuidado produtivo com objetivos, acoes, status, reavaliacoes, evolucoes e historico append-only.
 3. **Dependencias**: `SUP-C01.1` (carteira/assignment), helpers clinicos de `0010+`; ficha (`SUP-C02`) apenas referencia opcional.
 4. **Escopo incluido**:
@@ -662,29 +665,70 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 1. **Identificador**: `SUP-C04`  
 2. **Titulo**: Repositorios clinicos e migracao progressiva de dados mock  
 3. **Finalidade**: trocar apenas dominio clinico para supabase sem afetar demais ambientes.  
-4. **Escopo incluido**:
-   - adapters para agenda, carteira, ficha, plano e registros;
-   - fallback mock por tela/feature;
-   - instrumentacao de erros e latencia.  
-5. **Fora do escopo**:
+4. **Status parent**: PARCIAL — C04.1 e C04.2a entregues; normalizacao 42501 entregue; C04.2b encerrada sem implementacao; residual de rollout/pagina demo fora do escopo C04.1. **Nao** marcar o pai como integralmente implementado.
+5. **Escopo incluido**:
+   - adapters para agenda, carteira, ficha, plano (modos por modulo);
+   - instrumentacao de erros e latencia;
+   - politica de fallback deny-by-default (avaliacao sem troca de backend no baseline).
+6. **Fora do escopo**:
    - troca total de todo o app;
-   - alteracao de UX aprovada.  
-6. **Dependencias**: `SUP-C01`, `SUP-C02`, `SUP-C03`.  
-7. **Entidades/tabelas**: tabelas clinicas da fase C + repositorios.  
-8. **Perfis/permissoes afetados**: perfis clinicos e usuario final (visoes permitidas).  
-9. **RLS necessaria**: cobertura completa das consultas de clinica por vinculo e tenant.  
-10. **Criterios de aceite**:
+   - alteracao de UX aprovada;
+   - modulo access;
+   - retornar fixture mock / colecao vazia / null / objeto vazio como sucesso degradado sob falha clinica;
+   - escrita ficticia ou falsa percepcao de persistencia;
+   - troca dinamica runtime para mock (C04.2b).
+7. **Dependencias**: `SUP-C01`, `SUP-C02`, `SUP-C03`.
+8. **Entidades/tabelas**: tabelas clinicas da fase C + repositorios.
+9. **Perfis/permissoes afetados**: perfis clinicos e usuario final (visoes permitidas).
+10. **RLS necessaria**: cobertura completa das consultas de clinica por vinculo e tenant.
+11. **Criterios de aceite**:
    - rotas clinicas mantidas;
-   - carteira e detalhe por usuario com consistencia de vinculo.  
-11. **Testes obrigatorios**:
+   - carteira e detalhe por usuario com consistencia de vinculo;
+   - ausencia de fallback clinico inseguro no baseline.
+12. **Testes obrigatorios**:
    - integracao por endpoint/repositorio;
    - E2E de carteira/ficha/plano;
    - testes de negacao em URL direta.  
-12. **Riscos de seguranca/LGPD**:
-   - erro de fallback mostrando dado stale de outro usuario;
+13. **Riscos de seguranca/LGPD**:
+   - fallback inseguro mostrando dado stale / fixture / ausencia falsa;
    - diferenca de autorizacao entre camada app e banco.  
-13. **Estimativa**: grande  
-14. **Ordem recomendada**: 12
+14. **Estimativa**: grande
+15. **Ordem recomendada**: 12 (pai parcial; nao iniciar C04.2b)
+
+#### SUP-C04.1 - Modos de repositorio clinico por modulo
+
+1. **Status**: CONCLUIDA e integrada em `main` via PR #13 (`69cb16560ba8f0a45feffb1fc24a766a1648bf05`).
+2. **Entrega**: flags `VITE_CLINICAL_*_REPOSITORY_MODE` (`mock` | `supabase`) com precedencia documentada em `.env.example`; defaults desligados / mock quando global ausente.
+3. **Nota**: `CLINICAL_RECORD` cobre ficha C02; pagina demo `/clinica/registros` fora do escopo.
+
+#### SUP-C04.2a - Observabilidade clinica + politica deny-by-default
+
+1. **Status**: CONCLUIDA e integrada em `main` via PR #14 (`ca624915abbaeddd6cb4413197830c9edb78fc2f`).
+2. **Entrega**: instrumentacao sanitizada; politica avalia elegibilidade; **nao** troca backend no baseline; `enableTransientFallback` e `enableMockDataFallback` default `false`.
+3. **Inelegiveis a fallback de dados**: autorizacao, `CROSS_TENANT_DATA`, dominio, writes, nao-transitorios, producao.
+
+#### Normalizacao PostgreSQL 42501 (pre-condicao clinica; nao e C04.2b)
+
+1. **Status**: CONCLUIDA e integrada em `main` via PR #15 (`0f3f666403b6d47b2fa2a2c144fe5667ae0dd538`).
+2. **Classificacao canonica** nos repositories clinicos:
+   - `errorCode`: `CROSS_TENANT_DATA`
+   - `errorKind`: `authorization`
+   - `transient`: `false`
+3. **Efeito**: 42501 e inelegivel a qualquer fallback de dados.
+
+#### SUP-C04.2b - Switch de dados mock em runtime
+
+1. **Status**: ENCERRADA SEM IMPLEMENTACAO — bloqueio arquitetural comprovado.
+2. **Esclarecimento**: encerramento **nao** significa implementacao nem ativacao futura ja planejada.
+3. **Proibicoes**:
+   - fixtures mock nao constituem fonte clinica secundaria confiavel;
+   - proibido retornar fixture mock como fallback clinico runtime;
+   - proibido retornar colecao vazia, `null` ou objeto vazio como sucesso degradado;
+   - proibida qualquer escrita ficticia ou falsa percepcao de persistencia.
+4. **Retomada futura somente apos** (alternativa):
+   - (a) cache seguro de dados reais (tenant/usuario/paciente, integridade, TTL, invalidacao, indicacao visual de stale); ou
+   - (b) estado degradado explicito, com contrato e UX proprios.
+5. **Diretriz**: nao iniciar C04.2b no caminho critico atual. Continuidade: `PROJECT_MASTER_HANDOFF.md`.
 
 ---
 
@@ -709,25 +753,26 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 5. **Fora do escopo**:
    - envio real de notificacoes;
    - integracao externa de BI.  
-6. **Dependencias**: `SUP-A01` (granularidade de unidade ja aprovada).  
-7. **Entidades/tabelas**: `campaigns`, `campaign_audiences`, `action_plans`, (eventual visao agregada).  
-8. **Perfis/permissoes afetados**:
+6. **Dependencias**: `SUP-A01` (documento afirma granularidade de unidade aprovada).
+7. **Decisao pendente / contradicao operacional**: gap residual de `unit_id` em entidades clinicas operacionais (C01) permanece; **nao** declarar SUP-D01 incondicionalmente desbloqueada sem confirmar, para o schema de gestao, se a granularidade de unidade aplicavel a campanhas/planos esta aprovada e como o gap residual sera controlado.
+8. **Entidades/tabelas**: `campaigns`, `campaign_audiences`, `action_plans`, (eventual visao agregada).
+9. **Perfis/permissoes afetados**:
    - gestor_institucional, sst, admin_cliente, admin_biomed, auditor (leitura).  
-9. **RLS necessaria**:
+10. **RLS necessaria**:
    - tenant + papeis gerenciais permitidos;
    - proibicao de leitura nominal.  
-10. **Criterios de aceite**:
+11. **Criterios de aceite**:
    - operacoes de campanha/plano no tenant correto;
    - sem campos de identificacao individual nos retornos.  
-11. **Testes obrigatorios**:
+12. **Testes obrigatorios**:
    - integracao de CRUD gerencial permitido;
    - negacao para perfis clinicos/usuario final;
    - testes de schema sem dado nominal.  
-12. **Riscos de seguranca/LGPD**:
+13. **Riscos de seguranca/LGPD**:
    - reidentificacao por grupos pequenos;
    - campos indiretos permitindo inferencia individual.  
-13. **Estimativa**: media  
-14. **Ordem recomendada**: 13
+14. **Estimativa**: media
+15. **Ordem recomendada**: 13 (proximo ticket tecnico recomendado apos consolidacao documental; condicionado a §7 acima)
 
 ### SUP-D02
 
@@ -770,11 +815,12 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 3. **Finalidade**: trocar dados mock de gestao sem impactar clinica e usuario final.  
 4. **Escopo incluido**:
    - adapters para painel, indicadores, campanhas e plano de acao;
-   - fallback mock por tela;
+   - selecao explicita de modo por tela/feature (sem autorizar fallback que invente agregado ou oculte falha);
    - validacao de formato agregado unico.  
 5. **Fora do escopo**:
    - troca de bibliotecas de grafico;
-   - redesenho de UI aprovado.  
+   - redesenho de UI aprovado;
+   - sucesso degradado com colecao vazia/`null` fingindo ausencia real de campanhas/indicadores.
 6. **Dependencias**: `SUP-D01`, `SUP-D02`.  
 7. **Entidades/tabelas**: gestao + views agregadas + repositorios.  
 8. **Perfis/permissoes afetados**: perfis gerenciais e auditoria.  
@@ -923,23 +969,29 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 | 5 | SUP-B01 | B | SUP-A01, A03 | Consentimento versionado com revogacao |
 | 6 | SUP-B02 | B | SUP-A03, B01 | Avaliacao persistida com ownership |
 | 7 | SUP-B03 | B | SUP-A04, B02 | Jornada/progresso persistidos |
-| 8 | SUP-B04 | B | B01, B02, B03 | Preventivo em rollout gradual |
-| 9 | SUP-C01 | C | SUP-A01, A03 | Vínculo e agenda com escopo correto |
-| 10 | SUP-C02 | C | C01 + aprovacao clinica | Ficha clinica versionavel com rastreio |
-| 11 | SUP-C03 | C | C02 | Plano de cuidado persistente |
-| 12 | SUP-C04 | C | C01, C02, C03 | Clinica em rollout por modulo |
-| 13 | SUP-D01 | D | SUP-A01 + decisao unidade | Base gerencial estruturada |
+| 8 | SUP-B04 | B | B01, B02, B03 + revisao fallback | ABERTO — posterior; sem fallback inseguro |
+| 9 | SUP-C01 | C | SUP-A01, A03 | PARCIAL (filhas 1/2 entregues; gap `unit_id`) |
+| 10 | SUP-C02 | C | C01 + aprovacao clinica | CONCLUIDA (PR #9) |
+| 11 | SUP-C03 | C | C02 | CONCLUIDA (PR #10; harden #11/#12) |
+| 12 | SUP-C04 | C | C01, C02, C03 | PARCIAL: C04.1+#13, C04.2a+#14, 42501+#15; C04.2b ENCERRADA SEM IMPLEMENTACAO |
+| 13 | SUP-D01 | D | SUP-A01 + confirmacao granularidade unidade | RECOMENDADO apos docs; condicionado (ver ticket) |
 | 14 | SUP-D02 | D | D01 + limiar minimo 10 | Indicadores agregados sem nominal |
 | 15 | SUP-D03 | D | D01, D02 | Gestao em dados reais agregados |
 | 16 | SUP-E01 | E | A02, A03 + B/C/D | Auditoria append-only ativa |
-| 17 | SUP-E02 | E | A03, C04, D03, E01 | Suite de seguranca completa |
+| 17 | SUP-E02 | E | A03, C04 residual, D03, E01 | Suite de seguranca completa |
 | 18 | SUP-E03 | E | Todas anteriores | Hardening e plano de cutover final |
 
 ---
 
 ## Caminho critico recomendado
 
-`SUP-A01 -> SUP-A02 -> SUP-A03 -> SUP-B02 -> SUP-C01 -> SUP-C02 -> SUP-C04 -> SUP-D02 -> SUP-E01 -> SUP-E02 -> SUP-E03`
+`SUP-A01 -> SUP-A02 -> SUP-A03 -> SUP-B02 -> SUP-C01 -> SUP-C02 -> SUP-C03 -> SUP-C04.1/C04.2a (+42501) -> [docs] -> SUP-D01 (condicionado) -> SUP-D02 -> SUP-E01 -> SUP-E02 -> SUP-E03`
+
+Notas de caminho:
+
+- SUP-C04.2b **nao** faz parte do caminho critico (encerrada sem implementacao).
+- SUP-B04 permanece aberta como alternativa posterior, apos revisao de fallback.
+- Gap residual `unit_id` (C01) e dependencia arquitetural quando aplicavel.
 
 Justificativa:
 

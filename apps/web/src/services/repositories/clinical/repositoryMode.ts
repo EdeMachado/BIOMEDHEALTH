@@ -4,7 +4,8 @@
  * CLINICAL_RECORD = ficha clínica C02 (`clinical_records`), not `/clinica/registros`
  * (local demo page without persisted domain; no flag in this PR).
  *
- * No runtime fallback from Supabase to mock on network/RLS/auth errors (C04.2).
+ * Runtime fallback policy + instrumentation: see fallbackPolicy.ts / instrumentRepository.ts (C04.2a).
+ * Mock data switch remains disabled by default.
  */
 
 export type ClinicalRepositoryMode = 'mock' | 'supabase';

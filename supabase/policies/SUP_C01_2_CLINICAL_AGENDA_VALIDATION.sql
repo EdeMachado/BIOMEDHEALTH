@@ -12,17 +12,20 @@ declare
   v_pro_a uuid := '12121212-1212-1212-1212-121212121212';
   v_pro_b uuid := '13131313-1313-1313-1313-131313131313';
   v_mgr uuid := '14141414-1414-1414-1414-141414141414';
+  v_asst uuid := '16161616-1616-1616-1616-161616161616';
   v_role_usuario uuid;
   v_role_medico uuid;
   v_role_gestor uuid;
   v_uo_user uuid;
   v_uo_pro uuid;
   v_uo_mgr uuid;
+  v_uo_asst uuid;
   v_uo_pro_b_membership uuid;
   v_count int;
   v_rows int;
   v_appt uuid;
   v_appt_b uuid;
+  v_appt_asst uuid;
   v_starts timestamptz := timestamptz '2026-08-01 09:00:00+00';
   v_ends timestamptz := timestamptz '2026-08-01 09:30:00+00';
 begin
@@ -32,7 +35,8 @@ begin
     (v_user_b, 'user.b@example.com', '{"full_name":"Paciente B"}'::jsonb),
     (v_pro_a, 'pro.a@example.com', '{"full_name":"Medico A"}'::jsonb),
     (v_pro_b, 'pro.b@example.com', '{"full_name":"Medico B"}'::jsonb),
-    (v_mgr, 'mgr@example.com', '{"full_name":"Gestor"}'::jsonb)
+    (v_mgr, 'mgr@example.com', '{"full_name":"Gestor"}'::jsonb),
+    (v_asst, 'asst@example.com', '{"full_name":"Assistente sem papel clinico"}'::jsonb)
   on conflict (id) do update
     set email = excluded.email,
         raw_user_meta_data = excluded.raw_user_meta_data;
@@ -57,6 +61,7 @@ begin
     (v_org_a, v_user_a, 'ativo'),
     (v_org_a, v_pro_a, 'ativo'),
     (v_org_a, v_mgr, 'ativo'),
+    (v_org_a, v_asst, 'ativo'),
     (v_org_b, v_user_b, 'ativo'),
     (v_org_b, v_pro_b, 'ativo'),
     (v_org_b, v_pro_a, 'ativo')
@@ -65,6 +70,7 @@ begin
   select id into v_uo_user from public.user_organizations where organization_id = v_org_a and user_id = v_user_a;
   select id into v_uo_pro from public.user_organizations where organization_id = v_org_a and user_id = v_pro_a;
   select id into v_uo_mgr from public.user_organizations where organization_id = v_org_a and user_id = v_mgr;
+  select id into v_uo_asst from public.user_organizations where organization_id = v_org_a and user_id = v_asst;
   select id into v_uo_pro_b_membership
     from public.user_organizations
    where organization_id = v_org_b and user_id = v_pro_a;
@@ -74,6 +80,8 @@ begin
     (v_org_a, v_uo_user, v_role_usuario, 'ativo'),
     (v_org_a, v_uo_pro, v_role_medico, 'ativo'),
     (v_org_a, v_uo_mgr, v_role_gestor, 'ativo'),
+    -- assignment ativo sem papel clinico (apenas usuario)
+    (v_org_a, v_uo_asst, v_role_usuario, 'ativo'),
     (v_org_b, v_uo_pro_b_membership, v_role_medico, 'ativo')
   on conflict do nothing;
 
@@ -102,7 +110,8 @@ begin
     organization_id, professional_id, user_id, assignment_reason, status
   ) values
     (v_org_a, v_pro_a, v_user_a, 'acompanhamento', 'ativo'),
-    (v_org_b, v_pro_a, v_user_b, 'multi-org', 'ativo');
+    (v_org_b, v_pro_a, v_user_b, 'multi-org', 'ativo'),
+    (v_org_a, v_asst, v_user_a, 'assignment-sem-papel-clinico', 'ativo');
 
   -- escrita autorizada
   perform set_config('request.jwt.claim.sub', v_pro_a::text, true);
@@ -263,6 +272,102 @@ begin
     when insufficient_privilege then null;
     when others then
       if sqlstate = '42501' then null; else raise; end if;
+  end;
+  execute 'reset role';
+
+  -- assignment ativo SEM papel clinico: membership + assignment + auth, sem medico/profissional_saude
+  -- prova que has_active_clinical_assignment (e portanto as policies) ja exige o papel clinico
+  insert into public.appointments (
+    organization_id, user_id, professional_id, starts_at, ends_at,
+    appointment_status, appointment_type, status
+  ) values (
+    v_org_a, v_user_a, v_asst,
+    timestamptz '2026-08-04 08:00:00+00',
+    timestamptz '2026-08-04 08:30:00+00',
+    'solicitado', 'acompanhamento', 'ativo'
+  ) returning id into v_appt_asst;
+
+  perform set_config('request.jwt.claim.sub', v_asst::text, true);
+  perform set_config('request.jwt.claims', json_build_object('sub', v_asst::text)::text, true);
+  execute 'set local role authenticated';
+
+  if public.can_manage_clinical_agenda(v_org_a) then
+    raise exception 'VALIDACAO 0012 FALHOU: assistente sem papel clinico nao deveria gerir agenda';
+  end if;
+  if app_auth.has_active_clinical_assignment(v_org_a, v_user_a) then
+    raise exception 'VALIDACAO 0012 FALHOU: has_active_clinical_assignment deveria exigir papel clinico';
+  end if;
+
+  select count(*) into v_count from public.appointments where id = v_appt_asst;
+  if v_count <> 0 then
+    raise exception 'VALIDACAO 0012 FALHOU: assistente sem papel clinico listou compromisso';
+  end if;
+
+  begin
+    insert into public.appointments (
+      organization_id, user_id, professional_id, starts_at, ends_at,
+      appointment_status, appointment_type, status
+    ) values (
+      v_org_a, v_user_a, v_asst,
+      timestamptz '2026-08-04 09:00:00+00',
+      timestamptz '2026-08-04 09:30:00+00',
+      'solicitado', 'preventiva', 'ativo'
+    );
+    raise exception 'VALIDACAO 0012 FALHOU: assistente sem papel clinico inseriu compromisso';
+  exception
+    when insufficient_privilege then null;
+    when others then
+      if sqlstate = '42501' then null; else raise; end if;
+  end;
+
+  begin
+    update public.appointments set appointment_status = 'confirmado' where id = v_appt_asst;
+    get diagnostics v_rows = row_count;
+    if v_rows <> 0 then
+      raise exception 'VALIDACAO 0012 FALHOU: assistente sem papel clinico atualizou compromisso';
+    end if;
+  exception
+    when insufficient_privilege then null;
+    when others then
+      if sqlstate = '42501' then null; else raise; end if;
+  end;
+  execute 'reset role';
+
+  -- rejeicao explicita de appointment_status invalido (CHECK)
+  perform set_config('request.jwt.claim.sub', v_pro_a::text, true);
+  perform set_config('request.jwt.claims', json_build_object('sub', v_pro_a::text)::text, true);
+  execute 'set local role authenticated';
+  begin
+    insert into public.appointments (
+      organization_id, user_id, professional_id, starts_at, ends_at,
+      appointment_status, appointment_type, status
+    ) values (
+      v_org_a, v_user_a, v_pro_a,
+      timestamptz '2026-08-05 10:00:00+00',
+      timestamptz '2026-08-05 10:30:00+00',
+      'agendado', 'acompanhamento', 'ativo'
+    );
+    raise exception 'VALIDACAO 0012 FALHOU: status invalido deveria ser rejeitado';
+  exception
+    when check_violation then null;
+    when others then
+      if sqlstate = '23514' then null; else raise; end if;
+  end;
+
+  -- rejeicao explicita de slot ativo duplicado (unique parcial)
+  begin
+    insert into public.appointments (
+      organization_id, user_id, professional_id, starts_at, ends_at,
+      appointment_status, appointment_type, status
+    ) values (
+      v_org_a, v_user_a, v_pro_a, v_starts, v_ends,
+      'solicitado', 'acompanhamento', 'ativo'
+    );
+    raise exception 'VALIDACAO 0012 FALHOU: slot ativo duplicado deveria ser rejeitado';
+  exception
+    when unique_violation then null;
+    when others then
+      if sqlstate = '23505' then null; else raise; end if;
   end;
   execute 'reset role';
 

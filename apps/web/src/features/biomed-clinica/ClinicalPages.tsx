@@ -6,6 +6,13 @@ import {
 } from '@/domains/clinicalAgenda/clinicalAgendaService';
 import { loadLinkedClinicalPortfolio } from '@/domains/clinicalPortfolio/clinicalPortfolioService';
 import {
+  concludeLinkedClinicalRecord,
+  loadClinicalRecordHistory,
+  loadLinkedClinicalRecord,
+  reopenLinkedClinicalRecord,
+  saveLinkedClinicalRecordDraft,
+} from '@/domains/clinicalRecord/clinicalRecordService';
+import {
   loadLinkedPatientJourneyViews,
   summarizeClinicalJourneyViews,
 } from '@/domains/journey/journeyService';
@@ -29,6 +36,23 @@ import {
 } from '@/services/repositories/clinicalPortfolio/factory';
 import type { ClinicalPortfolioPatient } from '@/services/repositories/clinicalPortfolio/types';
 import type { SupabaseClinicalPortfolioClient } from '@/services/repositories/clinicalPortfolio/supabaseClinicalPortfolioRepository';
+import {
+  createClinicalRecordRepositoryFactory,
+  resolveClinicalRecordRepositoryMode,
+} from '@/services/repositories/clinicalRecord/factory';
+import {
+  CLINICAL_RECORD_SECTION_DEFINITIONS,
+  CLINICAL_RECORD_SCHEMA_VERSION,
+  emptyClinicalRecordSections,
+  mergeClinicalRecordSections,
+  type ClinicalRecordSections,
+} from '@/services/repositories/clinicalRecord/schema';
+import type { SupabaseClinicalRecordClient } from '@/services/repositories/clinicalRecord/supabaseClinicalRecordRepository';
+import type {
+  ClinicalRecord,
+  ClinicalRecordContext,
+  ClinicalRecordVersion,
+} from '@/services/repositories/clinicalRecord/types';
 import {
   createJourneyRepositoryFactory,
   resolveJourneyRepositoryMode,
@@ -345,60 +369,205 @@ export function ClinicalPortfolioPage() {
 }
 
 export function ClinicalRecordPage() {
-  const [editing, setEditing] = useState(false);
-  const [savedMessage, setSavedMessage] = useState('');
+  const { patients, loading: portfolioLoading, error: portfolioError } = useClinicalPortfolio();
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
+  const {
+    record,
+    versions,
+    sections,
+    setSections,
+    loading,
+    error,
+    message,
+    editing,
+    setEditing,
+    saveDraft,
+    conclude,
+    reopen,
+    busy,
+  } = useClinicalRecord(selectedPatientId);
+
+  useEffect(() => {
+    if (portfolioLoading) {
+      setSelectedPatientId(null);
+      return;
+    }
+    if (portfolioError || patients.length === 0) {
+      setSelectedPatientId(null);
+      return;
+    }
+    setSelectedPatientId((current) =>
+      current && patients.some((item) => item.patientId === current) ? current : patients[0].patientId
+    );
+  }, [portfolioLoading, portfolioError, patients]);
+
+  const selectedPatient =
+    !portfolioLoading && !portfolioError && selectedPatientId
+      ? (patients.find((item) => item.patientId === selectedPatientId) ?? null)
+      : null;
+
+  const activeSections = CLINICAL_RECORD_SECTION_DEFINITIONS.filter((item) => item.active);
+  const concluded = record?.recordStatus === 'concluido';
+  const canEdit = Boolean(selectedPatient) && !loading && !error && !concluded;
 
   return (
     <div className="space-y-4">
-      <ClinicalDemoPatientContextHeader />
+      <ClinicalPatientContextHeader patient={selectedPatient} />
       <Card className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle>Ficha clínica demonstrativa</CardTitle>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setEditing((v) => !v)}>
-              {editing ? 'Visualizar' : 'Editar ficha'}
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => {
-                setEditing(false);
-                setSavedMessage('Registro concluído em modo demonstração.');
-              }}
-            >
-              Concluir registro
-            </Button>
+          <div>
+            <CardTitle>Ficha clínica</CardTitle>
+            <CardDescription>
+              Modelo {CLINICAL_RECORD_SCHEMA_VERSION}
+              {record ? ` • revisão ${record.revisionNumber}` : ''}
+              {record?.updatedAt ? ` • atualizada em ${formatDateTime(record.updatedAt)}` : ''}
+            </CardDescription>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {!concluded ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!canEdit || busy}
+                  onClick={() => setEditing((value) => !value)}
+                  data-testid="clinical-record-toggle-edit"
+                >
+                  {editing ? 'Visualizar' : 'Editar ficha'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!canEdit || busy}
+                  onClick={() => void saveDraft()}
+                  data-testid="clinical-record-save-draft"
+                >
+                  Salvar rascunho
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={!canEdit || busy || !record}
+                  onClick={() => void conclude()}
+                  data-testid="clinical-record-conclude"
+                >
+                  Concluir registro
+                </Button>
+              </>
+            ) : (
+              <Button
+                size="sm"
+                disabled={busy || !record}
+                onClick={() => void reopen()}
+                data-testid="clinical-record-reopen"
+              >
+                Nova versão
+              </Button>
+            )}
           </div>
         </div>
-        <CardDescription>Última atualização: 29/07/2026 • Dados fictícios.</CardDescription>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {[
-            ['Identificação', 'Usuário fictício, jornada preventiva ativa.'],
-            ['Motivo do acompanhamento', 'Reforçar rotina de sono e autocuidado.'],
-            ['Hábitos e rotina', 'Relata rotina parcialmente organizada.'],
-            ['Sono', 'Média de 6h por noite com variação semanal.'],
-            ['Atividade física', 'Caminhadas 2 a 3 vezes por semana.'],
-            ['Alimentação percebida', 'Busca regularidade de horários.'],
-            ['Bem-estar', 'Estresse moderado em períodos de trabalho intenso.'],
-            ['Conduta orientativa', 'Acompanhamento preventivo e conteúdo educativo.'],
-          ].map(([title, value]) => (
-            <section key={title} className="rounded-xl border p-3 text-sm">
-              <p className="font-semibold">{title}</p>
-              {editing ? (
-                <textarea className="focus-ring mt-2 min-h-20 w-full rounded-lg border p-2" defaultValue={value} />
-              ) : (
-                <p className="mt-1 text-[var(--muted-foreground)]">{value}</p>
-              )}
-            </section>
-          ))}
-        </div>
-        {editing ? (
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setSavedMessage('Rascunho salvo em memória para demonstração.')}>
-              Salvar rascunho
-            </Button>
+
+        <p className="text-xs text-[var(--muted-foreground)]" data-testid="clinical-record-validation-note">
+          Estrutura clínica em validação — sujeita a aprimoramentos.
+        </p>
+
+        {patients.length > 1 ? (
+          <label className="block text-sm">
+            <span className="text-[var(--muted-foreground)]">Paciente vinculado</span>
+            <select
+              className="focus-ring mt-1 h-10 w-full rounded-xl border px-3"
+              value={selectedPatientId ?? ''}
+              onChange={(event) => setSelectedPatientId(event.target.value)}
+              data-testid="clinical-record-patient-select"
+            >
+              {patients.map((patient) => (
+                <option key={patient.patientId} value={patient.patientId}>
+                  {patient.displayName}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+
+        {portfolioLoading || loading ? (
+          <p className="text-sm text-[var(--muted-foreground)]" data-testid="clinical-record-loading">
+            Carregando ficha clínica...
+          </p>
+        ) : null}
+        {!portfolioLoading && portfolioError ? (
+          <p className="text-sm text-red-600" data-testid="clinical-record-portfolio-error">
+            {portfolioError}
+          </p>
+        ) : null}
+        {!loading && error ? (
+          <p className="text-sm text-red-600" data-testid="clinical-record-error">
+            {error}
+          </p>
+        ) : null}
+        {!portfolioLoading && !portfolioError && patients.length === 0 ? (
+          <p className="text-sm text-[var(--muted-foreground)]" data-testid="clinical-record-empty-portfolio">
+            Nenhum paciente vinculado para abrir a ficha.
+          </p>
+        ) : null}
+        {!loading && !error && selectedPatient && !record ? (
+          <p className="text-sm text-[var(--muted-foreground)]" data-testid="clinical-record-empty">
+            Nenhuma ficha persistida ainda. Edite as seções e salve o rascunho inicial.
+          </p>
+        ) : null}
+
+        {!loading && !error && selectedPatient ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {activeSections.map((definition) => {
+              const value = sections[definition.key]?.value ?? '';
+              return (
+                <section key={definition.key} className="rounded-xl border p-3 text-sm">
+                  <p className="font-semibold">
+                    {definition.label}
+                    {definition.requiredForConclusion ? (
+                      <span className="ml-1 text-xs font-normal text-[var(--muted-foreground)]">(obrigatório na conclusão)</span>
+                    ) : null}
+                  </p>
+                  {editing && !concluded ? (
+                    <textarea
+                      className="focus-ring mt-2 min-h-20 w-full rounded-lg border p-2"
+                      value={value}
+                      onChange={(event) =>
+                        setSections((current) => ({
+                          ...current,
+                          [definition.key]: { value: event.target.value },
+                        }))
+                      }
+                      data-testid={`clinical-record-field-${definition.key}`}
+                    />
+                  ) : (
+                    <p className="mt-1 text-[var(--muted-foreground)]">
+                      {value.trim() ? value : 'Não informado'}
+                    </p>
+                  )}
+                </section>
+              );
+            })}
           </div>
         ) : null}
-        {savedMessage ? <p className="rounded-lg bg-[var(--secondary)] p-2 text-sm">{savedMessage}</p> : null}
+
+        {message ? (
+          <p className="rounded-lg bg-[var(--secondary)] p-2 text-sm" data-testid="clinical-record-message">
+            {message}
+          </p>
+        ) : null}
+
+        {record && versions.length > 0 ? (
+          <div className="space-y-2" data-testid="clinical-record-history">
+            <p className="text-sm font-semibold">Histórico de versões</p>
+            <ul className="space-y-1 text-sm text-[var(--muted-foreground)]">
+              {versions.slice(0, 8).map((version) => (
+                <li key={version.id} data-testid={`clinical-record-history-item-${version.id}`}>
+                  {formatDateTime(version.createdAt)} • {version.changeKind} • revisão {version.revisionNumber} •{' '}
+                  {version.recordStatus} • {version.schemaVersion}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </Card>
     </div>
   );
@@ -518,6 +687,202 @@ function Info({ label, value }: { label: string; value: string }) {
       <p className="text-lg font-semibold">{value}</p>
     </div>
   );
+}
+
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString('pt-BR');
+}
+
+function useClinicalRecord(patientId: string | null) {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [record, setRecord] = useState<ClinicalRecord | null>(null);
+  const [versions, setVersions] = useState<ClinicalRecordVersion[]>([]);
+  const [sections, setSections] = useState<ClinicalRecordSections>(emptyClinicalRecordSections());
+  const requestIdRef = useRef(0);
+
+  const repositoryConfig = useMemo(() => {
+    try {
+      const mode = resolveClinicalRecordRepositoryMode(import.meta.env);
+      if (mode === 'supabase') {
+        return {
+          mode,
+          repository: createClinicalRecordRepositoryFactory({
+            mode: 'supabase',
+            supabaseClient: getSupabaseClient() as unknown as SupabaseClinicalRecordClient,
+          }),
+        };
+      }
+      return {
+        mode,
+        repository: createClinicalRecordRepositoryFactory({ mode: 'mock' }),
+      };
+    } catch {
+      return { mode: 'mock' as const, repository: null };
+    }
+  }, []);
+
+  const context: ClinicalRecordContext | null = user
+    ? {
+        sessionUserId: user.id,
+        professionalUserId: user.id,
+        organizationId: user.organizationId,
+      }
+    : null;
+
+  useEffect(() => {
+    let disposed = false;
+    if (!user || !repositoryConfig.repository || !context || !patientId) {
+      setLoading(false);
+      setRecord(null);
+      setVersions([]);
+      setSections(emptyClinicalRecordSections());
+      setError(patientId ? 'Nao foi possivel carregar a ficha clinica neste momento.' : null);
+      return;
+    }
+
+    const currentRequest = ++requestIdRef.current;
+    setLoading(true);
+    setError(null);
+    setMessage('');
+    void loadLinkedClinicalRecord(repositoryConfig.repository, context, patientId).then(async (result) => {
+      if (disposed || currentRequest !== requestIdRef.current) return;
+      if (!result.ok) {
+        setLoading(false);
+        setRecord(null);
+        setVersions([]);
+        setSections(emptyClinicalRecordSections());
+        if (result.error.code === 'CLINICAL_ACCESS_DENIED' || result.error.code === 'CROSS_TENANT_DATA') {
+          setError('Acesso clinico nao autorizado para a ficha.');
+          return;
+        }
+        if (result.error.code === 'PATIENT_NOT_IN_PORTFOLIO') {
+          setError('Paciente fora da carteira clinica autorizada.');
+          return;
+        }
+        if (result.error.code === 'NO_SESSION' || result.error.code === 'IDENTITY_MISMATCH') {
+          setError('Sessao clinica ausente ou invalida.');
+          return;
+        }
+        setError('Nao foi possivel carregar a ficha clinica neste momento.');
+        return;
+      }
+
+      const loaded = result.data;
+      setRecord(loaded);
+      setSections(mergeClinicalRecordSections(loaded?.sections));
+      setEditing(false);
+
+      if (loaded) {
+        const repository = repositoryConfig.repository;
+        const history = await loadClinicalRecordHistory(repository, context, loaded.id);
+        if (disposed || currentRequest !== requestIdRef.current) return;
+        if (history.ok) setVersions(history.data);
+        else setVersions([]);
+      } else {
+        setVersions([]);
+      }
+      setLoading(false);
+      setError(null);
+    });
+
+    return () => {
+      disposed = true;
+    };
+  }, [user, repositoryConfig, patientId, context?.organizationId, context?.professionalUserId, context?.sessionUserId]);
+
+  async function saveDraft() {
+    if (!repositoryConfig.repository || !context || !patientId) return;
+    setBusy(true);
+    setMessage('');
+    const result = await saveLinkedClinicalRecordDraft(repositoryConfig.repository, context, {
+      patientId,
+      recordId: record?.id,
+      sections,
+    });
+    setBusy(false);
+    if (!result.ok) {
+      setMessage(
+        result.error.code === 'RECORD_CONCLUDED'
+          ? 'Ficha concluida nao pode ser editada.'
+          : 'Nao foi possivel salvar o rascunho da ficha.'
+      );
+      return;
+    }
+    setRecord(result.data);
+    setSections(mergeClinicalRecordSections(result.data.sections));
+    setEditing(false);
+    const history = await loadClinicalRecordHistory(repositoryConfig.repository, context, result.data.id);
+    if (history.ok) setVersions(history.data);
+    setMessage('Rascunho salvo com rastreio de versao.');
+  }
+
+  async function conclude() {
+    if (!repositoryConfig.repository || !context || !record) return;
+    setBusy(true);
+    setMessage('');
+    const result = await concludeLinkedClinicalRecord(repositoryConfig.repository, context, {
+      recordId: record.id,
+      sections,
+    });
+    setBusy(false);
+    if (!result.ok) {
+      setMessage(
+        result.error.code === 'VALIDATION_REQUIRED_FIELDS'
+          ? 'Preencha os campos obrigatorios antes de concluir.'
+          : 'Nao foi possivel concluir a ficha clinica.'
+      );
+      return;
+    }
+    setRecord(result.data);
+    setSections(mergeClinicalRecordSections(result.data.sections));
+    setEditing(false);
+    const history = await loadClinicalRecordHistory(repositoryConfig.repository, context, result.data.id);
+    if (history.ok) setVersions(history.data);
+    setMessage('Ficha concluida com autoria e timestamp.');
+  }
+
+  async function reopen() {
+    if (!repositoryConfig.repository || !context || !record) return;
+    setBusy(true);
+    setMessage('');
+    const result = await reopenLinkedClinicalRecord(repositoryConfig.repository, context, {
+      recordId: record.id,
+    });
+    setBusy(false);
+    if (!result.ok) {
+      setMessage('Nao foi possivel abrir nova versao da ficha.');
+      return;
+    }
+    setRecord(result.data);
+    setSections(mergeClinicalRecordSections(result.data.sections));
+    setEditing(true);
+    const history = await loadClinicalRecordHistory(repositoryConfig.repository, context, result.data.id);
+    if (history.ok) setVersions(history.data);
+    setMessage(`Nova revisao ${result.data.revisionNumber} aberta sem sobrescrita do historico.`);
+  }
+
+  return {
+    record,
+    versions,
+    sections,
+    setSections,
+    loading,
+    error,
+    message,
+    editing,
+    setEditing,
+    saveDraft,
+    conclude,
+    reopen,
+    busy,
+  };
 }
 
 function useClinicalPortfolio() {

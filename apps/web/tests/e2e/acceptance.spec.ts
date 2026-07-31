@@ -136,6 +136,20 @@ test('agenda clinica aplica filtros demonstrativos', async ({ page }) => {
   await expect(page.getByText('Ana Demo')).toHaveCount(0);
 });
 
+test('ficha clinica persiste rascunho para paciente vinculado', async ({ page }) => {
+  await login(page, 'medico.demo@biomed.health');
+  await page.getByRole('link', { name: 'Ficha Clínica' }).click();
+  await expect(page.getByTestId('clinical-record-validation-note')).toBeVisible();
+  await expect(page.getByTestId('clinical-patient-context-name')).toHaveText('Ana Demo');
+  await page.getByTestId('clinical-record-toggle-edit').click();
+  await page.getByTestId('clinical-record-field-motivo_acompanhamento').fill('Sono irregular');
+  await page.getByTestId('clinical-record-field-avaliacao_profissional_orientativa').fill('Acompanhamento preventivo');
+  await page.getByTestId('clinical-record-field-conduta_orientativa').fill('Higiene do sono');
+  await page.getByTestId('clinical-record-save-draft').click();
+  await expect(page.getByTestId('clinical-record-message')).toContainText(/Rascunho salvo/i);
+  await expect(page.getByTestId('clinical-record-history')).toBeVisible();
+});
+
 test('campanhas executam acao mock sem envio externo', async ({ page }) => {
   await login(page, 'gestor.demo@biomed.health');
   await page.getByRole('link', { name: 'Campanhas' }).click();

@@ -6,6 +6,10 @@ import type {
   ClinicalAppointmentStatus,
   ClinicalAppointmentType,
 } from '@/services/repositories/clinicalAgenda/types';
+import {
+  classifyPostgresInsufficientPrivilege,
+  isPostgresInsufficientPrivilege,
+} from '@/services/repositories/clinical/postgresInsufficientPrivilege';
 
 type SupabaseLikeError = {
   message?: string;
@@ -91,7 +95,14 @@ function mapBackendError(error: SupabaseLikeError): ClinicalAgendaResult<never> 
     code: error.code,
     message: error.message,
   };
-  if (code === '42501') return fail('CROSS_TENANT_DATA', { cause, transient: false });
+  if (isPostgresInsufficientPrivilege(error.code)) {
+    const classification = classifyPostgresInsufficientPrivilege();
+    return fail(classification.code, {
+      kind: classification.kind,
+      transient: classification.transient,
+      cause,
+    });
+  }
   if (code === '23505') return fail('CONFLICT', { cause, transient: false });
   if (code === '23514') return fail('INVALID_INPUT', { cause, transient: false });
   return fail('TECHNICAL_ERROR', { cause });

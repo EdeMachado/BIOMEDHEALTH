@@ -15,6 +15,10 @@ import type {
   CarePlanEvent,
   CarePlanResult,
 } from '@/services/repositories/carePlan/types';
+import {
+  classifyPostgresInsufficientPrivilege,
+  isPostgresInsufficientPrivilege,
+} from '@/services/repositories/clinical/postgresInsufficientPrivilege';
 
 type SupabaseLikeError = { message?: string; code?: string };
 type SupabaseAuthResponse = { data: { user: { id?: string } | null }; error: SupabaseLikeError | null };
@@ -67,8 +71,16 @@ function mapBackendError(error: SupabaseLikeError): CarePlanResult<never> {
   const code = (error.code ?? '').toUpperCase();
   const message = (error.message ?? '').toLowerCase();
   const cause = { source: 'repository' as const, code: error.code, message: error.message };
+  if (isPostgresInsufficientPrivilege(error.code)) {
+    const classification = classifyPostgresInsufficientPrivilege();
+    return fail(classification.code, {
+      kind: classification.kind,
+      transient: classification.transient,
+      cause,
+    });
+  }
   if (code === '23505' || message.includes('one_open')) return fail('OPEN_PLAN_EXISTS', { cause });
-  if (code === '42501' || message.includes('imutavel') || message.includes('encerrado')) {
+  if (message.includes('imutavel') || message.includes('encerrado')) {
     return fail('PLAN_CLOSED', { cause });
   }
   if (

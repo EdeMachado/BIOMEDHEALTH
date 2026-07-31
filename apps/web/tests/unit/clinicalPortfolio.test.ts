@@ -132,6 +132,10 @@ describe('carteira clinica vinculada', () => {
     client.forcedError = { code: '42501', message: 'denied' };
     const backend = await repository.listLinkedClinicalPatients({ context: context() });
     expect(backend.ok).toBe(false);
+    if (backend.ok) return;
+    expect(backend.error.code).toBe('CROSS_TENANT_DATA');
+    expect(backend.error.kind).toBe('authorization');
+    expect(backend.error.transient).toBe(false);
 
     client.forcedError = null;
     client.rows = [

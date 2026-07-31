@@ -13,6 +13,10 @@ import type {
   ClinicalRecordResult,
   ClinicalRecordVersion,
 } from '@/services/repositories/clinicalRecord/types';
+import {
+  classifyPostgresInsufficientPrivilege,
+  isPostgresInsufficientPrivilege,
+} from '@/services/repositories/clinical/postgresInsufficientPrivilege';
 
 type SupabaseLikeError = {
   message?: string;
@@ -134,7 +138,15 @@ function mapBackendError(error: SupabaseLikeError): ClinicalRecordResult<never> 
     code: error.code,
     message: error.message,
   };
-  if (code === '42501' || message.includes('imutavel')) {
+  if (isPostgresInsufficientPrivilege(error.code)) {
+    const classification = classifyPostgresInsufficientPrivilege();
+    return fail(classification.code, {
+      kind: classification.kind,
+      transient: classification.transient,
+      cause,
+    });
+  }
+  if (message.includes('imutavel')) {
     return fail('RECORD_CONCLUDED', { cause, transient: false });
   }
   if (code === '23505') return fail('CONFLICT', { cause, transient: false });

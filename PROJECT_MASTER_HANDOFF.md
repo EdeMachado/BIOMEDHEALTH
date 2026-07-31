@@ -15,7 +15,7 @@ Este documento é a **fonte oficial de continuidade e governança** do projeto B
 |---|---|
 | Repositório | `EdeMachado/BIOMEDHEALTH` |
 | Branch de referência | `main` |
-| HEAD de `origin/main` | `0f3f666403b6d47b2fa2a2c144fe5667ae0dd538` |
+| Baseline de `origin/main` utilizado na consolidação | `0f3f666403b6d47b2fa2a2c144fe5667ae0dd538` |
 | Último merge relevante | PR #15 — normalização PostgreSQL `42501` |
 | Data de consolidação deste handoff | 2026-07-31 |
 
@@ -160,7 +160,7 @@ Ver também a seção homônima do backlog: bases legais/texto de consentimento;
 
 ## 12. Sequência recomendada de retomada
 
-1. **Consolidação documental** (este handoff + backlog + `.env.example`) — entregue nesta execução (worktree local; sem commit/PR até autorização).
+1. **Consolidação documental** (este handoff + backlog + `.env.example`) — publicada no Draft PR #16; integração em main pendente.
 2. **SUP-D01** — próximo ticket técnico **recomendado**, **condicionado** à confirmação da granularidade de unidade aplicável a campanhas/planos (o backlog afirma aprovação da granularidade em A01; o gap `unit_id` em C01.2 permanece — **não** declarar D01 incondicionalmente desbloqueado sem fechar essa contradição operacional).
 3. **SUP-B04** — alternativa posterior; condicionada à revisão de qualquer fallback mock inseguro no domínio preventivo.
 4. Gap residual `unit_id` — controlar como dependência arquitetural quando o ticket tocar entidades operacionais.

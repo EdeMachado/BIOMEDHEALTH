@@ -463,34 +463,57 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 1. **Identificador**: `SUP-C01`  
 2. **Titulo**: Schema de vinculo assistencial e agenda clinica  
 3. **Finalidade**: estruturar base de atendimentos e vinculos reais.  
-4. **Escopo incluido**:
+4. **Status parent**: parcialmente atendida pela filha SUP-C01.1 (carteira); agenda permanece fora desta entrega.
+5. **Escopo incluido (parent)**:
    - consolidacao de `professional_assignments` e `appointments`;
    - indices por `organization_id`, `professional_id`, `user_id`, `starts_at`;
-   - status padronizados de agenda.  
-5. **Fora do escopo**:
+   - status padronizados de agenda.
+6. **Fora do escopo**:
    - telemedicina real;
-   - integracao com prontuario externo.  
-6. **Dependencias**: `SUP-A01`, `SUP-A03`.  
-7. **Entidades/tabelas**: `professional_assignments`, `appointments`.  
-8. **Perfis/permissoes afetados**:
-   - medico, profissional_saude, gestor_clinico;
-   - perfis gerenciais apenas leitura agregada (quando aplicavel).  
-9. **RLS necessaria**:
-   - profissional so le/agenda vinculados;
-   - gestor clinico supervisiona no tenant;
-   - negacao para perfis nao clinicos.  
-10. **Criterios de aceite**:
-   - carteira nao exibe nao vinculados;
-   - agenda filtra corretamente por profissional e tenant.  
-11. **Testes obrigatorios**:
-   - unitarios de vinculo;
-   - integracao de filtros;
-   - negacao cross-tenant e sem vinculo.  
-12. **Riscos de seguranca/LGPD**:
-   - erro de join expor usuarios de outro profissional;
-   - conflito de timezone em agendas sensiveis.  
-13. **Estimativa**: media  
-14. **Ordem recomendada**: 9
+   - integracao com prontuario externo.
+7. **Dependencias**: `SUP-A01`, `SUP-A03`, `SUP-B03.2`.
+8. **Entidades/tabelas**: `professional_assignments`, `appointments`.
+
+9. **Perfis/permissoes afetados**:
+   - medico, profissional_saude;
+   - gestores sem papel clinico sem carteira nominal.
+10. **Nota**: a SUP-C01 parent nao e marcada como integralmente implementada ate agenda/vinculo completo.
+
+#### SUP-C01.1 - Carteira clinica persistida por vinculo ativo
+
+1. **Status**: implementada localmente na branch `feat/sup-c01-real-clinical-portfolio` (aguardando revisao pre-commit; sem staging/commit).
+2. **Objetivo**: como profissional clinico autenticado, visualizar a carteira de pacientes com vinculo clinico ativo na minha organizacao, para acessar a visao read-only da jornada de cada paciente autorizado, sem depender de dados demonstrativos no modo Supabase.
+3. **Dependencias**: `SUP-B03.2` (leitura clinica de jornada), `app_auth.has_active_clinical_assignment`.
+4. **Escopo incluido**:
+   - RPC read-only `list_linked_clinical_patients` / `can_list_linked_clinical_portfolio`;
+   - repository/service de carteira mock+supabase;
+   - substituicao da lista demo em `ClinicalPortfolioPage` no modo Supabase;
+   - integracao com painel de jornada da SUP-B03.2;
+   - estados: loading, carregada, vazia autorizada, negada, erro.
+5. **Escopo excluido**:
+   - agenda (`appointments`);
+   - escrita clinica;
+   - gestao nominal;
+   - ficha/plano/registros (SUP-C02+);
+   - SUP-B04.
+6. **Criterios de aceite**:
+   - carteira Supabase exclusivamente persistida;
+   - somente vinculos ativos do `auth.uid()`;
+   - mesma organizacao ativa profissional+paciente;
+   - papeis `medico` / `profissional_saude`;
+   - gestor sem papel clinico negado;
+   - vinculo inativo e cross-tenant excluidos;
+   - profissional nao consulta carteira de outro;
+   - vazia autorizada != erro;
+   - sem demoData/localStorage/sessionStorage como autorizacao no Supabase;
+   - selecao integrada a SUP-B03.2;
+   - read-only;
+   - mock deterministico;
+   - campos minimos;
+   - migrations 0001-0010 imutaveis.
+7. **Migration prevista**: incremental `0011_clinical_portfolio_linked_read.sql` + rollback + validation.
+8. **Arquitetura**: RPC SECURITY DEFINER (justificativa: RLS legada JWT em `professional_assignments` + retorno minimo sem professional_id de cliente).
+9. **Testes**: unitarios; fake client; integracao UI; Postgres descartavel; E2E.
 
 ### SUP-C02
 

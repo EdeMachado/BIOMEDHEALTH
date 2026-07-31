@@ -65,7 +65,7 @@ describe('integracao clinica de jornada vinculada', () => {
     await seedTitularJourney();
     setClinicalSession('pro-1');
     renderPortfolio();
-    expect(await screen.findByText('Ana Demo')).toBeInTheDocument();
+    expect(await screen.findByTestId('clinical-portfolio-card-usr-1')).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByTestId('clinical-journey-label-usr-1')).toHaveTextContent(
         /Bem-estar e Prevenção/
@@ -78,7 +78,7 @@ describe('integracao clinica de jornada vinculada', () => {
   it('paciente vinculado sem jornada mostra estado vazio autorizado', async () => {
     setClinicalSession('pro-1');
     renderPortfolio();
-    expect(await screen.findByText('Ana Demo')).toBeInTheDocument();
+    expect(await screen.findByTestId('clinical-portfolio-card-usr-1')).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByTestId('clinical-journey-label-usr-1')).toHaveTextContent(
         /Sem jornada registrada/
@@ -92,13 +92,11 @@ describe('integracao clinica de jornada vinculada', () => {
     renderPortfolio();
     const expected = assignedPatientsByProfessional['pro-2'] ?? [];
     for (const patientId of expected) {
-      await waitFor(() => {
-        expect(screen.getByTestId(`clinical-journey-${patientId}`)).toBeInTheDocument();
-      });
-      await waitFor(() => {
-        expect(screen.queryByText(/Acesso clinico nao autorizado/i)).not.toBeInTheDocument();
-      });
+      expect(await screen.findByTestId(`clinical-portfolio-card-${patientId}`)).toBeInTheDocument();
     }
+    await waitFor(() => {
+      expect(screen.queryByText(/Acesso clinico nao autorizado/i)).not.toBeInTheDocument();
+    });
   });
 
   it('profissional sem vinculo nao visualiza carteira do paciente', async () => {

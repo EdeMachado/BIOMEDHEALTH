@@ -1,13 +1,18 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink } from 'react-router';
-import { canProfessionalAccessUser } from '@/app/routes/guards';
+import { loadLinkedClinicalPortfolio } from '@/domains/clinicalPortfolio/clinicalPortfolioService';
 import {
   loadLinkedPatientJourneyViews,
   summarizeClinicalJourneyViews,
 } from '@/domains/journey/journeyService';
 import { useAuth } from '@/services/auth/AuthContext';
 import { getSupabaseClient } from '@/services/api/supabaseClient';
-import { clinicalPatients } from '@/services/repositories/demoData';
+import {
+  createClinicalPortfolioRepositoryFactory,
+  resolveClinicalPortfolioRepositoryMode,
+} from '@/services/repositories/clinicalPortfolio/factory';
+import type { ClinicalPortfolioPatient } from '@/services/repositories/clinicalPortfolio/types';
+import type { SupabaseClinicalPortfolioClient } from '@/services/repositories/clinicalPortfolio/supabaseClinicalPortfolioRepository';
 import {
   createJourneyRepositoryFactory,
   resolveJourneyRepositoryMode,
@@ -17,18 +22,33 @@ import { Button } from '@/shared/ui/button';
 import { Card, CardDescription, CardTitle } from '@/shared/ui/card';
 
 export function ClinicalOverviewPage() {
+  const { patients, loading, error } = useClinicalPortfolio();
+  const primary = !loading && !error ? (patients[0] ?? null) : null;
+
   return (
     <div className="space-y-4">
-      <ClinicalPatientContextHeader />
+      <ClinicalPatientContextHeader patient={primary} />
       <Card className="space-y-3">
-        <ClinicalPatientJourneyPanel patientUserId="usr-1" patientName="Ana Demo" />
+        {loading ? <p className="text-sm text-[var(--muted-foreground)]">Carregando carteira...</p> : null}
+        {!loading && error ? <p className="text-sm text-red-600">{error}</p> : null}
+        {!loading && !error && primary ? (
+          <ClinicalPatientJourneyPanel
+            patientUserId={primary.patientId}
+            patientName={primary.displayName}
+          />
+        ) : null}
+        {!loading && !error && !primary ? (
+          <p className="text-sm text-[var(--muted-foreground)]" data-testid="clinical-portfolio-empty">
+            Nenhum paciente vinculado para acompanhamento.
+          </p>
+        ) : null}
       </Card>
       <Card className="space-y-3">
       <CardTitle>Painel profissional</CardTitle>
       <CardDescription>Agenda, carteira de usuários vinculados e plano de cuidado.</CardDescription>
       <div className="grid gap-2 sm:grid-cols-3">
         <Info label="Atendimentos hoje" value="4" />
-        <Info label="Usuários vinculados" value="4" />
+        <Info label="Usuários vinculados" value={String(patients.length)} />
         <Info label="Reavaliações pendentes" value="2" />
       </div>
       <div className="rounded-xl border p-3">
@@ -123,55 +143,100 @@ export function ClinicalAgendaPage() {
 }
 
 export function ClinicalPortfolioPage() {
-  const { user } = useAuth();
   const [query, setQuery] = useState('');
-  const [status, setStatus] = useState<'todos' | 'Em acompanhamento' | 'Atenção' | 'Estável'>('todos');
+  const { patients, loading, error } = useClinicalPortfolio();
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
 
-  const allowedIds = user ? clinicalPatients.filter((p) => canProfessionalAccessUser(user.id, p.id)).map((p) => p.id) : [];
-  const list = clinicalPatients
-    .filter((p) => allowedIds.includes(p.id))
-    .filter((p) => p.nome.toLowerCase().includes(query.toLowerCase()))
-    .filter((p) => status === 'todos' || p.statusAcompanhamento === status);
+  useEffect(() => {
+    if (loading) {
+      setSelectedPatientId(null);
+      return;
+    }
+    if (error || patients.length === 0) {
+      setSelectedPatientId(null);
+      return;
+    }
+    setSelectedPatientId((current) =>
+      current && patients.some((item) => item.patientId === current) ? current : patients[0].patientId
+    );
+  }, [loading, error, patients]);
+
+  const list = patients.filter((patient) =>
+    patient.displayName.toLowerCase().includes(query.toLowerCase())
+  );
+  const selectedPatient =
+    !loading && !error && selectedPatientId
+      ? (patients.find((item) => item.patientId === selectedPatientId) ?? null)
+      : null;
 
   return (
     <div className="space-y-4">
-      <ClinicalPatientContextHeader />
+      <ClinicalPatientContextHeader patient={selectedPatient} />
       <Card className="space-y-3">
-      <CardTitle>Minha carteira</CardTitle>
-      <CardDescription>Exibe apenas usuários vinculados ao profissional logado.</CardDescription>
-      <div className="grid gap-2 sm:grid-cols-[1fr_200px]">
+        <CardTitle>Minha carteira</CardTitle>
+        <CardDescription>Exibe apenas usuários com vínculo clínico ativo do profissional logado.</CardDescription>
         <input
-          className="focus-ring h-10 rounded-xl border px-3 text-sm"
+          className="focus-ring h-10 w-full rounded-xl border px-3 text-sm"
           placeholder="Buscar usuário vinculado"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
+          data-testid="clinical-portfolio-search"
         />
-        <select className="focus-ring h-10 rounded-xl border px-3 text-sm" value={status} onChange={(event) => setStatus(event.target.value as typeof status)}>
-          <option value="todos">Todos os status</option>
-          <option value="Em acompanhamento">Em acompanhamento</option>
-          <option value="Atenção">Atenção</option>
-          <option value="Estável">Estável</option>
-        </select>
-      </div>
-      <div className="grid gap-2">
-        {list.map((patient) => (
-          <article key={patient.id} className="rounded-xl border bg-white p-3 text-sm shadow-[var(--shadow-card)]">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="font-semibold">{patient.nome}</p>
-              <span className={`status-badge ${patient.statusAcompanhamento === 'Atenção' ? 'status-warning' : patient.statusAcompanhamento === 'Estável' ? 'status-success' : 'status-info'}`}>
-                {patient.statusAcompanhamento}
-              </span>
-            </div>
-            <p className="text-[var(--muted-foreground)]">Faixa etária: {patient.faixaEtaria}</p>
-            <ClinicalPatientJourneyPanel patientUserId={patient.id} patientName={patient.nome} />
-            <p className="text-[var(--muted-foreground)]">Última avaliação: {patient.ultimaAvaliacao}</p>
-            <p>Próxima ação: {patient.proximaAcao}</p>
-            <Button className="mt-2" size="sm" asChild>
-              <NavLink to="/clinica/avaliacoes">Abrir acompanhamento</NavLink>
-            </Button>
-          </article>
-        ))}
-      </div>
+        {loading ? (
+          <p className="text-sm text-[var(--muted-foreground)]" data-testid="clinical-portfolio-loading">
+            Carregando carteira persistida...
+          </p>
+        ) : null}
+        {!loading && error ? (
+          <p className="text-sm text-red-600" data-testid="clinical-portfolio-error">
+            {error}
+          </p>
+        ) : null}
+        {!loading && !error && patients.length === 0 ? (
+          <p className="text-sm text-[var(--muted-foreground)]" data-testid="clinical-portfolio-empty">
+            Nenhum paciente vinculado para acompanhamento.
+          </p>
+        ) : null}
+        {!loading && !error && patients.length > 0 && list.length === 0 ? (
+          <p
+            className="text-sm text-[var(--muted-foreground)]"
+            data-testid="clinical-portfolio-search-empty"
+          >
+            Nenhum paciente correspondente à busca.
+          </p>
+        ) : null}
+        <div className="grid gap-2">
+          {list.map((patient) => (
+            <article
+              key={patient.patientId}
+              className="rounded-xl border bg-white p-3 text-sm shadow-[var(--shadow-card)]"
+              data-testid={`clinical-portfolio-card-${patient.patientId}`}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-semibold">{patient.displayName}</p>
+                <span className="status-badge status-info">{patient.assignmentStatus}</span>
+              </div>
+              <button
+                type="button"
+                className="focus-ring mt-2 text-sm text-[var(--primary)] underline"
+                onClick={() => setSelectedPatientId(patient.patientId)}
+                data-testid={`clinical-portfolio-select-${patient.patientId}`}
+              >
+                Ver jornada
+              </button>
+              {selectedPatient?.patientId === patient.patientId ? (
+                <ClinicalPatientJourneyPanel
+                  key={patient.patientId}
+                  patientUserId={patient.patientId}
+                  patientName={patient.displayName}
+                />
+              ) : null}
+              <Button className="mt-2" size="sm" asChild>
+                <NavLink to="/clinica/avaliacoes">Abrir acompanhamento</NavLink>
+              </Button>
+            </article>
+          ))}
+        </div>
       </Card>
     </div>
   );
@@ -183,7 +248,7 @@ export function ClinicalRecordPage() {
 
   return (
     <div className="space-y-4">
-      <ClinicalPatientContextHeader />
+      <ClinicalDemoPatientContextHeader />
       <Card className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <CardTitle>Ficha clínica demonstrativa</CardTitle>
@@ -240,7 +305,7 @@ export function ClinicalRecordPage() {
 export function ClinicalAssessmentPage() {
   return (
     <div className="space-y-4">
-      <ClinicalPatientContextHeader />
+      <ClinicalDemoPatientContextHeader />
       <Card className="space-y-2">
         <CardTitle>Avaliações do usuário vinculado</CardTitle>
         <CardDescription>Histórico orientativo com reavaliação preventiva.</CardDescription>
@@ -274,7 +339,7 @@ export function ClinicalCarePlanPage() {
 
   return (
     <div className="space-y-4">
-      <ClinicalPatientContextHeader />
+      <ClinicalDemoPatientContextHeader />
       <Card className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <CardTitle>Plano de cuidado</CardTitle>
@@ -316,7 +381,7 @@ export function ClinicalAttendanceRecordPage() {
 
   return (
     <div className="space-y-4">
-      <ClinicalPatientContextHeader />
+      <ClinicalDemoPatientContextHeader />
       <Card className="space-y-2">
         <div className="flex items-center justify-between gap-2">
           <CardTitle>Registros assistenciais</CardTitle>
@@ -353,9 +418,134 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ClinicalPatientContextHeader() {
+function useClinicalPortfolio() {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [patients, setPatients] = useState<ClinicalPortfolioPatient[]>([]);
+  const requestIdRef = useRef(0);
+
+  const repositoryConfig = useMemo(() => {
+    try {
+      const mode = resolveClinicalPortfolioRepositoryMode(import.meta.env);
+      if (mode === 'supabase') {
+        return {
+          mode,
+          repository: createClinicalPortfolioRepositoryFactory({
+            mode: 'supabase',
+            supabaseClient: getSupabaseClient() as unknown as SupabaseClinicalPortfolioClient,
+          }),
+        };
+      }
+      return {
+        mode,
+        repository: createClinicalPortfolioRepositoryFactory({ mode: 'mock' }),
+      };
+    } catch {
+      return { mode: 'mock' as const, repository: null };
+    }
+  }, []);
+
+  useEffect(() => {
+    let disposed = false;
+    if (!user || !repositoryConfig.repository) {
+      setLoading(false);
+      setPatients([]);
+      setError('Nao foi possivel carregar a carteira clinica neste momento.');
+      return;
+    }
+
+    const currentRequest = ++requestIdRef.current;
+    setLoading(true);
+    setError(null);
+    setPatients([]);
+    void loadLinkedClinicalPortfolio(repositoryConfig.repository, {
+      sessionUserId: user.id,
+      professionalUserId: user.id,
+      organizationId: user.organizationId,
+    }).then((result) => {
+      if (disposed || currentRequest !== requestIdRef.current) return;
+      setLoading(false);
+      if (!result.ok) {
+        setPatients([]);
+        if (result.error.code === 'CLINICAL_ACCESS_DENIED' || result.error.code === 'CROSS_TENANT_DATA') {
+          setError('Acesso clinico nao autorizado para a carteira.');
+          return;
+        }
+        if (result.error.code === 'NO_SESSION' || result.error.code === 'IDENTITY_MISMATCH') {
+          setError('Sessao clinica ausente ou invalida.');
+          return;
+        }
+        setError('Nao foi possivel carregar a carteira clinica neste momento.');
+        return;
+      }
+      setPatients(result.data);
+      setError(null);
+    });
+
+    return () => {
+      disposed = true;
+    };
+  }, [user, repositoryConfig]);
+
+  return { patients, loading, error };
+}
+
+/** Header da carteira/overview: somente paciente autorizado da carteira persistida. */
+function ClinicalPatientContextHeader({
+  patient,
+}: {
+  patient: ClinicalPortfolioPatient | null;
+}) {
   return (
-    <Card className="space-y-2">
+    <Card className="space-y-2" data-testid="clinical-patient-context-header">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          {patient ? (
+            <>
+              <p className="text-xs uppercase tracking-wide text-[var(--muted-foreground)]">
+                Paciente vinculado
+              </p>
+              <h3 className="text-lg font-semibold" data-testid="clinical-patient-context-name">
+                {patient.displayName}
+              </h3>
+              <p
+                className="text-sm text-[var(--muted-foreground)]"
+                data-testid="clinical-patient-context-status"
+              >
+                Vínculo: {patient.assignmentStatus}
+              </p>
+            </>
+          ) : (
+            <h3
+              className="text-lg font-semibold"
+              data-testid="clinical-patient-context-empty"
+            >
+              Nenhum paciente selecionado
+            </h3>
+          )}
+        </div>
+        {patient ? (
+          <span className="status-badge status-info" data-testid="clinical-patient-context-badge">
+            {patient.assignmentStatus}
+          </span>
+        ) : null}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <NavLink to="/clinica" className={tabLinkClass}>Resumo</NavLink>
+        <NavLink to="/clinica/avaliacoes" className={tabLinkClass}>Avaliações</NavLink>
+        <NavLink to="/clinica/ficha" className={tabLinkClass}>Ficha clínica</NavLink>
+        <NavLink to="/clinica/plano-cuidado" className={tabLinkClass}>Plano de cuidado</NavLink>
+        <NavLink to="/clinica/registros" className={tabLinkClass}>Registros</NavLink>
+      </div>
+    </Card>
+  );
+}
+
+/** Chrome demonstrativo isolado (ficha/plano/avaliacoes/registros ainda ficticios). */
+function ClinicalDemoPatientContextHeader() {
+  return (
+    <Card className="space-y-2" data-testid="clinical-demo-patient-context-header">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-xs uppercase tracking-wide text-[var(--muted-foreground)]">Dados fictícios</p>
@@ -411,21 +601,16 @@ function ClinicalPatientJourneyPanel({
 
   useEffect(() => {
     let disposed = false;
+    setLabel(null);
+    setDetail(null);
+    setError(null);
     if (!user || !repositoryConfig.repository) {
       setLoading(false);
       setError('Nao foi possivel carregar a jornada clinica neste momento.');
       return;
     }
-    if (!canProfessionalAccessUser(user.id, patientUserId) && repositoryConfig.mode === 'mock') {
-      setLoading(false);
-      setError('Acesso clinico nao autorizado para este usuario.');
-      setLabel(null);
-      setDetail(null);
-      return;
-    }
 
     setLoading(true);
-    setError(null);
     void loadLinkedPatientJourneyViews(repositoryConfig.repository, {
       sessionUserId: user.id,
       professionalUserId: user.id,

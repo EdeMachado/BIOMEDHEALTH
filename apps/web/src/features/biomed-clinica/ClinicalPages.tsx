@@ -13,6 +13,16 @@ import {
   saveLinkedClinicalRecordDraft,
 } from '@/domains/clinicalRecord/clinicalRecordService';
 import {
+  addLinkedCarePlanNote,
+  closeLinkedCarePlan,
+  createLinkedCarePlan,
+  createLinkedCarePlanAction,
+  listLinkedCarePlans,
+  loadOpenCarePlan,
+  updateLinkedCarePlan,
+  updateLinkedCarePlanAction,
+} from '@/domains/carePlan/carePlanService';
+import {
   loadLinkedPatientJourneyViews,
   summarizeClinicalJourneyViews,
 } from '@/domains/journey/journeyService';
@@ -40,6 +50,17 @@ import {
   createClinicalRecordRepositoryFactory,
   resolveClinicalRecordRepositoryMode,
 } from '@/services/repositories/clinicalRecord/factory';
+import {
+  createCarePlanRepositoryFactory,
+  resolveCarePlanRepositoryMode,
+} from '@/services/repositories/carePlan/factory';
+import type { SupabaseCarePlanClient } from '@/services/repositories/carePlan/supabaseCarePlanRepository';
+import type {
+  CarePlan,
+  CarePlanAction,
+  CarePlanBundle,
+  CarePlanContext,
+} from '@/services/repositories/carePlan/types';
 import {
   CLINICAL_RECORD_SECTION_DEFINITIONS,
   CLINICAL_RECORD_SCHEMA_VERSION,
@@ -598,40 +619,264 @@ export function ClinicalAssessmentPage() {
 }
 
 export function ClinicalCarePlanPage() {
-  const [items, setItems] = useState([
-    {
-      id: 'plan-1',
-      objetivo: 'Melhorar rotina de sono',
-      status: 'Em andamento',
-      prazo: '26/08/2026',
-      reavaliacao: '30/08/2026',
-    },
-  ]);
+  const { patients, loading: portfolioLoading, error: portfolioError } = useClinicalPortfolio();
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
+  const carePlan = useCarePlan(selectedPatientId);
+
+  useEffect(() => {
+    if (portfolioLoading) {
+      setSelectedPatientId(null);
+      return;
+    }
+    if (portfolioError || patients.length === 0) {
+      setSelectedPatientId(null);
+      return;
+    }
+    setSelectedPatientId((current) =>
+      current && patients.some((item) => item.patientId === current) ? current : patients[0].patientId
+    );
+  }, [portfolioLoading, portfolioError, patients]);
+
+  const selectedPatient =
+    !portfolioLoading && !portfolioError && selectedPatientId
+      ? (patients.find((item) => item.patientId === selectedPatientId) ?? null)
+      : null;
 
   return (
     <div className="space-y-4">
-      <ClinicalDemoPatientContextHeader />
-      <Card className="space-y-2">
+      <ClinicalPatientContextHeader patient={selectedPatient} />
+      <Card className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle>Plano de cuidado</CardTitle>
-          <Button size="sm" onClick={() => setItems((current) => [...current, { id: `plan-${current.length + 1}`, objetivo: 'Aumentar frequência de movimento', status: 'Planejado', prazo: '15/09/2026', reavaliacao: '20/09/2026' }])}>
-            Adicionar objetivo
-          </Button>
+          <div>
+            <CardTitle>Plano de cuidado</CardTitle>
+            <CardDescription>Objetivos, ações, prazos, reavaliações e evoluções persistidas.</CardDescription>
+          </div>
         </div>
-        <CardDescription>Objetivos, ações, responsável e reavaliação.</CardDescription>
-        {items.map((item) => (
-          <article key={item.id} className="rounded-xl border p-3 text-sm">
-            <p className="font-semibold">{item.objetivo}</p>
-            <p className="text-[var(--muted-foreground)]">Responsável: equipe clínica demo</p>
-            <p>Status: {item.status} • Prazo: {item.prazo}</p>
-            <p>Reavaliação: {item.reavaliacao}</p>
-            <div className="mt-2 flex gap-2">
-              <Button size="sm" variant="outline">Editar</Button>
-              <Button size="sm" variant="secondary">Atualizar status</Button>
-              <Button size="sm" variant="outline">Registrar evolução</Button>
+        <p className="text-xs text-[var(--muted-foreground)]" data-testid="care-plan-validation-note">
+          Estrutura clínica sujeita a aprimoramentos futuros.
+        </p>
+
+        {patients.length > 1 ? (
+          <label className="block text-sm">
+            <span className="text-[var(--muted-foreground)]">Paciente vinculado</span>
+            <select
+              className="focus-ring mt-1 h-10 w-full rounded-xl border px-3"
+              value={selectedPatientId ?? ''}
+              onChange={(event) => setSelectedPatientId(event.target.value)}
+              data-testid="care-plan-patient-select"
+            >
+              {patients.map((patient) => (
+                <option key={patient.patientId} value={patient.patientId}>
+                  {patient.displayName}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+
+        {portfolioLoading || carePlan.loading ? (
+          <p className="text-sm text-[var(--muted-foreground)]" data-testid="care-plan-loading">
+            Carregando plano de cuidado...
+          </p>
+        ) : null}
+        {!portfolioLoading && portfolioError ? (
+          <p className="text-sm text-red-600" data-testid="care-plan-portfolio-error">
+            {portfolioError}
+          </p>
+        ) : null}
+        {!carePlan.loading && carePlan.error ? (
+          <p className="text-sm text-red-600" data-testid="care-plan-error">
+            {carePlan.error}
+          </p>
+        ) : null}
+        {!portfolioLoading && !portfolioError && patients.length === 0 ? (
+          <p className="text-sm text-[var(--muted-foreground)]" data-testid="care-plan-empty-portfolio">
+            Nenhum paciente vinculado para abrir o plano.
+          </p>
+        ) : null}
+
+        {!carePlan.loading && !carePlan.error && selectedPatient && !carePlan.openBundle ? (
+          <div className="space-y-3" data-testid="care-plan-create-panel">
+            <p className="text-sm text-[var(--muted-foreground)]">Nenhum plano ativo. Crie o plano inicial.</p>
+            <input
+              className="focus-ring h-10 w-full rounded-xl border px-3 text-sm"
+              placeholder="Título do plano"
+              value={carePlan.draftTitle}
+              onChange={(event) => carePlan.setDraftTitle(event.target.value)}
+              data-testid="care-plan-draft-title"
+            />
+            <textarea
+              className="focus-ring min-h-20 w-full rounded-xl border p-2 text-sm"
+              placeholder="Objetivo geral"
+              value={carePlan.draftObjective}
+              onChange={(event) => carePlan.setDraftObjective(event.target.value)}
+              data-testid="care-plan-draft-objective"
+            />
+            <Button size="sm" disabled={carePlan.busy} onClick={() => void carePlan.createPlan()} data-testid="care-plan-create">
+              Criar plano
+            </Button>
+          </div>
+        ) : null}
+
+        {carePlan.openBundle ? (
+          <div className="space-y-3" data-testid="care-plan-active-panel">
+            <div className="rounded-xl border p-3 text-sm space-y-2">
+              <p className="font-semibold" data-testid="care-plan-active-title">
+                {carePlan.openBundle.plan.title}
+              </p>
+              <p className="text-[var(--muted-foreground)]">{carePlan.openBundle.plan.generalObjective}</p>
+              <p>
+                Status: {carePlan.openBundle.plan.planStatus} • versão {carePlan.openBundle.plan.version}
+              </p>
+              <p className="text-xs text-[var(--muted-foreground)]">
+                Atualizado em {formatDateTime(carePlan.openBundle.plan.updatedAt)}
+                {carePlan.openBundle.plan.updatedBy ? ` • por ${carePlan.openBundle.plan.updatedBy}` : ''}
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <input
+                  className="focus-ring h-10 rounded-xl border px-3 text-sm"
+                  value={carePlan.editTitle}
+                  onChange={(event) => carePlan.setEditTitle(event.target.value)}
+                  aria-label="Editar título do plano"
+                  data-testid="care-plan-edit-title"
+                />
+                <input
+                  className="focus-ring h-10 rounded-xl border px-3 text-sm"
+                  value={carePlan.editObjective}
+                  onChange={(event) => carePlan.setEditObjective(event.target.value)}
+                  aria-label="Editar objetivo geral"
+                  data-testid="care-plan-edit-objective"
+                />
+              </div>
+              <Button size="sm" variant="outline" disabled={carePlan.busy} onClick={() => void carePlan.savePlan()} data-testid="care-plan-save">
+                Salvar alterações do plano
+              </Button>
             </div>
-          </article>
-        ))}
+
+            <div className="space-y-2">
+              <p className="text-sm font-semibold">Ações</p>
+              {carePlan.openBundle.actions.map((action) => (
+                <article key={action.id} className="rounded-xl border p-3 text-sm" data-testid={`care-plan-action-${action.id}`}>
+                  <p className="font-semibold">{action.specificObjective}</p>
+                  <p>{action.actionText}</p>
+                  <p className="text-[var(--muted-foreground)]">
+                    {action.frequency} • {action.actionStatus}
+                    {action.dueDate ? ` • prazo ${action.dueDate}` : ''}
+                    {action.completedAt ? ` • concluída em ${formatDateTime(action.completedAt)}` : ''}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={carePlan.busy}
+                      onClick={() => carePlan.beginEditAction(action)}
+                      data-testid={`care-plan-action-edit-${action.id}`}
+                    >
+                      Editar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={carePlan.busy || action.actionStatus === 'concluida' || action.actionStatus === 'cancelada'}
+                      onClick={() => void carePlan.advanceAction(action)}
+                      data-testid={`care-plan-action-advance-${action.id}`}
+                    >
+                      Atualizar status
+                    </Button>
+                  </div>
+                </article>
+              ))}
+              <div className="grid gap-2 sm:grid-cols-2">
+                <input
+                  className="focus-ring h-10 rounded-xl border px-3 text-sm"
+                  placeholder="Objetivo da ação"
+                  value={carePlan.actionObjective}
+                  onChange={(event) => carePlan.setActionObjective(event.target.value)}
+                  data-testid="care-plan-action-objective"
+                />
+                <input
+                  className="focus-ring h-10 rounded-xl border px-3 text-sm"
+                  placeholder="Descrição da ação"
+                  value={carePlan.actionText}
+                  onChange={(event) => carePlan.setActionText(event.target.value)}
+                  data-testid="care-plan-action-text"
+                />
+                <input
+                  className="focus-ring h-10 rounded-xl border px-3 text-sm"
+                  placeholder="Frequência"
+                  value={carePlan.actionFrequency}
+                  onChange={(event) => carePlan.setActionFrequency(event.target.value)}
+                  data-testid="care-plan-action-frequency"
+                />
+                <Button size="sm" disabled={carePlan.busy} onClick={() => void carePlan.addAction()} data-testid="care-plan-action-add">
+                  {carePlan.editingActionId ? 'Salvar ação' : 'Adicionar ação'}
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <textarea
+                className="focus-ring min-h-16 w-full rounded-xl border p-2 text-sm"
+                placeholder="Registrar evolução clínica"
+                value={carePlan.noteText}
+                onChange={(event) => carePlan.setNoteText(event.target.value)}
+                data-testid="care-plan-note-text"
+              />
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" disabled={carePlan.busy} onClick={() => void carePlan.addNote('evolution')} data-testid="care-plan-add-evolution">
+                  Registrar evolução
+                </Button>
+                <Button size="sm" variant="outline" disabled={carePlan.busy} onClick={() => void carePlan.addNote('reassessment')} data-testid="care-plan-add-reassessment">
+                  Registrar reavaliação
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" disabled={carePlan.busy} onClick={() => void carePlan.closePlan('conclude')} data-testid="care-plan-conclude">
+                Concluir plano
+              </Button>
+              <input
+                className="focus-ring h-9 min-w-56 rounded-xl border px-3 text-sm"
+                placeholder="Motivo da suspensão"
+                value={carePlan.suspendReason}
+                onChange={(event) => carePlan.setSuspendReason(event.target.value)}
+                data-testid="care-plan-suspend-reason"
+              />
+              <Button size="sm" variant="secondary" disabled={carePlan.busy} onClick={() => void carePlan.closePlan('suspend')} data-testid="care-plan-suspend">
+                Suspender plano
+              </Button>
+            </div>
+
+            <div className="space-y-1" data-testid="care-plan-history">
+              <p className="text-sm font-semibold">Histórico</p>
+              {carePlan.openBundle.events.slice(0, 10).map((event) => (
+                <p key={event.id} className="text-sm text-[var(--muted-foreground)]" data-testid={`care-plan-history-item-${event.id}`}>
+                  {formatDateTime(event.createdAt)} • {event.eventKind}
+                  {event.authoredBy ? ` • ${event.authoredBy}` : ''}
+                  {event.note ? ` • ${event.note}` : ''}
+                </p>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {carePlan.historyPlans.length > 0 ? (
+          <div className="space-y-1" data-testid="care-plan-history-plans">
+            <p className="text-sm font-semibold">Planos anteriores</p>
+            {carePlan.historyPlans.map((plan) => (
+              <p key={plan.id} className="text-sm text-[var(--muted-foreground)]">
+                {plan.title} • {plan.planStatus} • v{plan.version}
+              </p>
+            ))}
+          </div>
+        ) : null}
+
+        {carePlan.message ? (
+          <p className="rounded-lg bg-[var(--secondary)] p-2 text-sm" data-testid="care-plan-message">
+            {carePlan.message}
+          </p>
+        ) : null}
       </Card>
     </div>
   );
@@ -693,6 +938,344 @@ function formatDateTime(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString('pt-BR');
+}
+
+function useCarePlan(patientId: string | null) {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState('');
+  const [openBundle, setOpenBundle] = useState<CarePlanBundle | null>(null);
+  const [historyPlans, setHistoryPlans] = useState<CarePlan[]>([]);
+  const [draftTitle, setDraftTitle] = useState('Plano de acompanhamento');
+  const [draftObjective, setDraftObjective] = useState('');
+  const [editTitle, setEditTitle] = useState('');
+  const [editObjective, setEditObjective] = useState('');
+  const [actionObjective, setActionObjective] = useState('');
+  const [actionText, setActionText] = useState('');
+  const [actionFrequency, setActionFrequency] = useState('diaria');
+  const [editingActionId, setEditingActionId] = useState<string | null>(null);
+  const [editingActionVersion, setEditingActionVersion] = useState<number | null>(null);
+  const [noteText, setNoteText] = useState('');
+  const [suspendReason, setSuspendReason] = useState('');
+  const requestIdRef = useRef(0);
+
+  const repositoryConfig = useMemo(() => {
+    try {
+      const mode = resolveCarePlanRepositoryMode(import.meta.env);
+      if (mode === 'supabase') {
+        return {
+          repository: createCarePlanRepositoryFactory({
+            mode: 'supabase',
+            supabaseClient: getSupabaseClient() as unknown as SupabaseCarePlanClient,
+          }),
+        };
+      }
+      return { repository: createCarePlanRepositoryFactory({ mode: 'mock' }) };
+    } catch {
+      return { repository: null };
+    }
+  }, []);
+
+  const context: CarePlanContext | null = user
+    ? {
+        sessionUserId: user.id,
+        professionalUserId: user.id,
+        organizationId: user.organizationId,
+      }
+    : null;
+
+  async function refresh(currentPatientId: string) {
+    if (!repositoryConfig.repository || !context) return;
+    const [open, list] = await Promise.all([
+      loadOpenCarePlan(repositoryConfig.repository, context, currentPatientId),
+      listLinkedCarePlans(repositoryConfig.repository, context, currentPatientId),
+    ]);
+    if (!open.ok) {
+      setOpenBundle(null);
+      setError(
+        open.error.code === 'CLINICAL_ACCESS_DENIED'
+          ? 'Acesso clinico nao autorizado para o plano.'
+          : open.error.code === 'PATIENT_NOT_IN_PORTFOLIO'
+            ? 'Paciente fora da carteira clinica autorizada.'
+            : 'Nao foi possivel carregar o plano de cuidado.'
+      );
+      return;
+    }
+    setOpenBundle(open.data);
+    if (open.data) {
+      setEditTitle(open.data.plan.title);
+      setEditObjective(open.data.plan.generalObjective);
+    } else {
+      setEditTitle('');
+      setEditObjective('');
+    }
+    if (list.ok) {
+      setHistoryPlans(list.data.filter((item) => item.planStatus === 'concluido' || item.planStatus === 'suspenso'));
+    } else {
+      setHistoryPlans([]);
+    }
+    setError(null);
+  }
+
+  useEffect(() => {
+    let disposed = false;
+    if (!user || !repositoryConfig.repository || !context || !patientId) {
+      setLoading(false);
+      setOpenBundle(null);
+      setHistoryPlans([]);
+      setError(patientId ? 'Nao foi possivel carregar o plano de cuidado neste momento.' : null);
+      return;
+    }
+    const currentRequest = ++requestIdRef.current;
+    setLoading(true);
+    setError(null);
+    setMessage('');
+    setOpenBundle(null);
+    void refresh(patientId).then(() => {
+      if (disposed || currentRequest !== requestIdRef.current) return;
+      setLoading(false);
+    });
+    return () => {
+      disposed = true;
+    };
+  }, [user, repositoryConfig, patientId, context?.organizationId, context?.professionalUserId, context?.sessionUserId]);
+
+  async function createPlan() {
+    if (!repositoryConfig.repository || !context || !patientId) return;
+    setBusy(true);
+    setMessage('');
+    const result = await createLinkedCarePlan(repositoryConfig.repository, context, {
+      patientId,
+      title: draftTitle,
+      generalObjective: draftObjective,
+      startsOn: new Date().toISOString().slice(0, 10),
+    });
+    setBusy(false);
+    if (!result.ok) {
+      setMessage(
+        result.error.code === 'OPEN_PLAN_EXISTS'
+          ? 'Ja existe plano ativo para este paciente.'
+          : result.error.code === 'VALIDATION_REQUIRED_FIELDS'
+            ? 'Informe titulo e objetivo geral.'
+            : 'Nao foi possivel criar o plano.'
+      );
+      return;
+    }
+    setMessage('Plano criado com rastreio historico.');
+    await refresh(patientId);
+  }
+
+  async function savePlan() {
+    if (!repositoryConfig.repository || !context || !openBundle || !patientId) return;
+    setBusy(true);
+    setMessage('');
+    const result = await updateLinkedCarePlan(repositoryConfig.repository, context, {
+      planId: openBundle.plan.id,
+      expectedVersion: openBundle.plan.version,
+      title: editTitle,
+      generalObjective: editObjective,
+    });
+    setBusy(false);
+    if (!result.ok) {
+      setMessage(
+        result.error.code === 'VERSION_CONFLICT'
+          ? 'Conflito de versao: recarregue o plano e tente novamente.'
+          : result.error.code === 'PLAN_CLOSED'
+            ? 'Plano encerrado nao pode ser editado.'
+            : 'Nao foi possivel salvar o plano.'
+      );
+      return;
+    }
+    setMessage('Plano atualizado.');
+    await refresh(patientId);
+  }
+
+  function beginEditAction(action: CarePlanAction) {
+    setEditingActionId(action.id);
+    setEditingActionVersion(action.version);
+    setActionObjective(action.specificObjective);
+    setActionText(action.actionText);
+    setActionFrequency(action.frequency);
+    setMessage('Edite a acao e salve.');
+  }
+
+  async function addAction() {
+    if (!repositoryConfig.repository || !context || !openBundle || !patientId) return;
+    setBusy(true);
+    setMessage('');
+    if (editingActionId && editingActionVersion != null) {
+      const result = await updateLinkedCarePlanAction(repositoryConfig.repository, context, {
+        actionId: editingActionId,
+        expectedVersion: editingActionVersion,
+        specificObjective: actionObjective,
+        actionText,
+        frequency: actionFrequency,
+      });
+      setBusy(false);
+      if (!result.ok) {
+        setMessage(
+          result.error.code === 'VERSION_CONFLICT'
+            ? 'Conflito de versao: recarregue o plano e tente novamente.'
+            : result.error.code === 'PLAN_CLOSED'
+              ? 'Plano encerrado nao pode receber acoes.'
+              : 'Nao foi possivel salvar a acao.'
+        );
+        return;
+      }
+      setEditingActionId(null);
+      setEditingActionVersion(null);
+      setActionObjective('');
+      setActionText('');
+      setMessage('Acao atualizada.');
+      await refresh(patientId);
+      return;
+    }
+
+    const result = await createLinkedCarePlanAction(repositoryConfig.repository, context, {
+      planId: openBundle.plan.id,
+      specificObjective: actionObjective,
+      actionText,
+      frequency: actionFrequency,
+    });
+    setBusy(false);
+    if (!result.ok) {
+      setMessage(
+        result.error.code === 'PLAN_CLOSED'
+          ? 'Plano encerrado nao pode receber acoes.'
+          : 'Nao foi possivel adicionar a acao.'
+      );
+      return;
+    }
+    setActionObjective('');
+    setActionText('');
+    setMessage('Acao adicionada ao plano.');
+    await refresh(patientId);
+  }
+
+  async function advanceAction(action: CarePlanAction) {
+    if (!repositoryConfig.repository || !context || !patientId) return;
+    const next =
+      action.actionStatus === 'pendente'
+        ? 'em_andamento'
+        : action.actionStatus === 'em_andamento'
+          ? 'concluida'
+          : action.actionStatus;
+    setBusy(true);
+    setMessage('');
+    const result = await updateLinkedCarePlanAction(repositoryConfig.repository, context, {
+      actionId: action.id,
+      expectedVersion: action.version,
+      actionStatus: next,
+    });
+    setBusy(false);
+    if (!result.ok) {
+      setMessage(
+        result.error.code === 'VERSION_CONFLICT'
+          ? 'Conflito de versao: recarregue o plano e tente novamente.'
+          : 'Nao foi possivel atualizar o status da acao.'
+      );
+      return;
+    }
+    setMessage('Status da acao atualizado.');
+    await refresh(patientId);
+  }
+
+  async function addNote(kind: 'evolution' | 'reassessment') {
+    if (!repositoryConfig.repository || !context || !openBundle || !patientId) return;
+    setBusy(true);
+    setMessage('');
+    const result = await addLinkedCarePlanNote(repositoryConfig.repository, context, {
+      planId: openBundle.plan.id,
+      note: noteText,
+      kind,
+      expectedPlanVersion: openBundle.plan.version,
+    });
+    setBusy(false);
+    if (!result.ok) {
+      setMessage(
+        result.error.code === 'VERSION_CONFLICT'
+          ? 'Conflito de versao: recarregue o plano e tente novamente.'
+          : 'Nao foi possivel registrar a anotacao clinica.'
+      );
+      return;
+    }
+    setNoteText('');
+    setMessage(kind === 'evolution' ? 'Evolucao registrada.' : 'Reavaliacao registrada.');
+    await refresh(patientId);
+  }
+
+  async function closePlan(mode: 'conclude' | 'suspend') {
+    if (!repositoryConfig.repository || !context || !openBundle || !patientId) return;
+    if (mode === 'suspend' && !suspendReason.trim()) {
+      setMessage('Informe o motivo da suspensao.');
+      return;
+    }
+    const confirmed = window.confirm(
+      mode === 'conclude'
+        ? 'Confirma a conclusao deste plano de cuidado? A operacao e historica e nao reabre o plano atual.'
+        : 'Confirma a suspensao deste plano de cuidado? Informe o motivo e continue apenas se estiver certo.'
+    );
+    if (!confirmed) return;
+    setBusy(true);
+    setMessage('');
+    const result = await closeLinkedCarePlan(repositoryConfig.repository, context, {
+      planId: openBundle.plan.id,
+      expectedVersion: openBundle.plan.version,
+      mode,
+      suspensionReason: mode === 'suspend' ? suspendReason : undefined,
+    });
+    setBusy(false);
+    if (!result.ok) {
+      setMessage(
+        result.error.code === 'VALIDATION_REQUIRED_FIELDS'
+          ? 'Informe o motivo da suspensao.'
+          : result.error.code === 'VERSION_CONFLICT'
+            ? 'Conflito de versao: recarregue o plano e tente novamente.'
+            : 'Nao foi possivel encerrar o plano.'
+      );
+      return;
+    }
+    setSuspendReason('');
+    setMessage(mode === 'conclude' ? 'Plano concluido.' : 'Plano suspenso.');
+    await refresh(patientId);
+  }
+
+  return {
+    loading,
+    busy,
+    error,
+    message,
+    openBundle,
+    historyPlans,
+    draftTitle,
+    setDraftTitle,
+    draftObjective,
+    setDraftObjective,
+    editTitle,
+    setEditTitle,
+    editObjective,
+    setEditObjective,
+    actionObjective,
+    setActionObjective,
+    actionText,
+    setActionText,
+    actionFrequency,
+    setActionFrequency,
+    editingActionId,
+    noteText,
+    setNoteText,
+    suspendReason,
+    setSuspendReason,
+    createPlan,
+    savePlan,
+    beginEditAction,
+    addAction,
+    advanceAction,
+    addNote,
+    closePlan,
+  };
 }
 
 function useClinicalRecord(patientId: string | null) {

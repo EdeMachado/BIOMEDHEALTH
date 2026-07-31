@@ -633,6 +633,30 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 13. **Estimativa**: media  
 14. **Ordem recomendada**: 11
 
+#### SUP-C03 - Plano de cuidado e evolucoes (implementacao)
+
+1. **Status**: implementacao local na branch `feat/sup-c03-care-plan-evolutions` (aguardando autorizacao de commit/PR).
+2. **Objetivo**: plano de cuidado produtivo com objetivos, acoes, status, reavaliacoes, evolucoes e historico append-only.
+3. **Dependencias**: `SUP-C01.1` (carteira/assignment), helpers clinicos de `0010+`; ficha (`SUP-C02`) apenas referencia opcional.
+4. **Escopo incluido**:
+   - migration `0014` + rollback + `SUP_C03_CARE_PLAN_VALIDATION.sql`;
+   - evolucao de `care_plans`/`care_plan_actions` + `care_plan_events` append-only;
+   - unicidade parcial de plano aberto por `(organization_id, professional_id, patient_id)`;
+   - RLS SELECT/INSERT/UPDATE; sem DELETE; eventos sem UPDATE/DELETE;
+   - repository/service mock+supabase com concorrencia otimista (`version`);
+   - `ClinicalCarePlanPage` integrada a carteira real (`ClinicalPatientContextHeader`).
+5. **Escopo excluido**:
+   - SUP-C04;
+   - alteracoes indevidas em ficha/agenda/carteira;
+   - plano coletivo de gestao;
+   - prescritao/telemedicina/assinatura/IA clinica.
+6. **Decisoes clinicas provisórias** (sujeitas a revisao clinica):
+   - status de plano: `planejado|em_andamento|concluido|suspenso`;
+   - status de acao: `pendente|em_andamento|concluida|suspensa|cancelada`;
+   - suspensao exige justificativa; planos encerrados sao imutaveis (novo plano apos encerramento).
+7. **Migration**: `0014_care_plan_evolutions.sql` + rollback + validation.
+8. **Testes**: unitarios; integracao UI/repository; Postgres validation; E2E acceptance.
+
 ### SUP-C04
 
 1. **Identificador**: `SUP-C04`  

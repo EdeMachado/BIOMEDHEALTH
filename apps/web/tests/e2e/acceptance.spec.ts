@@ -150,6 +150,35 @@ test('ficha clinica persiste rascunho para paciente vinculado', async ({ page })
   await expect(page.getByTestId('clinical-record-history')).toBeVisible();
 });
 
+test('plano de cuidado persiste acoes evolucao e historico', async ({ page }) => {
+  page.on('dialog', (dialog) => dialog.accept());
+  await login(page, 'medico.demo@biomed.health');
+  await page.getByRole('link', { name: 'Plano de Cuidado' }).click();
+  await expect(page.getByTestId('care-plan-validation-note')).toBeVisible();
+  await expect(page.getByTestId('clinical-patient-context-name')).toHaveText('Ana Demo');
+  await page.getByTestId('care-plan-draft-objective').fill('Melhorar higiene do sono');
+  await page.getByTestId('care-plan-create').click();
+  await expect(page.getByTestId('care-plan-active-title')).toBeVisible();
+  await page.getByTestId('care-plan-action-objective').fill('Reduzir telas');
+  await page.getByTestId('care-plan-action-text').fill('Desligar aparelhos 1h antes');
+  await page.getByTestId('care-plan-action-add').click();
+  await expect(page.getByText('Reduzir telas')).toBeVisible();
+  await page.getByTestId('care-plan-note-text').fill('Paciente aderente na primeira semana');
+  await page.getByTestId('care-plan-add-evolution').click();
+  await expect(page.getByTestId('care-plan-message')).toContainText(/Evolucao registrada/i);
+  await page.getByTestId('care-plan-note-text').fill('Reavaliacao de adesao');
+  await page.getByTestId('care-plan-add-reassessment').click();
+  await expect(page.getByTestId('care-plan-message')).toContainText(/Reavaliacao registrada/i);
+  await page.getByTestId('care-plan-conclude').click();
+  await expect(page.getByTestId('care-plan-message')).toContainText(/Plano concluido/i);
+  await page.reload();
+  await page.getByRole('link', { name: 'Plano de Cuidado' }).click();
+  await expect(page.getByTestId('care-plan-history-plans')).toBeVisible();
+  await page.getByTestId('care-plan-draft-objective').fill('Manter rotina consolidada');
+  await page.getByTestId('care-plan-create').click();
+  await expect(page.getByTestId('care-plan-active-title')).toBeVisible();
+});
+
 test('campanhas executam acao mock sem envio externo', async ({ page }) => {
   await login(page, 'gestor.demo@biomed.health');
   await page.getByRole('link', { name: 'Campanhas' }).click();

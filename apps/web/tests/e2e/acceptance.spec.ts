@@ -130,7 +130,8 @@ test('usuario conclui atividade mock', async ({ page }) => {
 test('agenda clinica aplica filtros demonstrativos', async ({ page }) => {
   await login(page, 'medico.demo@biomed.health');
   await page.getByRole('link', { name: 'Agenda' }).click();
-  await page.getByRole('combobox').nth(1).selectOption('concluído');
+  await expect(page.getByTestId('clinical-agenda-row-appt-demo-1')).toBeVisible();
+  await page.getByTestId('clinical-agenda-status-filter').selectOption('concluído');
   await expect(page.getByText('Elisa Fictícia')).toBeVisible();
   await expect(page.getByText('Ana Demo')).toHaveCount(0);
 });

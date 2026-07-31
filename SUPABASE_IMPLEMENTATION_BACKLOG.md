@@ -463,7 +463,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 1. **Identificador**: `SUP-C01`  
 2. **Titulo**: Schema de vinculo assistencial e agenda clinica  
 3. **Finalidade**: estruturar base de atendimentos e vinculos reais.  
-4. **Status parent**: parcialmente atendida pela filha SUP-C01.1 (carteira); agenda permanece fora desta entrega.
+4. **Status parent**: parcialmente atendida pelas filhas SUP-C01.1 (carteira) e SUP-C01.2 (agenda); unit_id operacional permanece gap residual documentado.
 5. **Escopo incluido (parent)**:
    - consolidacao de `professional_assignments` e `appointments`;
    - indices por `organization_id`, `professional_id`, `user_id`, `starts_at`;
@@ -477,11 +477,11 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 9. **Perfis/permissoes afetados**:
    - medico, profissional_saude;
    - gestores sem papel clinico sem carteira nominal.
-10. **Nota**: a SUP-C01 parent nao e marcada como integralmente implementada ate agenda/vinculo completo.
+10. **Nota**: parent permanece parcial enquanto `unit_id` operacional e consolidacao final de vinculo/agenda nao forem fechados; C02 continua dependente de C01 + aprovacao clinica.
 
 #### SUP-C01.1 - Carteira clinica persistida por vinculo ativo
 
-1. **Status**: implementada localmente na branch `feat/sup-c01-real-clinical-portfolio` (aguardando revisao pre-commit; sem staging/commit).
+1. **Status**: implementada e mergeada em `main` (`00ccd8b`, PR #7).
 2. **Objetivo**: como profissional clinico autenticado, visualizar a carteira de pacientes com vinculo clinico ativo na minha organizacao, para acessar a visao read-only da jornada de cada paciente autorizado, sem depender de dados demonstrativos no modo Supabase.
 3. **Dependencias**: `SUP-B03.2` (leitura clinica de jornada), `app_auth.has_active_clinical_assignment`.
 4. **Escopo incluido**:
@@ -514,6 +514,34 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 7. **Migration prevista**: incremental `0011_clinical_portfolio_linked_read.sql` + rollback + validation.
 8. **Arquitetura**: RPC SECURITY DEFINER (justificativa: RLS legada JWT em `professional_assignments` + retorno minimo sem professional_id de cliente).
 9. **Testes**: unitarios; fake client; integracao UI; Postgres descartavel; E2E.
+
+#### SUP-C01.2 - Agenda clinica persistida por vinculo ativo
+
+1. **Status**: implementada na branch `feat/sup-c01-2-clinical-agenda` (aguardando revisao; sem commit).
+2. **Objetivo**: como profissional clinico autenticado, listar/criar/atualizar compromissos apenas para pacientes da carteira autorizada na organizacao ativa.
+3. **Dependencias**: `SUP-C01.1`, `SUP-B03.2`, `app_auth.has_active_clinical_assignment`.
+4. **Escopo incluido**:
+   - hardening de `appointments` (CHECK status/tipo, indices, unique slot ativo);
+   - RLS SELECT/INSERT/UPDATE + `can_manage_clinical_agenda`;
+   - repository/service mock+supabase;
+   - `ClinicalAgendaPage` e proximos atendimentos do overview;
+   - estados loading/vazia/erro/filtro vazio + anti-stale.
+5. **Escopo excluido**:
+   - `unit_id` (gap residual arquitetural);
+   - DELETE fisico (cancelamento via status);
+   - ficha/plano/registros (SUP-C02+);
+   - telemedicina/calendarios externos.
+6. **Criterios de aceite**:
+   - identidade `auth.uid()`;
+   - org + papel clinico ativos;
+   - paciente apenas com assignment ativo;
+   - isolamento multi-org;
+   - escrita/atualizacao autorizada e negada cobertas;
+   - sem demo hardcoded no modo Supabase;
+   - mock deterministico;
+   - migrations 0001-0011 imutaveis.
+7. **Migration**: `0012_clinical_agenda_linked_write.sql` + rollback + validation.
+8. **Testes**: unitarios; integracao UI; Postgres; E2E acceptance.
 
 ### SUP-C02
 

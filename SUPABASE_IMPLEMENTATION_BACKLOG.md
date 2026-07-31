@@ -517,7 +517,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 
 #### SUP-C01.2 - Agenda clinica persistida por vinculo ativo
 
-1. **Status**: implementada na branch `feat/sup-c01-2-clinical-agenda` (aguardando revisao; sem commit).
+1. **Status**: implementada e mergeada em `main` (`e2bf19c`, PR #8).
 2. **Objetivo**: como profissional clinico autenticado, listar/criar/atualizar compromissos apenas para pacientes da carteira autorizada na organizacao ativa.
 3. **Dependencias**: `SUP-C01.1`, `SUP-B03.2`, `app_auth.has_active_clinical_assignment`.
 4. **Escopo incluido**:
@@ -576,6 +576,28 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
    - historico alteravel sem trilha confiavel.  
 13. **Estimativa**: grande  
 14. **Ordem recomendada**: 10
+
+#### SUP-C02 - Ficha clinica modular versionada (implementacao)
+
+1. **Status**: implementacao local na branch `feat/sup-c02-clinical-record-versioned` (aguardando autorizacao de commit/PR).
+2. **Objetivo**: persistir ficha clinica modular (`clinical_record.v1`) com rascunho, conclusao, historico append-only e nova revisao sem sobrescrita opaca.
+3. **Dependencias**: `SUP-C01.1`, `SUP-C01.2`, `app_auth.has_active_clinical_assignment`.
+4. **Escopo incluido**:
+   - migration `0013` + rollback + validation;
+   - `clinical_records` evolutivo + `clinical_record_versions`;
+   - RLS SELECT/INSERT/UPDATE; sem DELETE; versions somente SELECT (+ trigger SECURITY DEFINER);
+   - repository/service mock+supabase;
+   - `ClinicalRecordPage` integrada a carteira real;
+   - nota discreta de estrutura clinica em validacao.
+5. **Escopo excluido**:
+   - SUP-C03 / plano de cuidado;
+   - prescritao/assinatura/telemedicina/prontuario externo;
+   - avaliacoes e registros assistenciais genericos.
+6. **Decisoes clinicas provisórias** (sujeitas a Dra. Katya):
+   - secoes e labels de `clinical_record.v1`;
+   - obrigatoriedade na conclusao: motivo, avaliacao profissional, conduta.
+7. **Migration**: `0013_clinical_record_versioned_write.sql` + rollback + `SUP_C02_CLINICAL_RECORD_VALIDATION.sql`.
+8. **Testes**: unitarios; integracao UI; Postgres; E2E acceptance.
 
 ### SUP-C03
 

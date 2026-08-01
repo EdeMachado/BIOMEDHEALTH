@@ -73,6 +73,7 @@ export type UpdateCampaignInput = {
   channel?: string;
   startsAt?: string;
   endsAt?: string;
+  campaignStatus?: string;
   audience?: CollectiveAudienceInput;
 };
 

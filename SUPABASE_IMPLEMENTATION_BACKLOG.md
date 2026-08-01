@@ -752,9 +752,9 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 4. **Status**:
    - Decisao arquitetural org×unit do dominio coletivo: **RESOLVIDA / RATIFICADA** (handoff §6.1).
    - Especificacao tecnica: **INCORPORADA** (PR #18) e **APROVADA PARA IMPLEMENTACAO CONTROLADA** (PR #19).
-   - **D01-A (contratos/tipos)**: **CONCLUIDO** — `apps/web/src/domains/collective/` + `tests/unit/collectiveContracts.test.ts`; typecheck e testes unitarios OK.
-   - **D01-B (schema/migration)**: **NAO INICIADO**; exige autorizacao especifica apos revisao do D01-A.
-   - Sem SQL/migration/RLS/repos Supabase/UI de gestao nesta entrega.
+   - **D01-A (contratos/tipos)**: **CONCLUIDO** — `apps/web/src/domains/collective/` + `tests/unit/collectiveContracts.test.ts`; typecheck e testes unitarios OK (PR #20, `36c6d2…`).
+   - **D01-B (schema/migration/RLS)**: **IMPLEMENTADO NESTA TRILHA** — `supabase/migrations/0017_collective_campaign_scope_integrity.sql`, rollback `0017_…_rollback.sql`, validacao `supabase/policies/SUP_D01_B_COLLECTIVE_PERSISTENCE_VALIDATION.sql` (+ harness local). Validado em Postgres 15 descartavel (Docker): migrations 0001..0017 + ALL PASS. **Sem** UI, repositories, AuthContext, D02, acesso nominal. PR pendente de revisao humana (sem merge automatico).
+   - Gestao coletiva permanece demonstrativa / nao conectada ao backend.
    - Gap residual `unit_id` clinico (SUP-C01): dívida **paralela**; **nao** bloqueia o D01.
 5. **Escopo incluido** (detalhe normativo em `SUP_D01_TECHNICAL_SPECIFICATION.md`):
    - consolidacao de `campaigns`, `campaign_audiences`, `action_plans` no dominio coletivo;
@@ -785,7 +785,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
    - campos indiretos permitindo inferencia individual;
    - absorcao indevida de dado pessoal pelo vinculo institucional.
 14. **Estimativa**: media
-15. **Ordem recomendada**: 13 — D01-A entregue; proximo passo humano = revisar PR do D01-A e, se aprovado, autorizar **D01-B**; D02 separado.
+15. **Ordem recomendada**: 13 — D01-A em main; D01-B em PR; proximo passo humano = revisar/mergear D01-B; depois autorizar UI/repos ou D02 separadamente.
 
 ### SUP-D02
 
@@ -987,7 +987,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 | 10 | SUP-C02 | C | C01 + aprovacao clinica | CONCLUIDA (PR #9) |
 | 11 | SUP-C03 | C | C02 | CONCLUIDA (PR #10; harden #11/#12) |
 | 12 | SUP-C04 | C | C01, C02, C03 | PARCIAL: C04.1+#13, C04.2a+#14, 42501+#15; C04.2b ENCERRADA SEM IMPLEMENTACAO |
-| 13 | SUP-D01 | D | SUP-A01 + decisao coletiva ratificada | SPEC aprovada (PR #19); D01-A concluido; D01-B NAO iniciado |
+| 13 | SUP-D01 | D | SUP-A01 + decisao coletiva ratificada | SPEC aprovada; D01-A em main; D01-B schema/RLS em PR |
 | 14 | SUP-D02 | D | D01 + limiar minimo 10 | Indicadores agregados sem nominal |
 | 15 | SUP-D03 | D | D01, D02 | Gestao em dados reais agregados |
 | 16 | SUP-E01 | E | A02, A03 + B/C/D | Auditoria append-only ativa |
@@ -998,7 +998,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 
 ## Caminho critico recomendado
 
-`SUP-A01 -> … -> [aprovacao formal SPEC #19] -> [D01-A] -> [D01-B apos autorizacao] -> SUP-D01 (demais blocos) -> SUP-D02 -> …`
+`SUP-A01 -> … -> [aprovacao formal SPEC #19] -> [D01-A #20] -> [D01-B schema/RLS em PR] -> [UI/repos sob autorizacao] -> SUP-D02 -> …`
 
 Notas de caminho:
 

@@ -751,39 +751,41 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 3. **Finalidade**: estruturar base para campanhas, indicadores e plano de acao coletivo no modulo BioMed Gestao (fundacao da gestao coletiva / inteligencia populacional; **nao** totalidade do produto).
 4. **Status**:
    - Decisao arquitetural org×unit do dominio coletivo: **RESOLVIDA / RATIFICADA** (handoff §6.1).
-   - SUP-D01: **desbloqueado somente para especificação futura** (etapa documental posterior a esta ratificação).
-   - **Implementacao**: **NAO AUTORIZADA**.
-   - Gap residual `unit_id` clinico (SUP-C01): dívida **paralela**; **nao** constitui bloqueio integral da especificação futura do D01.
-5. **Escopo incluido** (alto nivel; detalhe tecnico na futura especificação):
+   - Especificacao tecnica: **INCORPORADA** (PR #18, merge `9930c61…`) e **APROVADA PARA IMPLEMENTACAO CONTROLADA** (revisao formal 2026-08-01).
+   - **Implementacao**: **NAO INICIADA**.
+   - Proximo bloco possivel: **D01-A** (contratos/tipos), somente com **autorizacao especifica**.
+   - **D01-B** (schema/migration): **nao iniciado**; condicionado a D01-A verificado + autorizacao especifica.
+   - Gap residual `unit_id` clinico (SUP-C01): dívida **paralela**; **nao** bloqueia o D01.
+5. **Escopo incluido** (detalhe normativo em `SUP_D01_TECHNICAL_SPECIFICATION.md`):
    - consolidacao de `campaigns`, `campaign_audiences`, `action_plans` no dominio coletivo;
-   - aplicacao das regras ratificadas de `organization_id` / `unit_id` / limiar / visibilidade unit-scoped;
+   - escopo `organization` | `unit`; aplicabilidade `all_units` | `selected_units`;
+   - preparacao do contrato `suppressed` (enforcement pleno no SUP-D02);
    - status e periodos padronizados.  
 6. **Fora do escopo**:
    - envio real de notificacoes;
    - integracao externa de BI;
-   - implementacao nesta etapa de ratificação;
+   - indicadores/agregacoes/limiar completo (SUP-D02);
+   - conexao automatica da UI demonstrativa de gestao ao backend;
    - gap C01 agenda; SUP-B04; SUP-C04.2b;
+   - correcao catch→mock (ticket proprio);
    - tornar prontuario pessoal propriedade da organizacao.
 7. **Dependencias**: `SUP-A01` (tenant/units/memberships); decisao org×unit coletiva **ratificada**.
-8. **Entidades/tabelas**: `campaigns`, `campaign_audiences`, `action_plans` (e evolucoes a definir na especificação).
+8. **Entidades/tabelas**: `campaigns`, `campaign_audiences`, `action_plans` (+ evolucao de escopo/aplicabilidade conforme SPEC).
 9. **Perfis/permissoes afetados**:
    - gestor_institucional, sst, admin_cliente, admin_biomed, auditor (leitura);
    - usuario unit-scoped: leitura de campanhas org aplicaveis + da propria unit (regra ratificada).
-10. **RLS necessaria**: tenant + papeis gerenciais; proibicao de leitura nominal; isolamento unitario conforme decisao (detalhe na especificação).
-11. **Criterios de aceite**:
-   - operacoes de campanha/plano no tenant correto;
-   - sem campos de identificacao individual nos retornos gerenciais;
-   - coerencia com as regras ratificadas de escopo e limiar.
+10. **RLS necessaria**: tenant + papeis gerenciais; proibicao de leitura nominal; isolamento unitario conforme SPEC; evolucao do JWT legado (`0002`) no bloco de isolamento do D01.
+11. **Criterios de aceite**: ver `SUP_D01_TECHNICAL_SPECIFICATION.md` §14 (20 criterios).
 12. **Testes obrigatorios**:
-   - integracao de CRUD gerencial permitido;
+   - integracao de CRUD gerencial permitido (apos autorizacao de repos/UI);
    - negacao para perfis clinicos/usuario final no painel gerencial;
    - testes de schema sem dado nominal.  
 13. **Riscos de seguranca/LGPD**:
-   - reidentificacao por grupos pequenos ou filtros diferenciais;
+   - reidentificacao por grupos pequenos ou filtros diferenciais (D02);
    - campos indiretos permitindo inferencia individual;
    - absorcao indevida de dado pessoal pelo vinculo institucional.
 14. **Estimativa**: media
-15. **Ordem recomendada**: 13 (proxima etapa apos ratificação = **especificação**; implementacao so apos autorizacao explicita)
+15. **Ordem recomendada**: 13 — SPEC aprovada; proximo passo humano = autorizar **D01-A**; D01-B so apos D01-A; D02 separado.
 
 ### SUP-D02
 
@@ -985,7 +987,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 | 10 | SUP-C02 | C | C01 + aprovacao clinica | CONCLUIDA (PR #9) |
 | 11 | SUP-C03 | C | C02 | CONCLUIDA (PR #10; harden #11/#12) |
 | 12 | SUP-C04 | C | C01, C02, C03 | PARCIAL: C04.1+#13, C04.2a+#14, 42501+#15; C04.2b ENCERRADA SEM IMPLEMENTACAO |
-| 13 | SUP-D01 | D | SUP-A01 + decisao coletiva ratificada | Desbloqueado p/ especificação futura; impl. NAO autorizada |
+| 13 | SUP-D01 | D | SUP-A01 + decisao coletiva ratificada | SPEC aprovada p/ impl. controlada (PR #18); impl. NAO iniciada; D01-A pendente |
 | 14 | SUP-D02 | D | D01 + limiar minimo 10 | Indicadores agregados sem nominal |
 | 15 | SUP-D03 | D | D01, D02 | Gestao em dados reais agregados |
 | 16 | SUP-E01 | E | A02, A03 + B/C/D | Auditoria append-only ativa |
@@ -996,14 +998,15 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 
 ## Caminho critico recomendado
 
-`SUP-A01 -> SUP-A02 -> SUP-A03 -> SUP-B02 -> SUP-C01 -> SUP-C02 -> SUP-C03 -> SUP-C04.1/C04.2a (+42501) -> [docs #16] -> [ratificacao org×unit] -> [especificação D01] -> SUP-D01 (impl. apos autorizacao) -> SUP-D02 -> SUP-E01 -> SUP-E02 -> SUP-E03`
+`SUP-A01 -> SUP-A02 -> SUP-A03 -> SUP-B02 -> SUP-C01 -> SUP-C02 -> SUP-C03 -> SUP-C04.1/C04.2a (+42501) -> [docs #16] -> [ratificacao org×unit #17] -> [especificação D01 #18] -> [aprovacao formal SPEC] -> [D01-A apos autorizacao] -> [D01-B apos D01-A] -> SUP-D01 (demais blocos) -> SUP-D02 -> SUP-E01 -> SUP-E02 -> SUP-E03`
 
 Notas de caminho:
 
 - SUP-C04.2b **nao** faz parte do caminho critico (encerrada sem implementacao).
 - SUP-B04 permanece aberta como alternativa posterior, apos revisao de fallback; **nao iniciar** agora.
-- Gap residual `unit_id` clinico (C01) e trilha **paralela**; nao bloqueia a especificação futura do D01 coletivo.
-- A ratificação desbloqueia a **especificação** do D01; nao autoriza implementação.
+- Gap residual `unit_id` clinico (C01) e trilha **paralela**; nao bloqueia o D01 coletivo.
+- A aprovacao formal da SPEC **nao** autoriza automaticamente D01-A/D01-B; cada bloco exige ordem especifica.
+- UI de gestao permanece demonstrativa ate autorizacao explicita de conexao a dados reais.
 
 Justificativa:
 

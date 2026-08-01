@@ -4,26 +4,29 @@
 |---|---|
 | Ticket | `SUP-D01` |
 | Título | Schema de gestão coletiva com recorte por unidade/programa |
-| Status deste documento | **RASCUNHO TÉCNICO EM REVISÃO** |
-| Baseline de referência | `origin/main` = `37dd7b6e1c423b47dd46e6d867808c479ad4ec6c` |
-| Ratificação documental | PR #17 — fronteira arquitetural org×unit no domínio institucional/coletivo |
-| Data desta revisão do rascunho | 2026-08-01 |
+| Status deste documento | **APROVADA PARA IMPLEMENTAÇÃO CONTROLADA** |
+| Baseline da revisão de aprovação | `origin/main` = `9930c61c87ad40689704ff5f127b3255609a4560` |
+| Incorporação documental | PR #18 (merge `9930c61…`) |
+| Ratificação arquitetural | PR #17 — fronteira org×unit no domínio institucional/coletivo |
+| Data da aprovação formal | 2026-08-01 |
 | Documento mestre | `PROJECT_MASTER_HANDOFF.md` (§6.1) |
 | Backlog | `SUPABASE_IMPLEMENTATION_BACKLOG.md` (SUP-D01) |
 
-> **Natureza:** rascunho técnico em revisão. A fronteira arquitetural foi **ratificada** no PR #17; **este documento ainda não está aprovado** como SPEC normativa final.
-> **Implementação do SUP-D01 não está autorizada** por este rascunho.
-> Onde houver divergência com o banco atual, prevalece o contrato desta SPEC **somente após** aprovação documental e autorização explícita de implementação.
+> **Natureza:** especificação **aprovada para implementação controlada**. A fronteira arquitetural foi **ratificada** no PR #17; a SPEC foi incorporada pelo PR #18 e formalmente aprovada nesta revisão.
+> **Esta aprovação não implementa o SUP-D01.** Não autoriza automaticamente D01-A, D01-B nem qualquer bloco subsequente.
+> Cada bloco de implementação exige **autorização mutável específica**. Não autoriza SUP-D02, SUP-C01, SUP-B04 nem reabertura de C04.2b.
+> Não autoriza conectar a UI demonstrativa de gestão (`ManagementPages`) ao backend real.
+> Onde houver divergência com o banco atual, prevalece o contrato desta SPEC **somente após** a autorização explícita do bloco correspondente.
 
 ### Legenda de classificação das afirmações
 
 | Rótulo | Significado |
 |---|---|
 | **Decisão ratificada (PR #17)** | Fronteira arquitetural já integrada em `main` |
-| **Contrato desta SPEC** | Norma proposta por este rascunho (sujeita a revisão) |
+| **Contrato desta SPEC** | Norma aprovada para implementação controlada (blocos sob autorização específica) |
 | **Proposta técnica** | Nome/estrutura ilustrativa; pode mudar na implementação |
-| **Estado atual documentado** | Verificado no repositório / docs no baseline |
-| **Implementação futura** | Trabalho após autorização; não entregue |
+| **Estado atual documentado** | Verificado no repositório / docs no baseline de aprovação |
+| **Implementação futura** | Trabalho após autorização de bloco; não entregue |
 | **Dependência / gap** | Outro ticket ou lacuna conhecida |
 
 ---
@@ -466,10 +469,25 @@ Escrita append-only via RPC (alinhado à Fase E / planning) — **implementaçã
 | Schema atual | Extensão não destrutiva preferida |
 | Histórico | Campanhas existentes → `scope_type='organization'`, `unit_id=null`, `unit_applicability='all_units'` (backfill **explícito**) |
 | Feature flags | Opcionais; default off (**proposta**) |
-| Incremental | (1) schema+constraints (2) RLS (3) repos (4) UI — após autorização |
+| Incremental | (1) tipos/contrato (2) schema+constraints (3) RLS membership (4) repos (5) UI — **cada passo** só após autorização |
+| RLS legado (`0002` JWT) | Deve ser **substituído/evoluído** no bloco de isolamento do D01; não permanece como fronteira definitiva |
+| UI gestão atual | `ManagementPages` permanece **demonstrativa** até autorização explícita de conexão a dados reais |
+| `selectedUnitId` | Hoje tipicamente `null` (**estado atual**); ambiguidade → **deny-by-default** (§6.2); ativação de seletor = ticket access/UX separado |
 | Rollback | SQL simétrico + flag off |
 | Observabilidade | erros tipados; sem PHI |
 | Risco pessoal/clínico | regressão: usuário sem org; clínica sem painel; sem absorção de prontuário |
+
+### 12.1 Faseamento controlado da implementação (não autorizado automaticamente)
+
+| Bloco | Conteúdo típico | Autorização |
+|---|---|---|
+| **D01-A** | Contratos e tipos TypeScript conceituais → arquivos de produção acordados | Exige ordem **específica** |
+| **D01-B** | Schema/migration (`scope_type`, `unit_id`, `unit_applicability`, associação, CHECKs, backfill) | Condicionado a D01-A verificado + ordem **específica** |
+| Posterior (fora desta aprovação) | Repos/serviços, RLS mínima D01, UI real, testes de integração | Ordens futuras separadas |
+| **SUP-D02** | Agregações, limiar, anti-diferencial, exportação | **Não** autorizado por esta SPEC |
+| **SUP-C01 / SUP-B04 / C04.2b** | Paralelo / não iniciar / encerrada | Fora do D01 |
+
+Correção de `catch → mock` em assessment/consent é **ticket próprio**, fora do SUP-D01.
 
 ---
 
@@ -514,20 +532,20 @@ Escrita append-only via RPC (alinhado à Fase E / planning) — **implementaçã
 17. Contrato `SafeAggregateResult` / `suppressed` preparado; **enforcement completo do limiar ≠ aceite concluído do D01** (fica no D02).
 18. Sem dependência funcional da implementação do gap SUP-C01.
 19. Sem efeito colateral B04 / C04.2b / C01.
-20. **Este documento, mesmo aprovado no futuro, não autoriza implementação por si só** — implementação exige ordem explícita.
+20. **Aprovação desta SPEC não autoriza implementação por si só** — cada bloco (D01-A, D01-B, …) exige ordem explícita e separada.
 
 ---
 
 ## 15. Decisões residuais (não reabrem a ratificação PR #17)
 
-| Decisão | Alternativas | Recomendação | Bloqueia publicação deste rascunho? |
+| Decisão | Alternativas | Recomendação | Bloqueia esta aprovação? |
 |---|---|---|---|
 | Nome físico da tabela de associação | `campaign_unit_applicabilities` vs outro | Preferir nome alinhado a `unit_applicability` | Não |
 | Escrita SST unit-scoped | só própria unit vs ampla | Só própria unit (+ ler org aplicável) | Não |
 | Nome das flags Vite | vários | Default off; confirmar na impl. | Não |
 | Texto jurídico de campanha | provisório vs formal | Aprovação humana (pendente B01) | Parcial p/ produção regulada |
 
-Decisões D1–D7 desta revisão do rascunho e a ratificação do PR #17 **não** são reabertas aqui.
+Decisões D1–D7 e a ratificação do PR #17 **não** são reabertas aqui.
 
 ---
 
@@ -536,10 +554,13 @@ Decisões D1–D7 desta revisão do rascunho e a ratificação do PR #17 **não*
 | Etapa | Estado |
 |---|---|
 | Análise arquitetural | Concluída |
-| Ratificação org×unit (PR #17) | Integrada em `main` (`37dd7b6…`) |
-| Especificação SUP-D01 | **Rascunho técnico em revisão** (este documento) |
-| Implementação SUP-D01 | **Não autorizada** |
-| SUP-D02 / C01 / B04 / C04.2b | Fora / paralelo / encerrada conforme acima |
+| Ratificação org×unit (PR #17) | Integrada em `main` |
+| Especificação SUP-D01 (PR #18) | Incorporada em `main` (`9930c61…`) |
+| Revisão formal desta SPEC | **Aprovada para implementação controlada** (2026-08-01) |
+| D01-A (contratos/tipos) | **Não autorizado** — exige ordem específica |
+| D01-B (schema/migration) | **Não iniciado** — condicionado a D01-A + ordem específica |
+| Repos / RLS / UI real de gestão | **Não autorizados** nesta aprovação |
+| SUP-D02 / C01 / B04 / C04.2b | Fora / paralelo / não iniciar / encerrada |
 
 ---
 

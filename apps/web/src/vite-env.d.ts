@@ -17,6 +17,8 @@ interface ImportMetaEnv {
    * Not related to demo page `/clinica/registros`. Inherits from VITE_ENABLE_SUPABASE_AUTH when unset.
    */
   readonly VITE_CLINICAL_RECORD_REPOSITORY_MODE?: string;
+  /** Care plan repository: `mock` | `supabase`. Inherits from VITE_ENABLE_SUPABASE_AUTH when unset. */
+  readonly VITE_CLINICAL_CARE_PLAN_REPOSITORY_MODE?: string;
   /** Collective management repository: `mock` | `supabase`. Inherits from VITE_ENABLE_SUPABASE_AUTH when unset. */
   readonly VITE_COLLECTIVE_REPOSITORY_MODE?: string;
 }

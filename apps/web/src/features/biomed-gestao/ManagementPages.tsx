@@ -235,8 +235,10 @@ export function ManagementCampaignsPage() {
   const [channel, setChannel] = useState('email');
   const [startsAt, setStartsAt] = useState('2026-08-01');
   const [endsAt, setEndsAt] = useState('2026-08-15');
-  const [scopeKind, setScopeKind] = useState<'all_units' | 'unit'>('all_units');
+  const [scopeKind, setScopeKind] = useState<'all_units' | 'unit' | 'selected_units'>('all_units');
   const [unitId, setUnitId] = useState('');
+  /** When true, scope controls are locked (selected_units); metadata-only update omits scope. */
+  const [scopeLocked, setScopeLocked] = useState(false);
 
   async function loadCampaigns(repo: CollectiveRepository, ctx: CollectiveContext) {
     setLoading(true);
@@ -307,6 +309,7 @@ export function ManagementCampaignsPage() {
     setEndsAt('2026-08-15');
     setScopeKind('all_units');
     setUnitId('');
+    setScopeLocked(false);
   }
 
   function openCreate() {
@@ -323,17 +326,20 @@ export function ManagementCampaignsPage() {
     setChannel(campaign.channel);
     setStartsAt(campaign.startsAt);
     setEndsAt(campaign.endsAt);
+    setUnitId('');
+    setScopeLocked(false);
+    setMessage('');
     if (campaign.scope.scopeType === 'unit') {
       setScopeKind('unit');
       setUnitId(campaign.scope.unitId);
+    } else if (campaign.scope.unitApplicability === 'selected_units') {
+      setScopeKind('selected_units');
+      setScopeLocked(true);
+      setMessage(
+        'Campanha com selected_units: escopo e lista de unidades nao editaveis sem RPC atomica. Apenas metadados.'
+      );
     } else {
       setScopeKind('all_units');
-      setUnitId('');
-      if (campaign.scope.unitApplicability === 'selected_units') {
-        setMessage(
-          'Campanha com selected_units: leitura ok; alteracao de escopo/audiencia bloqueada sem RPC atomica.'
-        );
-      }
     }
     setShowForm(true);
     setError(null);
@@ -341,17 +347,22 @@ export function ManagementCampaignsPage() {
 
   async function submitForm() {
     if (!bootstrap.ok || !context || submittingRef.current || !canWrite) return;
-    const scoped = buildSingleTableScope({ scopeKind, unitId });
-    if (!scoped.ok) {
-      setError(scoped.message);
-      return;
-    }
     submittingRef.current = true;
     setSubmitting(true);
     setError(null);
     try {
       if (editingId) {
-        const result = await bootstrap.repository.updateCampaign(context, {
+        // Metadata-only when scope is locked (selected_units): omit scope/relations entirely.
+        const updatePayload: {
+          organizationId: string;
+          campaignId: string;
+          title: string;
+          description: string;
+          channel: string;
+          startsAt: string;
+          endsAt: string;
+          scope?: CollectiveScope;
+        } = {
           organizationId: context.organizationId,
           campaignId: editingId,
           title,
@@ -359,14 +370,35 @@ export function ManagementCampaignsPage() {
           channel,
           startsAt,
           endsAt,
-          scope: scoped.scope,
-        });
+        };
+        if (!scopeLocked) {
+          if (scopeKind === 'selected_units') {
+            setError('Escopo selected_units nao e editavel sem operacao atomica autorizada.');
+            return;
+          }
+          const scoped = buildSingleTableScope({ scopeKind, unitId });
+          if (!scoped.ok) {
+            setError(scoped.message);
+            return;
+          }
+          updatePayload.scope = scoped.scope;
+        }
+        const result = await bootstrap.repository.updateCampaign(context, updatePayload);
         if (!result.ok) {
           setError(sanitizeCollectiveUiMessage(result.error));
           return;
         }
         setMessage(`Campanha "${result.data.title}" atualizada.`);
       } else {
+        if (scopeKind === 'selected_units') {
+          setError('Criacao com selected_units exige operacao atomica (fora do D01-C).');
+          return;
+        }
+        const scoped = buildSingleTableScope({ scopeKind, unitId });
+        if (!scoped.ok) {
+          setError(scoped.message);
+          return;
+        }
         const result = await bootstrap.repository.createCampaign(context, {
           organizationId: context.organizationId,
           title,
@@ -506,21 +538,30 @@ export function ManagementCampaignsPage() {
           <select
             className="focus-ring h-10 rounded-xl border px-3 text-sm"
             value={scopeKind}
-            onChange={(e) => setScopeKind(e.target.value as 'all_units' | 'unit')}
+            disabled={scopeLocked}
+            onChange={(e) => setScopeKind(e.target.value as 'all_units' | 'unit' | 'selected_units')}
           >
             <option value="all_units">Organizacao / todas as unidades</option>
             <option value="unit">Unidade (unitId explicito)</option>
+            {scopeLocked || scopeKind === 'selected_units' ? (
+              <option value="selected_units">Organizacao (unidades selecionadas — somente leitura)</option>
+            ) : null}
           </select>
           <input
             className="focus-ring h-10 rounded-xl border px-3 text-sm"
             placeholder="unitId (obrigatorio se escopo unit)"
             value={unitId}
-            disabled={scopeKind !== 'unit'}
+            disabled={scopeLocked || scopeKind !== 'unit'}
             onChange={(e) => setUnitId(e.target.value)}
           />
           <p className="sm:col-span-2 text-xs text-[var(--muted-foreground)]">
-            selected_units e audiencia nao estao disponiveis sem operacao atomica autorizada.
+            {scopeLocked
+              ? 'Escopo selected_units preservado; lista de unidades nao editavel nesta tela. Salvar envia apenas metadados.'
+              : 'selected_units e audiencia nao estao disponiveis sem operacao atomica autorizada.'}
           </p>
+          {message && showForm ? (
+            <p className="sm:col-span-2 text-xs text-[var(--muted-foreground)]">{message}</p>
+          ) : null}
           <div className="sm:col-span-2 flex flex-wrap gap-2">
             <Button size="sm" disabled={submitting || !title.trim() || !description.trim()} onClick={() => void submitForm()}>
               {editingId ? 'Salvar alteracoes' : 'Criar campanha'}
@@ -618,8 +659,9 @@ export function ManagementActionPlanPage() {
   const [ownerName, setOwnerName] = useState('');
   const [dueDate, setDueDate] = useState('2026-08-15');
   const [priority, setPriority] = useState('Media');
-  const [scopeKind, setScopeKind] = useState<'all_units' | 'unit'>('all_units');
+  const [scopeKind, setScopeKind] = useState<'all_units' | 'unit' | 'selected_units'>('all_units');
   const [unitId, setUnitId] = useState('');
+  const [scopeLocked, setScopeLocked] = useState(false);
 
   async function loadPlans(repo: CollectiveRepository, ctx: CollectiveContext) {
     setLoading(true);
@@ -688,6 +730,7 @@ export function ManagementActionPlanPage() {
     setPriority('Media');
     setScopeKind('all_units');
     setUnitId('');
+    setScopeLocked(false);
   }
 
   function openCreate() {
@@ -705,12 +748,20 @@ export function ManagementActionPlanPage() {
     setOwnerName(plan.ownerName);
     setDueDate(plan.dueDate);
     setPriority(plan.priority);
+    setUnitId('');
+    setScopeLocked(false);
+    setMessage('');
     if (plan.scope.scopeType === 'unit') {
       setScopeKind('unit');
       setUnitId(plan.scope.unitId);
+    } else if (plan.scope.unitApplicability === 'selected_units') {
+      setScopeKind('selected_units');
+      setScopeLocked(true);
+      setMessage(
+        'Plano com selected_units: escopo e lista de unidades nao editaveis sem RPC atomica. Apenas metadados.'
+      );
     } else {
       setScopeKind('all_units');
-      setUnitId('');
     }
     setShowForm(true);
     setError(null);
@@ -718,17 +769,22 @@ export function ManagementActionPlanPage() {
 
   async function submitForm() {
     if (!bootstrap.ok || !context || submittingRef.current || !canWrite) return;
-    const scoped = buildSingleTableScope({ scopeKind, unitId });
-    if (!scoped.ok) {
-      setError(scoped.message);
-      return;
-    }
     submittingRef.current = true;
     setSubmitting(true);
     setError(null);
     try {
       if (editingId) {
-        const result = await bootstrap.repository.updateActionPlan(context, {
+        const updatePayload: {
+          organizationId: string;
+          actionPlanId: string;
+          originIndicator: string;
+          issueDescription: string;
+          actionText: string;
+          ownerName: string;
+          dueDate: string;
+          priority: string;
+          scope?: CollectiveScope;
+        } = {
           organizationId: context.organizationId,
           actionPlanId: editingId,
           originIndicator,
@@ -737,14 +793,35 @@ export function ManagementActionPlanPage() {
           ownerName,
           dueDate,
           priority,
-          scope: scoped.scope,
-        });
+        };
+        if (!scopeLocked) {
+          if (scopeKind === 'selected_units') {
+            setError('Escopo selected_units nao e editavel sem operacao atomica autorizada.');
+            return;
+          }
+          const scoped = buildSingleTableScope({ scopeKind, unitId });
+          if (!scoped.ok) {
+            setError(scoped.message);
+            return;
+          }
+          updatePayload.scope = scoped.scope;
+        }
+        const result = await bootstrap.repository.updateActionPlan(context, updatePayload);
         if (!result.ok) {
           setError(sanitizeCollectiveUiMessage(result.error));
           return;
         }
         setMessage('Plano de acao atualizado.');
       } else {
+        if (scopeKind === 'selected_units') {
+          setError('Criacao com selected_units exige operacao atomica (fora do D01-C).');
+          return;
+        }
+        const scoped = buildSingleTableScope({ scopeKind, unitId });
+        if (!scoped.ok) {
+          setError(scoped.message);
+          return;
+        }
         const result = await bootstrap.repository.createActionPlan(context, {
           organizationId: context.organizationId,
           originIndicator,
@@ -894,18 +971,30 @@ export function ManagementActionPlanPage() {
           <select
             className="focus-ring h-10 rounded-xl border px-3 text-sm"
             value={scopeKind}
-            onChange={(e) => setScopeKind(e.target.value as 'all_units' | 'unit')}
+            disabled={scopeLocked}
+            onChange={(e) => setScopeKind(e.target.value as 'all_units' | 'unit' | 'selected_units')}
           >
             <option value="all_units">Organizacao / todas as unidades</option>
             <option value="unit">Unidade (unitId explicito)</option>
+            {scopeLocked || scopeKind === 'selected_units' ? (
+              <option value="selected_units">Organizacao (unidades selecionadas — somente leitura)</option>
+            ) : null}
           </select>
           <input
             className="focus-ring h-10 rounded-xl border px-3 text-sm"
             placeholder="unitId (obrigatorio se escopo unit)"
             value={unitId}
-            disabled={scopeKind !== 'unit'}
+            disabled={scopeLocked || scopeKind !== 'unit'}
             onChange={(e) => setUnitId(e.target.value)}
           />
+          <p className="sm:col-span-2 text-xs text-[var(--muted-foreground)]">
+            {scopeLocked
+              ? 'Escopo selected_units preservado; lista de unidades nao editavel nesta tela. Salvar envia apenas metadados.'
+              : 'selected_units bloqueado sem RPC atomica.'}
+          </p>
+          {message && showForm ? (
+            <p className="sm:col-span-2 text-xs text-[var(--muted-foreground)]">{message}</p>
+          ) : null}
           <div className="sm:col-span-2 flex flex-wrap gap-2">
             <Button
               size="sm"

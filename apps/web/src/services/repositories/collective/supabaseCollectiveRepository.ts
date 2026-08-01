@@ -1,4 +1,4 @@
-import type { CreateCampaignInput, UpdateCampaignInput } from '@/domains/collective';
+import type { CollectiveScope, CreateCampaignInput, UpdateCampaignInput } from '@/domains/collective';
 import type { CollectiveRepository } from '@/services/repositories/collective/contracts';
 import { fail, ok } from '@/services/repositories/collective/errors';
 import type {
@@ -22,6 +22,18 @@ import {
   validateUpdateActionPlanWrite,
   validateUpdateCampaignWrite,
 } from '@/services/repositories/collective/validation';
+
+/** Unit ids already persisted for selected_units; used when mapping mutation rows without a second get. */
+function unitIdsFromExistingScope(
+  existingScope: CollectiveScope,
+  nextScope: CollectiveScope | undefined
+): string[] {
+  const scope = nextScope ?? existingScope;
+  if (scope.scopeType === 'organization' && scope.unitApplicability === 'selected_units') {
+    return [...scope.unitIds];
+  }
+  return [];
+}
 
 type SupabaseLikeError = {
   message?: string;
@@ -58,6 +70,7 @@ interface SupabaseUpdateBuilder extends PromiseLike<SupabaseQueryResponse<unknow
 
 interface SupabaseDeleteBuilder extends PromiseLike<SupabaseQueryResponse<unknown>> {
   eq(column: string, value: unknown): SupabaseDeleteBuilder;
+  select(columns: string): SupabaseFilterBuilder;
 }
 
 export interface SupabaseCollectiveClient {
@@ -233,7 +246,8 @@ class SupabaseCollectiveRepository implements CollectiveRepository {
     if (!response.data) return fail('TECHNICAL_ERROR');
     const orgCheck = assertSameOrganization(context.organizationId, response.data.organization_id);
     if (!orgCheck.ok) return orgCheck;
-    return this.getCampaign(context, response.data.id);
+    // Create single-table never persists selected_units (ATOMICITY_REQUIRED); no applicability fetch.
+    return this.mapOneCampaign(response.data, []);
   }
 
   async updateCampaign(
@@ -287,7 +301,10 @@ class SupabaseCollectiveRepository implements CollectiveRepository {
 
     if (response.error) return mapBackendError(response.error);
     if (!response.data) return fail('NOT_FOUND');
-    return this.getCampaign(context, response.data.id);
+    const orgCheck = assertSameOrganization(context.organizationId, response.data.organization_id);
+    if (!orgCheck.ok) return orgCheck;
+    // Preserve existing applicability relations when metadata-only update (no second get / no relational write).
+    return this.mapOneCampaign(response.data, unitIdsFromExistingScope(existing.data.scope, input.scope));
   }
 
   async deleteCampaign(context: CollectiveContext, campaignId: string) {
@@ -300,10 +317,16 @@ class SupabaseCollectiveRepository implements CollectiveRepository {
       .from('campaigns')
       .delete()
       .eq('organization_id', context.organizationId)
-      .eq('id', campaignId)) as SupabaseQueryResponse<null>;
+      .eq('id', campaignId)
+      .select('id')
+      .maybeSingle()) as SupabaseQueryResponse<{ id: string }>;
 
     if (response.error) return mapBackendError(response.error);
-    return ok({ id: campaignId });
+    if (!response.data || response.data.id !== campaignId) {
+      // Zero rows: RLS may hide write denial; do not treat error==null as success.
+      return fail('AUTHORIZATION_DENIED', { transient: false });
+    }
+    return ok({ id: response.data.id });
   }
 
   async listActionPlans(input: ListActionPlansInput) {
@@ -379,7 +402,9 @@ class SupabaseCollectiveRepository implements CollectiveRepository {
 
     if (response.error) return mapBackendError(response.error);
     if (!response.data) return fail('TECHNICAL_ERROR');
-    return this.getActionPlan(context, response.data.id);
+    const orgCheck = assertSameOrganization(context.organizationId, response.data.organization_id);
+    if (!orgCheck.ok) return orgCheck;
+    return this.mapOneActionPlan(response.data, []);
   }
 
   async updateActionPlan(
@@ -435,7 +460,12 @@ class SupabaseCollectiveRepository implements CollectiveRepository {
 
     if (response.error) return mapBackendError(response.error);
     if (!response.data) return fail('NOT_FOUND');
-    return this.getActionPlan(context, response.data.id);
+    const orgCheck = assertSameOrganization(context.organizationId, response.data.organization_id);
+    if (!orgCheck.ok) return orgCheck;
+    return this.mapOneActionPlan(
+      response.data,
+      unitIdsFromExistingScope(existing.data.scope, input.scope)
+    );
   }
 
   async deleteActionPlan(context: CollectiveContext, actionPlanId: string) {
@@ -448,10 +478,15 @@ class SupabaseCollectiveRepository implements CollectiveRepository {
       .from('action_plans')
       .delete()
       .eq('organization_id', context.organizationId)
-      .eq('id', actionPlanId)) as SupabaseQueryResponse<null>;
+      .eq('id', actionPlanId)
+      .select('id')
+      .maybeSingle()) as SupabaseQueryResponse<{ id: string }>;
 
     if (response.error) return mapBackendError(response.error);
-    return ok({ id: actionPlanId });
+    if (!response.data || response.data.id !== actionPlanId) {
+      return fail('AUTHORIZATION_DENIED', { transient: false });
+    }
+    return ok({ id: response.data.id });
   }
 
   private async validateSession(context: CollectiveContext): Promise<CollectiveResult<true>> {

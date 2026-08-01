@@ -24,6 +24,26 @@ const campaigns: CampaignRecord[] = [
     createdAt: '2026-07-01T00:00:00.000Z',
     updatedAt: '2026-07-01T00:00:00.000Z',
   },
+  {
+    id: 'camp-selected',
+    organizationId: 'org-1',
+    scope: {
+      scopeType: 'organization',
+      unitId: null,
+      unitApplicability: 'selected_units',
+      unitIds: ['unit-a', 'unit-b'],
+    },
+    title: 'Campanha Selected',
+    description: 'Escopo coletivo parcial',
+    channel: 'email',
+    startsAt: '2026-08-01',
+    endsAt: '2026-08-20',
+    campaignStatus: 'Rascunho',
+    status: 'ativo',
+    version: 1,
+    createdAt: '2026-07-01T00:00:00.000Z',
+    updatedAt: '2026-07-01T00:00:00.000Z',
+  },
 ];
 
 const listCampaignsMock = vi.fn((): Promise<CollectiveResult<CampaignRecord[]>> =>
@@ -255,5 +275,84 @@ describe('ManagementCampaignsPage SUP-D01-C', () => {
       expect(screen.getByText(/Escopo unitario exige unitId explicito/i)).toBeInTheDocument();
     });
     expect(createCampaignMock).not.toHaveBeenCalled();
+  });
+
+  it('edita metadados de campanha selected_units sem reenviar scope', async () => {
+    const user = userEvent.setup();
+    updateCampaignMock.mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: true,
+        data: {
+          ...campaigns[1],
+          title: 'Campanha Selected editada',
+          version: 2,
+        },
+      })
+    );
+    renderCampaigns();
+    await waitFor(() => expect(screen.getByText('Campanha Selected')).toBeInTheDocument());
+    const editButtons = screen.getAllByRole('button', { name: 'Editar' });
+    await user.click(editButtons[1]);
+    await waitFor(() => {
+      expect(
+        screen.getByDisplayValue('Organizacao (unidades selecionadas — somente leitura)')
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByDisplayValue('Organizacao (unidades selecionadas — somente leitura)')).toBeDisabled();
+    expect(screen.getByPlaceholderText('unitId (obrigatorio se escopo unit)')).toBeDisabled();
+    const titleInput = screen.getByPlaceholderText('Titulo');
+    await user.clear(titleInput);
+    await user.type(titleInput, 'Campanha Selected editada');
+    await user.click(screen.getByRole('button', { name: 'Salvar alteracoes' }));
+    await waitFor(() => expect(updateCampaignMock).toHaveBeenCalledTimes(1));
+    expect(updateCampaignMock.mock.calls.length).toBeGreaterThan(0);
+    const [, rawPayload] = updateCampaignMock.mock.calls[0] as unknown as [
+      unknown,
+      Record<string, unknown>,
+    ];
+    expect(rawPayload).toMatchObject({
+      campaignId: 'camp-selected',
+      title: 'Campanha Selected editada',
+    });
+    expect(rawPayload).not.toHaveProperty('scope');
+    expect(rawPayload).not.toHaveProperty('applicableUnitIds');
+    expect(rawPayload).not.toHaveProperty('audience');
+    await waitFor(() => {
+      expect(screen.getByText(/Campanha "Campanha Selected editada" atualizada/i)).toBeInTheDocument();
+    });
+  });
+
+  it('previne duplo envio no update de metadados selected_units', async () => {
+    const user = userEvent.setup();
+    let resolveUpdate: ((value: CollectiveResult<CampaignRecord>) => void) | undefined;
+    updateCampaignMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveUpdate = resolve;
+        })
+    );
+    renderCampaigns();
+    await waitFor(() => expect(screen.getByText('Campanha Selected')).toBeInTheDocument());
+    await user.click(screen.getAllByRole('button', { name: 'Editar' })[1]);
+    await user.click(screen.getByRole('button', { name: 'Salvar alteracoes' }));
+    await user.click(screen.getByRole('button', { name: 'Salvar alteracoes' }));
+    expect(updateCampaignMock).toHaveBeenCalledTimes(1);
+    resolveUpdate?.({
+      ok: true,
+      data: { ...campaigns[1], title: 'Campanha Selected', version: 2 },
+    });
+    await waitFor(() => expect(updateCampaignMock).toHaveBeenCalledTimes(1));
+  });
+
+  it('auditor continua sem acoes de escrita mesmo com selected_units', async () => {
+    setSession('auditor');
+    renderCampaigns();
+    await waitFor(() => expect(screen.getByText('Campanha Selected')).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: 'Nova campanha' })).toBeDisabled();
+    for (const btn of screen.getAllByRole('button', { name: 'Editar' })) {
+      expect(btn).toBeDisabled();
+    }
+    expect(updateCampaignMock).not.toHaveBeenCalled();
+    expect(deleteCampaignMock).not.toHaveBeenCalled();
   });
 });

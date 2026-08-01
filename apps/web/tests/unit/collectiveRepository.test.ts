@@ -406,4 +406,669 @@ describe('SUP-D01-C supabase collective repository', () => {
     expect(result.error.code).toBe('ATOMICITY_REQUIRED');
     expect(insert).not.toHaveBeenCalled();
   });
+
+  const campaignRow = {
+    id: 'camp-1',
+    organization_id: 'org-1',
+    title: 'Campanha',
+    description: 'Desc',
+    channel: 'email',
+    starts_at: '2026-08-01',
+    ends_at: '2026-08-15',
+    campaign_status: 'Rascunho',
+    status: 'ativo',
+    version: 1,
+    scope_type: 'organization',
+    unit_id: null,
+    unit_applicability: 'all_units',
+    created_at: '2026-07-01T00:00:00.000Z',
+    updated_at: '2026-07-01T00:00:00.000Z',
+  };
+
+  const actionPlanRow = {
+    id: 'plan-1',
+    organization_id: 'org-1',
+    origin_indicator: 'Adesao',
+    issue_description: 'Baixa adesao',
+    action_text: 'Comunicar',
+    owner_name: 'Marina',
+    due_date: '2026-08-20',
+    priority: 'Alta',
+    action_status: 'Planejado',
+    status: 'ativo',
+    version: 1,
+    scope_type: 'organization',
+    unit_id: null,
+    unit_applicability: 'all_units',
+    created_at: '2026-07-01T00:00:00.000Z',
+    updated_at: '2026-07-01T00:00:00.000Z',
+  };
+
+  function eqChain(final: unknown) {
+    const chain: {
+      eq: (col: string, val: unknown) => typeof chain;
+      order: () => Promise<unknown>;
+      maybeSingle: () => Promise<unknown>;
+      select: (cols: string) => typeof chain;
+      in: () => Promise<unknown>;
+      filters: Array<[string, unknown]>;
+    } = {
+      filters: [],
+      eq(col, val) {
+        chain.filters.push([col, val]);
+        return chain;
+      },
+      order: () => Promise.resolve(final),
+      maybeSingle: () => Promise.resolve(final),
+      select: () => chain,
+      in: () => Promise.resolve(final),
+    };
+    return chain;
+  }
+
+  describe('deleteCampaign confirma linha removida', () => {
+    it('delete com retorno do id → sucesso', async () => {
+      const deleteFilters: Array<[string, unknown]>[] = [];
+      const client = makeClient({
+        fromImpl: (table) => {
+          if (table === 'campaigns') {
+            return {
+              select: () => {
+                const c = eqChain({ data: campaignRow, error: null });
+                return c;
+              },
+              delete: () => {
+                const filters: Array<[string, unknown]> = [];
+                const builder = {
+                  eq(col: string, val: unknown) {
+                    filters.push([col, val]);
+                    return builder;
+                  },
+                  select() {
+                    return {
+                      maybeSingle: () => {
+                        deleteFilters.push([...filters]);
+                        return Promise.resolve({ data: { id: 'camp-1' }, error: null });
+                      },
+                    };
+                  },
+                };
+                return builder;
+              },
+            };
+          }
+          throw new Error(`unexpected ${table}`);
+        },
+      });
+      const repo = createSupabaseCollectiveRepository({ client: client as never });
+      const result = await repo.deleteCampaign(ctx(), 'camp-1');
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.data.id).toBe('camp-1');
+      expect(deleteFilters[0]).toEqual([
+        ['organization_id', 'org-1'],
+        ['id', 'camp-1'],
+      ]);
+    });
+
+    it('delete com zero linhas → erro tipado, nunca sucesso', async () => {
+      const client = makeClient({
+        fromImpl: (table) => {
+          if (table === 'campaigns') {
+            return {
+              select: () => eqChain({ data: campaignRow, error: null }),
+              delete: () => ({
+                eq() {
+                  return this;
+                },
+                select: () => ({
+                  maybeSingle: () => Promise.resolve({ data: null, error: null }),
+                }),
+              }),
+            };
+          }
+          throw new Error(`unexpected ${table}`);
+        },
+      });
+      const repo = createSupabaseCollectiveRepository({ client: client as never });
+      const result = await repo.deleteCampaign(ctx(), 'camp-1');
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe('AUTHORIZATION_DENIED');
+      expect(result.error.kind).toBe('authorization');
+    });
+
+    it('leitura permitida seguida de delete com zero linhas → erro', async () => {
+      let getCalls = 0;
+      const client = makeClient({
+        fromImpl: (table) => {
+          if (table === 'campaigns') {
+            return {
+              select: () => {
+                getCalls += 1;
+                return eqChain({ data: campaignRow, error: null });
+              },
+              delete: () => ({
+                eq() {
+                  return this;
+                },
+                select: () => ({
+                  maybeSingle: () => Promise.resolve({ data: null, error: null }),
+                }),
+              }),
+            };
+          }
+          throw new Error(`unexpected ${table}`);
+        },
+      });
+      const repo = createSupabaseCollectiveRepository({ client: client as never });
+      const result = await repo.deleteCampaign(ctx(), 'camp-1');
+      expect(getCalls).toBeGreaterThanOrEqual(1);
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).not.toBeUndefined();
+      expect(['AUTHORIZATION_DENIED', 'NOT_FOUND', 'CROSS_TENANT_DATA']).toContain(result.error.code);
+    });
+
+    it('delete com 42501 → autorizacao', async () => {
+      const client = makeClient({
+        fromImpl: (table) => {
+          if (table === 'campaigns') {
+            return {
+              select: () => eqChain({ data: campaignRow, error: null }),
+              delete: () => ({
+                eq() {
+                  return this;
+                },
+                select: () => ({
+                  maybeSingle: () =>
+                    Promise.resolve({ data: null, error: { code: '42501', message: 'permission denied' } }),
+                }),
+              }),
+            };
+          }
+          throw new Error(`unexpected ${table}`);
+        },
+      });
+      const repo = createSupabaseCollectiveRepository({ client: client as never });
+      const result = await repo.deleteCampaign(ctx(), 'camp-1');
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe('CROSS_TENANT_DATA');
+      expect(result.error.kind).toBe('authorization');
+      expect(result.error.transient).toBe(false);
+    });
+
+    it('erro tecnico → sanitizado', async () => {
+      const client = makeClient({
+        fromImpl: (table) => {
+          if (table === 'campaigns') {
+            return {
+              select: () => eqChain({ data: campaignRow, error: null }),
+              delete: () => ({
+                eq() {
+                  return this;
+                },
+                select: () => ({
+                  maybeSingle: () =>
+                    Promise.resolve({
+                      data: null,
+                      error: { code: 'XX000', message: 'disk full internal path /var/lib/postgresql' },
+                    }),
+                }),
+              }),
+            };
+          }
+          throw new Error(`unexpected ${table}`);
+        },
+      });
+      const repo = createSupabaseCollectiveRepository({ client: client as never });
+      const result = await repo.deleteCampaign(ctx(), 'camp-1');
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe('TECHNICAL_ERROR');
+      expect(result.error.cause?.message?.length).toBeLessThanOrEqual(240);
+    });
+
+    it('organizacao estrangeira → nenhum sucesso', async () => {
+      const client = makeClient({
+        fromImpl: (table) => {
+          if (table === 'campaigns') {
+            return {
+              select: () => eqChain({ data: null, error: null }),
+              delete: () => {
+                throw new Error('delete nao deve ocorrer para org estrangeira sem leitura');
+              },
+            };
+          }
+          throw new Error(`unexpected ${table}`);
+        },
+      });
+      const repo = createSupabaseCollectiveRepository({ client: client as never });
+      const result = await repo.deleteCampaign(ctx({ organizationId: 'org-foreign' }), 'camp-1');
+      expect(result.ok).toBe(false);
+    });
+
+    it('nao retorna dados mock em falha de delete', async () => {
+      const client = makeClient({
+        fromImpl: (table) => {
+          if (table === 'campaigns') {
+            return {
+              select: () => eqChain({ data: campaignRow, error: null }),
+              delete: () => ({
+                eq() {
+                  return this;
+                },
+                select: () => ({
+                  maybeSingle: () => Promise.resolve({ data: null, error: null }),
+                }),
+              }),
+            };
+          }
+          throw new Error(`unexpected ${table}`);
+        },
+      });
+      const repo = createSupabaseCollectiveRepository({ client: client as never });
+      const result = await repo.deleteCampaign(ctx(), 'camp-1');
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result).not.toHaveProperty('data');
+    });
+  });
+
+  describe('deleteActionPlan confirma linha removida', () => {
+    it('delete com retorno do id → sucesso', async () => {
+      const deleteFilters: Array<[string, unknown]>[] = [];
+      const client = makeClient({
+        fromImpl: (table) => {
+          if (table === 'action_plans') {
+            return {
+              select: () => eqChain({ data: actionPlanRow, error: null }),
+              delete: () => {
+                const filters: Array<[string, unknown]> = [];
+                const builder = {
+                  eq(col: string, val: unknown) {
+                    filters.push([col, val]);
+                    return builder;
+                  },
+                  select() {
+                    return {
+                      maybeSingle: () => {
+                        deleteFilters.push([...filters]);
+                        return Promise.resolve({ data: { id: 'plan-1' }, error: null });
+                      },
+                    };
+                  },
+                };
+                return builder;
+              },
+            };
+          }
+          throw new Error(`unexpected ${table}`);
+        },
+      });
+      const repo = createSupabaseCollectiveRepository({ client: client as never });
+      const result = await repo.deleteActionPlan(ctx(), 'plan-1');
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.data.id).toBe('plan-1');
+      expect(deleteFilters[0]).toEqual([
+        ['organization_id', 'org-1'],
+        ['id', 'plan-1'],
+      ]);
+    });
+
+    it('delete com zero linhas → erro tipado', async () => {
+      const client = makeClient({
+        fromImpl: (table) => {
+          if (table === 'action_plans') {
+            return {
+              select: () => eqChain({ data: actionPlanRow, error: null }),
+              delete: () => ({
+                eq() {
+                  return this;
+                },
+                select: () => ({
+                  maybeSingle: () => Promise.resolve({ data: null, error: null }),
+                }),
+              }),
+            };
+          }
+          throw new Error(`unexpected ${table}`);
+        },
+      });
+      const repo = createSupabaseCollectiveRepository({ client: client as never });
+      const result = await repo.deleteActionPlan(ctx(), 'plan-1');
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe('AUTHORIZATION_DENIED');
+    });
+
+    it('delete com 42501 → autorizacao', async () => {
+      const client = makeClient({
+        fromImpl: (table) => {
+          if (table === 'action_plans') {
+            return {
+              select: () => eqChain({ data: actionPlanRow, error: null }),
+              delete: () => ({
+                eq() {
+                  return this;
+                },
+                select: () => ({
+                  maybeSingle: () =>
+                    Promise.resolve({ data: null, error: { code: '42501', message: 'permission denied' } }),
+                }),
+              }),
+            };
+          }
+          throw new Error(`unexpected ${table}`);
+        },
+      });
+      const repo = createSupabaseCollectiveRepository({ client: client as never });
+      const result = await repo.deleteActionPlan(ctx(), 'plan-1');
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe('CROSS_TENANT_DATA');
+      expect(result.error.kind).toBe('authorization');
+    });
+
+    it('erro tecnico → sanitizado', async () => {
+      const client = makeClient({
+        fromImpl: (table) => {
+          if (table === 'action_plans') {
+            return {
+              select: () => eqChain({ data: actionPlanRow, error: null }),
+              delete: () => ({
+                eq() {
+                  return this;
+                },
+                select: () => ({
+                  maybeSingle: () =>
+                    Promise.resolve({ data: null, error: { code: 'XX000', message: 'boom' } }),
+                }),
+              }),
+            };
+          }
+          throw new Error(`unexpected ${table}`);
+        },
+      });
+      const repo = createSupabaseCollectiveRepository({ client: client as never });
+      const result = await repo.deleteActionPlan(ctx(), 'plan-1');
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe('TECHNICAL_ERROR');
+    });
+
+    it('organizacao estrangeira → nenhum sucesso', async () => {
+      const client = makeClient({
+        fromImpl: (table) => {
+          if (table === 'action_plans') {
+            return {
+              select: () => eqChain({ data: null, error: null }),
+              delete: () => {
+                throw new Error('delete nao deve ocorrer');
+              },
+            };
+          }
+          throw new Error(`unexpected ${table}`);
+        },
+      });
+      const repo = createSupabaseCollectiveRepository({ client: client as never });
+      const result = await repo.deleteActionPlan(ctx({ organizationId: 'org-x' }), 'plan-1');
+      expect(result.ok).toBe(false);
+    });
+  });
+
+  describe('create/update mapeiam resposta da mutacao sem segundo get', () => {
+    it('createCampaign usa registro da mutacao e nao chama get posterior', async () => {
+      let selectGetCount = 0;
+      const client = makeClient({
+        fromImpl: (table) => {
+          if (table === 'campaigns') {
+            return {
+              insert: () => ({
+                select: () => ({
+                  maybeSingle: () => Promise.resolve({ data: campaignRow, error: null }),
+                }),
+              }),
+              select: () => {
+                selectGetCount += 1;
+                return eqChain({ data: campaignRow, error: null });
+              },
+            };
+          }
+          throw new Error(`unexpected ${table}`);
+        },
+      });
+      const repo = createSupabaseCollectiveRepository({ client: client as never });
+      const result = await repo.createCampaign(ctx(), {
+        organizationId: 'org-1',
+        title: 'Campanha',
+        description: 'Desc',
+        channel: 'email',
+        startsAt: '2026-08-01',
+        endsAt: '2026-08-15',
+        scope: allUnitsScope,
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.data.id).toBe('camp-1');
+      expect(selectGetCount).toBe(0);
+    });
+
+    it('updateCampaign usa registro da mutacao e nao chama get posterior a escrita', async () => {
+      let selectCalls = 0;
+      const updated = { ...campaignRow, title: 'Atualizada', version: 2 };
+      const client = makeClient({
+        fromImpl: (table) => {
+          if (table === 'campaigns') {
+            return {
+              select: () => {
+                selectCalls += 1;
+                return eqChain({ data: campaignRow, error: null });
+              },
+              update: () => ({
+                eq() {
+                  return this;
+                },
+                select: () => ({
+                  maybeSingle: () => Promise.resolve({ data: updated, error: null }),
+                }),
+              }),
+            };
+          }
+          throw new Error(`unexpected ${table}`);
+        },
+      });
+      const repo = createSupabaseCollectiveRepository({ client: client as never });
+      const result = await repo.updateCampaign(ctx(), {
+        organizationId: 'org-1',
+        campaignId: 'camp-1',
+        title: 'Atualizada',
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.data.title).toBe('Atualizada');
+      // Apenas o get pre-update (existing), sem segundo get pos-mutacao.
+      expect(selectCalls).toBe(1);
+    });
+
+    it('createActionPlan usa mutacao sem get posterior', async () => {
+      let selectGetCount = 0;
+      const client = makeClient({
+        fromImpl: (table) => {
+          if (table === 'action_plans') {
+            return {
+              insert: () => ({
+                select: () => ({
+                  maybeSingle: () => Promise.resolve({ data: actionPlanRow, error: null }),
+                }),
+              }),
+              select: () => {
+                selectGetCount += 1;
+                return eqChain({ data: actionPlanRow, error: null });
+              },
+            };
+          }
+          throw new Error(`unexpected ${table}`);
+        },
+      });
+      const repo = createSupabaseCollectiveRepository({ client: client as never });
+      const result = await repo.createActionPlan(ctx(), {
+        organizationId: 'org-1',
+        originIndicator: 'Adesao',
+        issueDescription: 'Baixa adesao',
+        actionText: 'Comunicar',
+        ownerName: 'Marina',
+        dueDate: '2026-08-20',
+        priority: 'Alta',
+        scope: allUnitsScope,
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.data.id).toBe('plan-1');
+      expect(selectGetCount).toBe(0);
+    });
+
+    it('updateActionPlan usa mutacao sem get posterior a escrita', async () => {
+      let selectCalls = 0;
+      const updated = { ...actionPlanRow, action_text: 'Novo', version: 2 };
+      const client = makeClient({
+        fromImpl: (table) => {
+          if (table === 'action_plans') {
+            return {
+              select: () => {
+                selectCalls += 1;
+                return eqChain({ data: actionPlanRow, error: null });
+              },
+              update: () => ({
+                eq() {
+                  return this;
+                },
+                select: () => ({
+                  maybeSingle: () => Promise.resolve({ data: updated, error: null }),
+                }),
+              }),
+            };
+          }
+          throw new Error(`unexpected ${table}`);
+        },
+      });
+      const repo = createSupabaseCollectiveRepository({ client: client as never });
+      const result = await repo.updateActionPlan(ctx(), {
+        organizationId: 'org-1',
+        actionPlanId: 'plan-1',
+        actionText: 'Novo',
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.data.actionText).toBe('Novo');
+      expect(selectCalls).toBe(1);
+    });
+
+    it('create sem linha retornada → erro', async () => {
+      const client = makeClient({
+        fromImpl: () => ({
+          insert: () => ({
+            select: () => ({
+              maybeSingle: () => Promise.resolve({ data: null, error: null }),
+            }),
+          }),
+        }),
+      });
+      const repo = createSupabaseCollectiveRepository({ client: client as never });
+      const result = await repo.createCampaign(ctx(), {
+        organizationId: 'org-1',
+        title: 'X',
+        description: 'Y',
+        channel: 'email',
+        startsAt: '2026-08-01',
+        endsAt: '2026-08-15',
+        scope: allUnitsScope,
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe('TECHNICAL_ERROR');
+    });
+
+    it('create 42501 → autorizacao', async () => {
+      const client = makeClient({
+        fromImpl: () => ({
+          insert: () => ({
+            select: () => ({
+              maybeSingle: () =>
+                Promise.resolve({ data: null, error: { code: '42501', message: 'permission denied' } }),
+            }),
+          }),
+        }),
+      });
+      const repo = createSupabaseCollectiveRepository({ client: client as never });
+      const result = await repo.createCampaign(ctx(), {
+        organizationId: 'org-1',
+        title: 'X',
+        description: 'Y',
+        channel: 'email',
+        startsAt: '2026-08-01',
+        endsAt: '2026-08-15',
+        scope: allUnitsScope,
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe('CROSS_TENANT_DATA');
+    });
+
+    it('update metadata de selected_units preserva unitIds sem escrita relacional', async () => {
+      const selectedRow = {
+        ...campaignRow,
+        unit_applicability: 'selected_units',
+      };
+      const updated = { ...selectedRow, title: 'Meta', version: 2 };
+      let applicabilityCalls = 0;
+      const clientWithGet = makeClient({
+        fromImpl: (table) => {
+          if (table === 'campaigns') {
+            return {
+              select: () => eqChain({ data: selectedRow, error: null }),
+              update: () => ({
+                eq() {
+                  return this;
+                },
+                select: () => ({
+                  maybeSingle: () => Promise.resolve({ data: updated, error: null }),
+                }),
+              }),
+            };
+          }
+          if (table === 'campaign_unit_applicabilities') {
+            applicabilityCalls += 1;
+            return {
+              select: () => ({
+                in: () =>
+                  Promise.resolve({
+                    data: [{ campaign_id: 'camp-1', unit_id: 'unit-1' }],
+                    error: null,
+                  }),
+              }),
+            };
+          }
+          throw new Error(`unexpected ${table}`);
+        },
+      });
+      const repo = createSupabaseCollectiveRepository({ client: clientWithGet as never });
+      const result = await repo.updateCampaign(ctx(), {
+        organizationId: 'org-1',
+        campaignId: 'camp-1',
+        title: 'Meta',
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.data.title).toBe('Meta');
+      expect(result.data.scope).toMatchObject({
+        unitApplicability: 'selected_units',
+        unitIds: ['unit-1'],
+      });
+      // Applicability read only for pre-get existing, not a relational write after mutation.
+      expect(applicabilityCalls).toBe(1);
+    });
+  });
 });

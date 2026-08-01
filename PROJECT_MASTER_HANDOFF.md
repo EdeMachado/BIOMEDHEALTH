@@ -15,23 +15,34 @@ Este documento é a **fonte oficial de continuidade e governança** do projeto B
 |---|---|
 | Repositório | `EdeMachado/BIOMEDHEALTH` |
 | Branch de referência | `main` |
-| Baseline de `origin/main` utilizado na consolidação | `0f3f666403b6d47b2fa2a2c144fe5667ae0dd538` |
-| Último merge relevante | PR #15 — normalização PostgreSQL `42501` |
+| Baseline de `origin/main` (pós PR #16) | `d38c6c51b79942ae3a38de54e57cd8405a91171d` |
+| Último merge documental integrado | PR #16 — Documento Mestre + backlog + `.env.example` |
 | Data de consolidação deste handoff | 2026-07-31 |
+| Ratificação org×unit (coletivo) | 2026-07-31 — decisão documental; sem implementação |
 
-## 3. Visão geral dos três módulos
+## 3. Propósito do BIOMED HEALTH e módulos
+
+O BIOMED HEALTH é um **ecossistema modular de saúde**. A gestão coletiva é um módulo, **não** a finalidade exclusiva do produto.
+
+| Módulo | Finalidade |
+|---|---|
+| **Minha BioMed** | Experiência e jornada individual |
+| **BioMed Clínica** | Cuidado e acompanhamento assistencial |
+| **BioMed Gestão** | Saúde coletiva e programas institucionais |
+| **BioMed Ocupacional** | Saúde corporativa e ocupacional (evolução) |
+| **BioMed Intelligence** | Análises e apoio à decisão (evolução) |
 
 ### Minha BioMed (usuário)
 
-Consentimento versionado, avaliação inicial orientativa, jornada/atividades/progresso, perfil e privacidade. Escopo estritamente próprio (`user_id` / tenant).
+Consentimento versionado, avaliação inicial orientativa, jornada/atividades/progresso, perfil e privacidade. Titularidade do usuário; **não** exige organização como regra universal para funcionalidades pessoais independentes / futuras B2C.
 
 ### BioMed Clínica (profissional)
 
-Carteira por vínculo ativo, agenda, leitura de jornada vinculada, ficha clínica modular versionada, plano de cuidado e evoluções. Isolamento por organização + assignment; gestão institucional sem acesso clínico nominal.
+Carteira por vínculo ativo, agenda, leitura de jornada vinculada, ficha clínica modular versionada, plano de cuidado e evoluções. Isolamento por organização + assignment quando o contexto for institucional; gestão institucional sem acesso clínico nominal. Organização patrocinadora **não** se torna proprietária do prontuário pessoal.
 
-### BioMed Gestão (institucional)
+### BioMed Gestão (institucional / coletivo)
 
-Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limiar mínimo de 10 indivíduos; sem drill-down nominal. Persistência real de gestão ainda em backlog (Fase D).
+Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limiar mínimo de 10 no recorte efetivo; sem drill-down nominal. Persistência real ainda não implementada (Fase D).
 
 ## 4. Documentos canônicos
 
@@ -39,7 +50,7 @@ Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limia
 |---|---|
 | `PROJECT_MASTER_HANDOFF.md` (este) | Continuidade, status, decisões, retomada |
 | `SUPABASE_IMPLEMENTATION_BACKLOG.md` | Backlog técnico detalhado (tickets SUP-*) |
-| `SUPABASE_ARCHITECTURE_PLANNING.md` | Decisões arquitetônicas Supabase (2026-07-29) |
+| `SUPABASE_ARCHITECTURE_PLANNING.md` | Decisões arquitetônicas Supabase |
 | `IMPLEMENTATION_PLAN.md` | Plano MVP Demo 1 (legado complementar) |
 | `ARCHITECTURE.md` / `DATA_MODEL.md` | Fundação demo e modelo |
 | `PERMISSIONS_MATRIX.md` / `SECURITY_CHECKLIST.md` | Permissões e checklist |
@@ -57,21 +68,42 @@ Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limia
 ## 6. Decisões estruturais consolidadas
 
 1. Multi-papel por organização/unidade; JWT mínimo; autorização por vínculos + RLS.
-2. `organization_id` obrigatório em dados institucionais; `unit_id` somente em entidades operacionais vinculadas a unidade (planejado; **gap residual** em agenda/vinculo — ver C01).
+2. **Decisão ratificada (domínio institucional/coletivo — híbrido):** ver §6.1. **Não** é regra universal de todo o produto.
 3. Consentimento versionado/revogável; texto jurídico final pendente de aprovação humana.
 4. Auditoria append-only via RPC (Fase E ainda aberta).
-5. Indicadores gerenciais: grupo mínimo 10; anti-reidentificação.
+5. Indicadores gerenciais: grupo mínimo 10 no recorte efetivo; anti-reidentificação (sem contorno por filtros/exportações).
 6. Substituição gradual mock→real por módulo, sem big-bang.
 7. **Fallback clínico runtime com fixture mock, coleção vazia como sucesso, ou escrita fictícia: PROIBIDO** (ver §8).
+8. Separação titularidade: dado pessoal/clínico ≠ vínculo institucional ≠ agregado coletivo.
+
+### 6.1 Decisão ratificada — organização × unidade (escopo limitado)
+
+**Aplicação:** exclusivamente domínio **institucional e de gestão coletiva** (BioMed Gestão / programas institucionais / inteligência populacional derivada).
+
+| Regra | Definição |
+|---|---|
+| `organization_id` | Obrigatório em todo registro institucional ou de gestão coletiva |
+| `unit_id` | Obrigatório quando houver recorte operacional específico por unidade |
+| `unit_id = null` | Significa **somente** escopo organizacional **explícito** nesse domínio |
+| Proibições de `null` | Não pode significar unidade esquecida, contexto desconhecido, falha de seleção, ausência acidental de vínculo, fallback de autorização ou ampliação de permissões |
+| Validação | Se houver `unit_id`, a unidade deve pertencer ao `organization_id` informado |
+| Limiar | Relatórios/indicadores coletivos: ≥ **10** pessoas no recorte efetivo após todos os filtros; sem contorno por cruzamentos/exportações |
+| Visibilidade | Usuário unit-scoped pode ver campanhas org aplicáveis à sua unidade (vínculo válido, papel compatível, sem dados individuais indevidos, sem outras units, agregados com limiar) |
+
+**Limitação expressa:** esta decisão **não** torna `organization_id` obrigatório para conta pessoal, cadastro independente, jornada/histórico pessoal, preventivo individual, atendimento clínico particular ou assistencial independente, registros de titularidade do paciente, ou futuras operações B2C desvinculadas de organização. Esses domínios têm regras próprias de titularidade, vínculo, consentimento, finalidade, portabilidade, continuidade, compartilhamento, autorização e auditoria.
+
+**Estado implementado (não confundir com a decisão):** schema atual exige `organization_id` em muitas tabelas MVP; `unit_id` só em bindings de access; campanhas/planos coletivos ainda sem coluna de unidade. Gap clínico C01 (agenda sem `unit_id`) permanece dívida **paralela** e **não** bloqueia, por si só, a futura especificação do SUP-D01.
+
+**SUP-D01:** desbloqueado **somente** para futura especificação documental; **não** autorizado para implementação nesta etapa.
 
 ## 7. Status das fases SUP-A … SUP-E
 
 | Fase | Status | Notas |
 |---|---|---|
 | A — Acesso/tenant | Entregue na prática (A01–A04 via PRs de auth/access) | Detalhe fino no backlog |
-| B — Preventivo | Parcial | B01–B03 (+ filhas) entregues; **B04 aberto** |
+| B — Preventivo | Parcial | B01–B03 (+ filhas) entregues; **B04 aberto** (não iniciado) |
 | C — Clínico | Parcial | C01.1/C01.2, C02, C03 entregues; C01 parent com gap `unit_id`; C04 parcial (ver §8) |
-| D — Gestão agregada | Aberta | Próximo foco técnico recomendado: D01 |
+| D — Gestão agregada | Aberta | Decisão org×unit ratificada; D01 aguarda especificação; **sem implementação** |
 | E — Auditoria/hardening | Aberta | Após B/C/D maduros |
 
 ## 8. Tickets e fatias C04 — status consolidado
@@ -87,7 +119,7 @@ Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limia
 | SUP-C03 | PR #10 (+ hardening #11/#12) — base `eac8685…` / follow-ups |
 | **SUP-C04.1** | **PR #13 MERGED** — `69cb165…` (modos por módulo) |
 | **SUP-C04.2a** | **PR #14 MERGED** — `ca624915…` (observabilidade + deny-by-default) |
-| **Normalização PostgreSQL 42501** | **PR #15 MERGED** — `0f3f666…` (pai do HEAD atual de main) |
+| **Normalização PostgreSQL 42501** | **PR #15 MERGED** — `0f3f666…` (histórico; baseline atual de `main` é o merge do PR #16) |
 
 ### Classificação canônica pós-PR #15
 
@@ -126,8 +158,9 @@ Inelegível a qualquer fallback de dados.
 | Item | Estado |
 |---|---|
 | SUP-B04 | Aberto — revisar linguagem/mecanismos de fallback inseguro antes de executar |
-| SUP-C01 `unit_id` | Gap residual arquitetural |
-| SUP-D01…D03 | Abertos (Fase D) |
+| SUP-C01 `unit_id` | Gap residual clínico **paralelo** (não bloqueia especificação futura do D01) |
+| SUP-D01 | Desbloqueado **somente** para especificação futura; implementação **não** autorizada |
+| SUP-D02…D03 | Abertos (após especificação e eventual implementação futura de D01) |
 | SUP-E01…E03 | Abertos (Fase E) |
 | Decisões humanas (jurídico/clínico/retention/rollout) | Pendentes (seção backlog) |
 
@@ -156,15 +189,17 @@ Inelegível a qualquer fallback de dados.
 
 ## 11. Decisões humanas pendentes
 
-Ver também a seção homônima do backlog: bases legais/texto de consentimento; estrutura final da ficha; retention/exportação de auditoria; estratégia de rollout por tenant/módulo; granularidade operacional de `unit_id` onde ainda residual.
+Granularidade coletiva org×unit (**ratificada** — §6.1). Pendentes: bases legais/texto de consentimento; estrutura final da ficha; retention/exportação de auditoria; estratégia de rollout por tenant/módulo; detalhes de especificação do SUP-D01 (etapa seguinte, após integração desta ratificação).
 
 ## 12. Sequência recomendada de retomada
 
-1. **Consolidação documental** (este handoff + backlog + `.env.example`) — publicada no Draft PR #16; integração em main pendente.
-2. **SUP-D01** — próximo ticket técnico **recomendado**, **condicionado** à confirmação da granularidade de unidade aplicável a campanhas/planos (o backlog afirma aprovação da granularidade em A01; o gap `unit_id` em C01.2 permanece — **não** declarar D01 incondicionalmente desbloqueado sem fechar essa contradição operacional).
-3. **SUP-B04** — alternativa posterior; condicionada à revisão de qualquer fallback mock inseguro no domínio preventivo.
-4. Gap residual `unit_id` — controlar como dependência arquitetural quando o ticket tocar entidades operacionais.
-5. **SUP-C04.2b — não iniciar.**
+1. **Consolidação documental** — integrada via PR #16 (`d38c6c5…`).
+2. **Ratificação arquitetural org×unit (domínio coletivo)** — esta etapa documental (sem implementação; sem especificação técnica detalhada no mesmo PR).
+3. **Especificação técnica do SUP-D01** — etapa **posterior** à integração da ratificação; ainda **não** autoriza implementação.
+4. **Implementação SUP-D01** — somente após autorização explícita pós-revisão da especificação.
+5. **SUP-B04** — alternativa posterior; revisar fallback preventivo inseguro antes; **não iniciar** agora.
+6. Gap residual `unit_id` clínico (C01) — trilha **paralela**, não pré-requisito integral do D01.
+7. **SUP-C04.2b — não iniciar.**
 
 ## 13. Instruções para retomada segura
 

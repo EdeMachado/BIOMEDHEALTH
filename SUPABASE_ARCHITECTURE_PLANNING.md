@@ -16,7 +16,7 @@ Este documento define o planejamento tecnico para a futura integracao com Supaba
 1. Usuario pode ter multiplos papeis por organizacao e por unidade.
    - JWT deve permanecer minimo.
    - Autorizacao efetiva deve ser validada por vinculos persistidos e RLS.
-2. `organization_id` obrigatorio para dados institucionais.
+2. `organization_id` obrigatorio para dados **institucionais**.
    - `unit_id` obrigatorio apenas em entidades operacionais vinculadas a unidade.
 3. Consentimento deve ser versionado, revogavel e auditavel.
    - texto juridico final depende de aprovacao humana e nao deve ser inventado em codigo.
@@ -26,6 +26,22 @@ Este documento define o planejamento tecnico para a futura integracao com Supaba
 5. Indicadores gerenciais exigem agrupamento minimo de 10 individuos.
    - suprimir resultados abaixo do limiar;
    - prevenir reidentificacao por filtros combinados.
+
+## Decisao ratificada complementar (2026-07-31) — escopo institucional/coletivo
+
+Formaliza e delimita o item 2 acima. Detalhe de continuidade: `PROJECT_MASTER_HANDOFF.md` §6.1.
+
+1. Modelo **hibrido** aplica-se ao dominio **institucional e de gestao coletiva**, nao como regra universal do BIOMED HEALTH.
+2. Todo registro institucional/coletivo exige `organization_id`.
+3. `unit_id` e obrigatorio quando houver recorte operacional por unidade; validar unit ∈ organization.
+4. Nesse dominio, `unit_id = null` significa **somente** escopo organizacional explicito — nunca unidade esquecida, contexto desconhecido, falha de selecao, ausencia acidental, fallback de autorizacao ou ampliação de permissao.
+5. A especificação futura do SUP-D01 deverá tornar o escopo coletivo **explicito no contrato** (sem depender apenas de inferencia por `null`); a forma tecnica desse contrato sera definida nessa especificação — **nao** nesta ratificação.
+6. Limiar >= 10 no recorte efetivo apos todos os filtros; sem contorno por cruzamentos/exportacoes. O limiar **nao** impede atendimento clinico autorizado.
+7. Usuario unit-scoped pode visualizar campanhas organizacionais aplicaveis a sua unidade sob vinculo/papel validos, sem acesso a outras units nem a dados individuais indevidos.
+8. `organization_id` **nao** e obrigatorio para conta pessoal, jornada/historico pessoal, atendimento particular/assistencial independente, titularidade do paciente ou futuras operacoes B2C desvinculadas de organizacao.
+9. Organizacao patrocinadora/sediante **nao** se torna proprietaria do prontuario pessoal.
+10. O BIOMED HEALTH e ecossistema modular (Minha BioMed, Clinica, Gestao, Ocupacional, Intelligence); Gestao coletiva nao e a finalidade exclusiva do produto.
+11. SUP-D01: **desbloqueado somente para especificação futura**; **implementacao nao autorizada** nesta etapa.
 
 ---
 
@@ -130,15 +146,21 @@ Relacoes-chave:
 
 ### 2.1 Isolamento organizacional (tenant)
 
-Toda tabela sensivel deve carregar `organization_id` e operar com:
+Dados **institucionais e coletivos** devem carregar `organization_id` e operar com:
 
 - filtro por organizacao na aplicacao (use-cases/repositorios);
 - filtro por organizacao no banco (RLS obrigatoria).
 
+Dados **pessoais ou assistenciais independentes** possuem titularidade e regras proprias; **nao** exigem `organization_id` como obrigatoriedade universal do produto.
+
+Quando um registro individual se originar de programa institucional, o vinculo organizacional/unidade de origem **nao** transfere a titularidade do prontuario pessoal a organizacao patrocinadora.
+
 ### 2.2 Unidade organizacional
 
-`organization_units` define escopo operacional para agenda, campanhas e indicadores.  
-Decisao aprovada: `organization_id` obrigatorio nos dados institucionais e `unit_id` obrigatorio somente em entidades operacionais vinculadas a unidade (ex.: `appointments`, `campaigns`, `action_plans` quando aplicavel).
+`organization_units` define escopo operacional para agenda, campanhas e indicadores **no dominio institucional**.
+Decisao ratificada (2026-07-31): no dominio coletivo/institucional, `organization_id` obrigatorio; `unit_id` obrigatorio somente quando houver recorte por unidade; `null` = escopo organizacional explicito (nunca ausencia acidental nem ampliação de acesso).
+**Estado implementado:** `unit_id` ainda ausente em `appointments` / `campaigns` / `action_plans` (gap clinico C01 paralelo; evolucao coletiva depende de especificação/implementação futuras do SUP-D01, ainda nao autorizadas).
+**Nao confundir:** obrigatoriedade institucional **nao** se estende como regra universal a dados pessoais/B2C.
 
 ### 2.3 Usuario e vinculo
 
@@ -206,8 +228,8 @@ Planejamento de politica por categoria:
 
 ### 5.1 Basicas obrigatorias
 
-- isolamento por `organization_id` em todas as tabelas sensiveis;
-- ownership para dados pessoais (`user_id = auth.uid()` onde aplicavel);
+- isolamento por `organization_id` em tabelas institucionais/coletivas sensiveis;
+- ownership para dados pessoais (`user_id = auth.uid()` onde aplicavel), sem exigir organizacao como regra universal;
 - politicas especificas por papel para leitura/escrita.
 
 ### 5.2 Clinicas
@@ -256,7 +278,9 @@ Planejamento de politica por categoria:
 
 - apenas agregado/coletivo;
 - sem drill-down nominal;
-- sem acesso a ficha clinica individual.
+- sem acesso a ficha clinica individual;
+- modulo do ecossistema — nao finalidade exclusiva do BIOMED HEALTH;
+- limiar >=10 no recorte efetivo (enforcement detalhado em tickets futuros de gestao/indicadores).
 
 ---
 

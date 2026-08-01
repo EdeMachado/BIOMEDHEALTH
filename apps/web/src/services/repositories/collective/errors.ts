@@ -55,7 +55,7 @@ const ERROR_DEFAULTS: ErrorDefaults = {
     kind: 'atomicity',
     transient: false,
     message:
-      'Operacao multi-tabela exige RPC/transacao autorizada (fora do D01-C). Nao executada.',
+      'Operacao atomica reservada para operacoes futuras ainda nao implementadas. Nao executada.',
   },
   TECHNICAL_ERROR: {
     kind: 'technical',
@@ -63,6 +63,23 @@ const ERROR_DEFAULTS: ErrorDefaults = {
     message: 'Falha tecnica na gestao coletiva.',
   },
 };
+
+const COLLECTIVE_MESSAGE_CODES = new Set<string>(Object.keys(ERROR_DEFAULTS));
+
+/**
+ * Extrai `COLLECTIVE:CODE` de mensagens RPC (P0001 / raise exception).
+ * Retorna o codigo tipado quando conhecido; senao null.
+ */
+export function parseCollectiveMessageCode(message?: string): CollectiveErrorCode | null {
+  if (!message) return null;
+  const trimmed = message.trim();
+  const match =
+    /^COLLECTIVE:([A-Z0-9_]+)/i.exec(trimmed) ?? /(?:^|[\s:])COLLECTIVE:([A-Z0-9_]+)/i.exec(trimmed);
+  if (!match?.[1]) return null;
+  const code = match[1].toUpperCase();
+  if (!COLLECTIVE_MESSAGE_CODES.has(code)) return null;
+  return code as CollectiveErrorCode;
+}
 
 export function collectiveError(
   code: CollectiveErrorCode,

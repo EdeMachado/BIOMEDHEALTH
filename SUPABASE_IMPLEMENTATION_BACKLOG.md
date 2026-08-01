@@ -4,7 +4,7 @@
 
 Backlog tecnico para implementacao futura da integracao com Supabase, com base em `SUPABASE_ARCHITECTURE_PLANNING.md`.
 
-Este backlog **nao executa implementacao**.  
+Este backlog **nao executa implementacao**.
 Nenhum item abaixo implica conexao Supabase nesta etapa.
 
 ## Regras obrigatorias para todos os tickets
@@ -40,138 +40,138 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 
 ### SUP-A01
 
-1. **Identificador**: `SUP-A01`  
-2. **Titulo**: Baseline de schema de tenant e identidade de acesso  
-3. **Finalidade**: preparar fundacao de dados para organizacao, unidade e pertencimento de usuarios.  
+1. **Identificador**: `SUP-A01`
+2. **Titulo**: Baseline de schema de tenant e identidade de acesso
+3. **Finalidade**: preparar fundacao de dados para organizacao, unidade e pertencimento de usuarios.
 4. **Escopo incluido**:
    - definicao final de colunas obrigatorias (`id`, `organization_id`, `status`, `created_at`, `updated_at`);
    - schema de `organizations`, `organization_units`, `user_organizations`, `roles`, `permissions`, `user_roles`;
-   - constraints de unicidade e integridade referencial.  
+   - constraints de unicidade e integridade referencial.
 5. **Fora do escopo**:
    - migracao de dados mock para producao;
    - qualquer tela nova;
-   - regras clinicas detalhadas.  
+   - regras clinicas detalhadas.
 6. **Dependencias**:
    - aprovacao dos codigos de perfil e nomenclatura de papeis;
-   - validacao de estrategia multi-organizacao por negocio.  
-7. **Entidades/tabelas**: `organizations`, `organization_units`, `user_organizations`, `roles`, `permissions`, `user_roles`.  
-8. **Perfis/permissoes afetados**: todos os perfis (base de autorizacao).  
+   - validacao de estrategia multi-organizacao por negocio.
+7. **Entidades/tabelas**: `organizations`, `organization_units`, `user_organizations`, `roles`, `permissions`, `user_roles`.
+8. **Perfis/permissoes afetados**: todos os perfis (base de autorizacao).
 9. **RLS necessaria**:
    - leitura/escrita com escopo por `organization_id`;
    - bloqueio de alteracao de papeis fora da organizacao corrente;
-   - suporte a multiplos papeis por usuario em contexto organizacao/unidade via vinculos persistidos.  
+   - suporte a multiplos papeis por usuario em contexto organizacao/unidade via vinculos persistidos.
 10. **Criterios de aceite**:
    - schema validado por migration dry-run;
    - constraints cobrindo duplicidade de associacoes usuario-organizacao;
-   - documentacao de mapeamento de perfis finalizada.  
+   - documentacao de mapeamento de perfis finalizada.
 11. **Testes obrigatorios**:
    - testes SQL de constraint;
-   - testes de acesso cruzado entre organizacoes (negacao).  
+   - testes de acesso cruzado entre organizacoes (negacao).
 12. **Riscos de seguranca/LGPD**:
    - erro de modelagem pode permitir heranca indevida de papel;
-   - dados de uma organizacao vazando para outra por chave mal definida.  
-13. **Estimativa**: media  
+   - dados de uma organizacao vazando para outra por chave mal definida.
+13. **Estimativa**: media
 14. **Ordem recomendada**: 1
 
 ### SUP-A02
 
-1. **Identificador**: `SUP-A02`  
-2. **Titulo**: Integracao de autenticacao Supabase em modo hibrido  
-3. **Finalidade**: habilitar sessao real com fallback controlado para mock durante rollout.  
+1. **Identificador**: `SUP-A02`
+2. **Titulo**: Integracao de autenticacao Supabase em modo hibrido
+3. **Finalidade**: habilitar sessao real com fallback controlado para mock durante rollout.
 4. **Escopo incluido**:
    - adaptacao do provider de auth para modo hibrido por feature flag;
    - mapeamento de sessao Supabase para `SessionUser`;
-   - tratamento de expiracao/refresh de sessao.  
+   - tratamento de expiracao/refresh de sessao.
 5. **Fora do escopo**:
    - MFA;
    - onboarding completo de usuario final;
-   - desativacao definitiva do modo mock.  
+   - desativacao definitiva do modo mock.
 6. **Dependencias**:
    - `SUP-A01`;
-   - definicao de claims JWT minimas (decisao aprovada no documento de arquitetura).  
-7. **Entidades/tabelas**: `auth.users` (Supabase), `user_organizations`, `user_roles`.  
-8. **Perfis/permissoes afetados**: todos; impacto direto em login e resolucao de papel.  
+   - definicao de claims JWT minimas (decisao aprovada no documento de arquitetura).
+7. **Entidades/tabelas**: `auth.users` (Supabase), `user_organizations`, `user_roles`.
+8. **Perfis/permissoes afetados**: todos; impacto direto em login e resolucao de papel.
 9. **RLS necessaria**:
    - claims JWT usadas apenas como contexto minimo de identidade/tenant;
    - autorizacao efetiva validada por `user_organizations`, `user_roles` e vinculos persistidos;
-   - politicas com deny-by-default sem vinculo valido.  
+   - politicas com deny-by-default sem vinculo valido.
 10. **Criterios de aceite**:
    - login real habilitavel por flag sem quebrar fluxo mock;
    - logout e renovacao de sessao funcionando;
    - guardas existentes preservadas;
-   - evidencias de multiplos papeis por usuario no mesmo tenant/unidade sem escalonamento indevido.  
+   - evidencias de multiplos papeis por usuario no mesmo tenant/unidade sem escalonamento indevido.
 11. **Testes obrigatorios**:
    - unitarios de mapeamento de sessao;
    - integracao login/logout;
-   - E2E de rota protegida por perfil.  
+   - E2E de rota protegida por perfil.
 12. **Riscos de seguranca/LGPD**:
    - sessao sem claims corretas pode abrir acesso indevido;
-   - risco de mixed-mode sem trilha de auditoria consistente.  
-13. **Estimativa**: grande  
+   - risco de mixed-mode sem trilha de auditoria consistente.
+13. **Estimativa**: grande
 14. **Ordem recomendada**: 2
 
 ### SUP-A03
 
-1. **Identificador**: `SUP-A03`  
-2. **Titulo**: RLS base para tenant, ownership e papeis de acesso  
-3. **Finalidade**: garantir protecao real no banco, independente do frontend.  
+1. **Identificador**: `SUP-A03`
+2. **Titulo**: RLS base para tenant, ownership e papeis de acesso
+3. **Finalidade**: garantir protecao real no banco, independente do frontend.
 4. **Escopo incluido**:
    - politicas RLS iniciais de tenant;
    - ownership de dados pessoais;
    - leitura/escrita por papel nas tabelas da fase A;
-   - avaliacao de contexto de unidade nas entidades operacionais aplicaveis.  
+   - avaliacao de contexto de unidade nas entidades operacionais aplicaveis.
 5. **Fora do escopo**:
    - RLS clinica detalhada;
-   - agregacoes gerenciais avancadas.  
+   - agregacoes gerenciais avancadas.
 6. **Dependencias**:
    - `SUP-A01`;
-   - `SUP-A02` (claims definidas).  
-7. **Entidades/tabelas**: tabelas da fase A + tabelas de sessao/acesso relacionadas.  
-8. **Perfis/permissoes afetados**: todos.  
+   - `SUP-A02` (claims definidas).
+7. **Entidades/tabelas**: tabelas da fase A + tabelas de sessao/acesso relacionadas.
+8. **Perfis/permissoes afetados**: todos.
 9. **RLS necessaria**:
    - `USING` + `WITH CHECK` por `organization_id`;
-   - negacao explicita para acessos sem escopo.  
+   - negacao explicita para acessos sem escopo.
 10. **Criterios de aceite**:
    - politicas aplicadas e auditadas;
    - consultas cross-tenant bloqueadas em testes;
-   - escalonamento indevido entre papeis do mesmo usuario bloqueado por RLS.  
+   - escalonamento indevido entre papeis do mesmo usuario bloqueado por RLS.
 11. **Testes obrigatorios**:
    - SQL tests permit/deny por perfil;
-   - testes automatizados de acesso cruzado entre orgs.  
+   - testes automatizados de acesso cruzado entre orgs.
 12. **Riscos de seguranca/LGPD**:
    - policy permissiva em excesso;
-   - lacunas de `WITH CHECK` permitindo escrita invalida.  
-13. **Estimativa**: grande  
+   - lacunas de `WITH CHECK` permitindo escrita invalida.
+13. **Estimativa**: grande
 14. **Ordem recomendada**: 3
 
 ### SUP-A04
 
-1. **Identificador**: `SUP-A04`  
-2. **Titulo**: Repositorio de organizacao/perfil e transicao mock->supabase  
-3. **Finalidade**: trocar gradualmente consultas de perfil/organizacao sem alterar UI.  
+1. **Identificador**: `SUP-A04`
+2. **Titulo**: Repositorio de organizacao/perfil e transicao mock->supabase
+3. **Finalidade**: trocar gradualmente consultas de perfil/organizacao sem alterar UI.
 4. **Escopo incluido**:
    - interfaces de repositorio para org, papel e pertencimento;
    - implementacao supabase paralela ao mock;
-   - toggle por modulo.  
+   - toggle por modulo.
 5. **Fora do escopo**:
    - troca de todos os dominios de uma vez;
-   - refactor visual de telas.  
-6. **Dependencias**: `SUP-A01`, `SUP-A02`, `SUP-A03`.  
-7. **Entidades/tabelas**: fase A + camada `services/repositories`.  
-8. **Perfis/permissoes afetados**: todos (resolucao de home e menu por papel).  
-9. **RLS necessaria**: reaproveita politicas de `SUP-A03`; validacao em repositorio.  
+   - refactor visual de telas.
+6. **Dependencias**: `SUP-A01`, `SUP-A02`, `SUP-A03`.
+7. **Entidades/tabelas**: fase A + camada `services/repositories`.
+8. **Perfis/permissoes afetados**: todos (resolucao de home e menu por papel).
+9. **RLS necessaria**: reaproveita politicas de `SUP-A03`; validacao em repositorio.
 10. **Criterios de aceite**:
    - contratos de repositorio preservados;
    - fallback mock funcional;
-   - sem quebra de guardas.  
+   - sem quebra de guardas.
 11. **Testes obrigatorios**:
    - unitarios de adapter;
    - integracao de roteamento por papel;
-   - regressao E2E de login e acesso.  
+   - regressao E2E de login e acesso.
 12. **Riscos de seguranca/LGPD**:
    - divergencia entre resultado mock e real em papel/tenant;
-   - inconsistencias de cache de sessao.  
-13. **Estimativa**: media  
+   - inconsistencias de cache de sessao.
+13. **Estimativa**: media
 14. **Ordem recomendada**: 4
 
 ---
@@ -187,34 +187,34 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 
 ### SUP-B01
 
-1. **Identificador**: `SUP-B01`  
-2. **Titulo**: Schema de consentimento versionado e eventos LGPD  
-3. **Finalidade**: persistir base legal/finalidade e historico de aceite/revogacao.  
+1. **Identificador**: `SUP-B01`
+2. **Titulo**: Schema de consentimento versionado e eventos LGPD
+3. **Finalidade**: persistir base legal/finalidade e historico de aceite/revogacao.
 4. **Escopo incluido**:
    - modelagem final de `consent_documents` e `user_consents`;
    - suporte a versao de documento e origem do aceite;
-   - campos para revogacao.  
+   - campos para revogacao.
 5. **Fora do escopo**:
    - validacao juridica final de texto;
-   - automacao de notificacoes externas.  
-6. **Dependencias**: `SUP-A01`, `SUP-A03`.  
-7. **Entidades/tabelas**: `consent_documents`, `user_consents`.  
+   - automacao de notificacoes externas.
+6. **Dependencias**: `SUP-A01`, `SUP-A03`.
+7. **Entidades/tabelas**: `consent_documents`, `user_consents`.
 8. **Perfis/permissoes afetados**:
    - usuario (aceite/revogacao proprio);
-   - perfis autorizados para consulta administrativa controlada.  
+   - perfis autorizados para consulta administrativa controlada.
 9. **RLS necessaria**:
    - usuario le/grava somente seus consentimentos;
-   - administracao sem acesso indevido a conteudo clinico.  
+   - administracao sem acesso indevido a conteudo clinico.
 10. **Criterios de aceite**:
    - revogacao registrada sem apagar historico;
-   - versao de consentimento vinculada ao aceite.  
+   - versao de consentimento vinculada ao aceite.
 11. **Testes obrigatorios**:
    - integracao aceite/revogacao;
-   - negacao de leitura de consentimento de terceiro.  
+   - negacao de leitura de consentimento de terceiro.
 12. **Riscos de seguranca/LGPD**:
    - revogacao sobrescrever historico;
-   - base legal incorreta sem aprovacao juridica.  
-13. **Estimativa**: media  
+   - base legal incorreta sem aprovacao juridica.
+13. **Estimativa**: media
 14. **Ordem recomendada**: 5
 
 #### SUP-B01.3 - Fluxos funcionais de consentimento LGPD em runtime (aplicacao)
@@ -255,39 +255,39 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 
 ### SUP-B02
 
-1. **Identificador**: `SUP-B02`  
-2. **Titulo**: Persistencia de avaliacao inicial e respostas orientativas  
-3. **Finalidade**: substituir respostas mock por persistencia real controlada.  
+1. **Identificador**: `SUP-B02`
+2. **Titulo**: Persistencia de avaliacao inicial e respostas orientativas
+3. **Finalidade**: substituir respostas mock por persistencia real controlada.
 4. **Escopo incluido**:
    - persistencia em `assessments` e `assessment_responses`;
    - versionamento de formulario por `assessment_versions`;
-   - resultado orientativo em `risk_results` sem diagnostico.  
+   - resultado orientativo em `risk_results` sem diagnostico.
 5. **Fora do escopo**:
    - mudanca no motor clinico;
-   - recomendacao terapeutica automatizada.  
-6. **Dependencias**: `SUP-A03`, `SUP-B01`.  
+   - recomendacao terapeutica automatizada.
+6. **Dependencias**: `SUP-A03`, `SUP-B01`.
 7. **Entidades/tabelas**:
    - `assessment_versions`, `assessment_questions`, `assessment_options`,
-   - `assessments`, `assessment_responses`, `risk_results`, `risk_rules`.  
+   - `assessments`, `assessment_responses`, `risk_results`, `risk_rules`.
 8. **Perfis/permissoes afetados**:
    - usuario (proprio);
    - clinica (vinculados);
-   - gestao apenas agregado derivado.  
+   - gestao apenas agregado derivado.
 9. **RLS necessaria**:
    - ownership para usuario;
    - clinica so via vinculo;
-   - bloqueio de leitura nominal por gestao.  
+   - bloqueio de leitura nominal por gestao.
 10. **Criterios de aceite**:
    - formulario em etapas persiste e recupera estado;
-   - resultado orientativo persistido com racional explicavel.  
+   - resultado orientativo persistido com racional explicavel.
 11. **Testes obrigatorios**:
    - unitario de mapeamento resposta->persistencia;
    - integracao de ownership;
-   - negacao cross-tenant e cross-user.  
+   - negacao cross-tenant e cross-user.
 12. **Riscos de seguranca/LGPD**:
    - captura excessiva de dado sensivel;
-   - risco de interpretacao diagnostica indevida na camada de exibicao.  
-13. **Estimativa**: grande  
+   - risco de interpretacao diagnostica indevida na camada de exibicao.
+13. **Estimativa**: grande
 14. **Ordem recomendada**: 6
 
 #### SUP-B02.1 - Persistencia runtime da avaliacao inicial (aplicacao)
@@ -321,39 +321,39 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 
 ### SUP-B03
 
-1. **Identificador**: `SUP-B03`  
-2. **Titulo**: Persistencia de jornada e atividades com progresso  
-3. **Finalidade**: migrar progresso mock da jornada para armazenamento real gradual.  
+1. **Identificador**: `SUP-B03`
+2. **Titulo**: Persistencia de jornada e atividades com progresso
+3. **Finalidade**: migrar progresso mock da jornada para armazenamento real gradual.
 4. **Escopo incluido**:
    - `user_journeys` e `user_activity_progress`;
    - sincronizacao de status e progresso por usuario;
-   - continuidade de experiencia ao recarregar sessao real.  
+   - continuidade de experiencia ao recarregar sessao real.
 5. **Fora do escopo**:
    - nova logica de recomendacao de jornada;
-   - mudancas visuais estruturais em telas.  
-6. **Dependencias**: `SUP-A04`, `SUP-B02`.  
+   - mudancas visuais estruturais em telas.
+6. **Dependencias**: `SUP-A04`, `SUP-B02`.
 7. **Entidades/tabelas**:
    - `health_journeys`, `journey_versions`, `journey_steps`, `journey_activities`,
-   - `user_journeys`, `user_activity_progress`.  
+   - `user_journeys`, `user_activity_progress`.
 8. **Perfis/permissoes afetados**:
    - usuario (proprio progresso);
    - clinica (acompanhamento vinculado);
-   - gestao (apenas agregado).  
+   - gestao (apenas agregado).
 9. **RLS necessaria**:
    - ownership para usuario;
    - leitura clinica vinculada;
-   - sem exposicao nominal na gestao.  
+   - sem exposicao nominal na gestao.
 10. **Criterios de aceite**:
    - progresso persiste entre sessoes;
-   - atividades concluidas/refeitas sem perda de historico.  
+   - atividades concluidas/refeitas sem perda de historico.
 11. **Testes obrigatorios**:
    - integracao de progresso por usuario;
    - negacao de leitura de progresso de terceiro;
-   - E2E de atividade concluida.  
+   - E2E de atividade concluida.
 12. **Riscos de seguranca/LGPD**:
    - mistura de dados de usuarios no cache;
-   - exposicao indevida de historico de habitos.  
-13. **Estimativa**: media  
+   - exposicao indevida de historico de habitos.
+13. **Estimativa**: media
 14. **Ordem recomendada**: 7
 
 #### SUP-B03.1 - Persistencia runtime da jornada e do progresso (aplicacao + banco)
@@ -423,14 +423,14 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 
 ### SUP-B04
 
-1. **Identificador**: `SUP-B04`  
-2. **Titulo**: Repositorios preventivos e rollout por feature flag  
-3. **Finalidade**: habilitar troca gradual dos mocks do dominio preventivo.  
+1. **Identificador**: `SUP-B04`
+2. **Titulo**: Repositorios preventivos e rollout por feature flag
+3. **Finalidade**: habilitar troca gradual dos mocks do dominio preventivo.
 4. **Status**: ABERTO — alternativa posterior a consolidacao documental; **nao iniciar** antes de revisar qualquer linguagem ou mecanismo de fallback inseguro (proibicoes clinicas de C04.2b aplicam-se por analogia a dados sensiveis do titular).
 5. **Escopo incluido**:
    - repositorios supabase para consentimento, avaliacao e jornada;
    - selecao explicita de modo por modulo (feature flag), sem troca dinamica silenciosa para fixture mock sob falha;
-   - observabilidade de erros de integracao.  
+   - observabilidade de erros de integracao.
 6. **Fora do escopo**:
    - remocao definitiva dos mocks;
    - ativacao global sem piloto;
@@ -445,10 +445,10 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
    - ausencia de falsa percepcao de persistencia.
 12. **Testes obrigatorios**:
    - suite de integracao dual-mode;
-   - E2E principal de Minha BioMed.  
+   - E2E principal de Minha BioMed.
 13. **Riscos de seguranca/LGPD**:
    - fallback incorreto exibir dados de origem errada;
-   - risco de logs com payload sensivel.  
+   - risco de logs com payload sensivel.
 14. **Estimativa**: media
 15. **Ordem recomendada**: 8 (apos D01 recomendado; ver `PROJECT_MASTER_HANDOFF.md`)
 
@@ -465,9 +465,9 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 
 ### SUP-C01
 
-1. **Identificador**: `SUP-C01`  
-2. **Titulo**: Schema de vinculo assistencial e agenda clinica  
-3. **Finalidade**: estruturar base de atendimentos e vinculos reais.  
+1. **Identificador**: `SUP-C01`
+2. **Titulo**: Schema de vinculo assistencial e agenda clinica
+3. **Finalidade**: estruturar base de atendimentos e vinculos reais.
 4. **Status parent**: parcialmente atendida pelas filhas SUP-C01.1 (carteira) e SUP-C01.2 (agenda); unit_id operacional permanece gap residual documentado.
 5. **Escopo incluido (parent)**:
    - consolidacao de `professional_assignments` e `appointments`;
@@ -550,36 +550,36 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 
 ### SUP-C02
 
-1. **Identificador**: `SUP-C02`  
-2. **Titulo**: Persistencia da ficha clinica modular e versionada  
-3. **Finalidade**: manter rastreabilidade clinica sem perder flexibilidade de seções.  
+1. **Identificador**: `SUP-C02`
+2. **Titulo**: Persistencia da ficha clinica modular e versionada
+3. **Finalidade**: manter rastreabilidade clinica sem perder flexibilidade de seções.
 4. **Escopo incluido**:
    - estrutura de `clinical_records` com metadados de revisao;
    - estrategia de versao por registro ou tabela de historico;
-   - suporte a rascunho e conclusao.  
+   - suporte a rascunho e conclusao.
 5. **Fora do escopo**:
    - assinatura digital;
-   - prescricao eletronica.  
-6. **Dependencias**: `SUP-C01`, aprovacao clinica de estrutura de secoes.  
-7. **Entidades/tabelas**: `clinical_records` (+ eventual `clinical_record_versions`).  
+   - prescricao eletronica.
+6. **Dependencias**: `SUP-C01`, aprovacao clinica de estrutura de secoes.
+7. **Entidades/tabelas**: `clinical_records` (+ eventual `clinical_record_versions`).
 8. **Perfis/permissoes afetados**:
    - clinica vinculada;
    - usuario final com eventual resumo autorizado;
-   - gestao sem acesso individual.  
+   - gestao sem acesso individual.
 9. **RLS necessaria**:
    - leitura/escrita clinica por vinculo;
-   - bloqueio total para gestao institucional e RH.  
+   - bloqueio total para gestao institucional e RH.
 10. **Criterios de aceite**:
    - edicao e conclusao persistidas com autor e timestamp;
-   - historico de alteracoes consultavel por perfis autorizados.  
+   - historico de alteracoes consultavel por perfis autorizados.
 11. **Testes obrigatorios**:
    - integracao rascunho/conclusao;
    - negacao de acesso para nao clinicos;
-   - regressao de guardas de rota.  
+   - regressao de guardas de rota.
 12. **Riscos de seguranca/LGPD**:
    - dados sensiveis em excesso sem minimizacao;
-   - historico alteravel sem trilha confiavel.  
-13. **Estimativa**: grande  
+   - historico alteravel sem trilha confiavel.
+13. **Estimativa**: grande
 14. **Ordem recomendada**: 10
 
 #### SUP-C02 - Ficha clinica modular versionada (implementacao)
@@ -606,36 +606,36 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 
 ### SUP-C03
 
-1. **Identificador**: `SUP-C03`  
-2. **Titulo**: Persistencia do plano de cuidado e evolucoes  
-3. **Finalidade**: registrar objetivos, acoes e status de acompanhamento.  
+1. **Identificador**: `SUP-C03`
+2. **Titulo**: Persistencia do plano de cuidado e evolucoes
+3. **Finalidade**: registrar objetivos, acoes e status de acompanhamento.
 4. **Escopo incluido**:
    - `care_plans` + `care_plan_actions`;
    - atualizacao de status e registro de evolucao;
-   - reavaliacao e prazos.  
+   - reavaliacao e prazos.
 5. **Fora do escopo**:
    - recomendacao terapeutica automatica;
-   - protocolos clinicos prescritivos.  
-6. **Dependencias**: `SUP-C02`.  
-7. **Entidades/tabelas**: `care_plans`, `care_plan_actions`.  
+   - protocolos clinicos prescritivos.
+6. **Dependencias**: `SUP-C02`.
+7. **Entidades/tabelas**: `care_plans`, `care_plan_actions`.
 8. **Perfis/permissoes afetados**:
    - equipe clinica vinculada;
    - gestor clinico (supervisao);
-   - gestao institucional sem individual.  
+   - gestao institucional sem individual.
 9. **RLS necessaria**:
    - mesmos principios de vinculo de ficha clinica;
-   - bloqueio de update por perfis nao autorizados.  
+   - bloqueio de update por perfis nao autorizados.
 10. **Criterios de aceite**:
    - objetivos e acoes persistem por usuario vinculado;
-   - status historico mantido sem sobrescrita opaca.  
+   - status historico mantido sem sobrescrita opaca.
 11. **Testes obrigatorios**:
    - integracao de adicionar/editar/atualizar status;
    - negacao sem vinculo;
-   - E2E de fluxo clinico principal.  
+   - E2E de fluxo clinico principal.
 12. **Riscos de seguranca/LGPD**:
    - exposicao de plano individual fora da clinica;
-   - perda de rastreabilidade de alteracoes.  
-13. **Estimativa**: media  
+   - perda de rastreabilidade de alteracoes.
+13. **Estimativa**: media
 14. **Ordem recomendada**: 11
 
 #### SUP-C03 - Plano de cuidado e evolucoes (implementacao)
@@ -664,9 +664,9 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 
 ### SUP-C04
 
-1. **Identificador**: `SUP-C04`  
-2. **Titulo**: Repositorios clinicos e migracao progressiva de dados mock  
-3. **Finalidade**: trocar apenas dominio clinico para supabase sem afetar demais ambientes.  
+1. **Identificador**: `SUP-C04`
+2. **Titulo**: Repositorios clinicos e migracao progressiva de dados mock
+3. **Finalidade**: trocar apenas dominio clinico para supabase sem afetar demais ambientes.
 4. **Status parent**: PARCIAL — C04.1 e C04.2a entregues; normalizacao 42501 entregue; C04.2b encerrada sem implementacao; residual de rollout/pagina demo fora do escopo C04.1. **Nao** marcar o pai como integralmente implementado.
 5. **Escopo incluido**:
    - adapters para agenda, carteira, ficha, plano (modos por modulo);
@@ -690,10 +690,10 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 12. **Testes obrigatorios**:
    - integracao por endpoint/repositorio;
    - E2E de carteira/ficha/plano;
-   - testes de negacao em URL direta.  
+   - testes de negacao em URL direta.
 13. **Riscos de seguranca/LGPD**:
    - fallback inseguro mostrando dado stale / fixture / ausencia falsa;
-   - diferenca de autorizacao entre camada app e banco.  
+   - diferenca de autorizacao entre camada app e banco.
 14. **Estimativa**: grande
 15. **Ordem recomendada**: 12 (pai parcial; nao iniciar C04.2b)
 
@@ -746,28 +746,29 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 
 ### SUP-D01
 
-1. **Identificador**: `SUP-D01`  
-2. **Titulo**: Schema de gestao coletiva com recorte por unidade/programa  
+1. **Identificador**: `SUP-D01`
+2. **Titulo**: Schema de gestao coletiva com recorte por unidade/programa
 3. **Finalidade**: estruturar base para campanhas, indicadores e plano de acao coletivo no modulo BioMed Gestao (fundacao da gestao coletiva / inteligencia populacional; **nao** totalidade do produto).
 4. **Status**:
    - Decisao arquitetural org×unit do dominio coletivo: **RESOLVIDA / RATIFICADA** (handoff §6.1).
    - Especificacao tecnica: **INCORPORADA** (PR #18) e **APROVADA PARA IMPLEMENTACAO CONTROLADA** (PR #19).
    - **D01-A (contratos/tipos)**: **CONCLUIDO** — `apps/web/src/domains/collective/` + `tests/unit/collectiveContracts.test.ts` (PR #20, `36c6d2…`).
    - **D01-B (schema/migration/RLS)**: **CONCLUIDO EM MAIN** — PR #21 merge `0591ee73d1504ee76095a432ed2237a429ff749d`; migration `0017` + rollback + validacao SQL; B1 corrigido (REVOKE helpers internos).
-   - **D01-C (repositories + UI gestao)**: **CONCLUIDO E MERGEADO EM MAIN** — PR #22 (2026-08-01), merge commit `907f3ed0d0a53484553debb917cfebdf2566ccb8`, HEAD incorporado `407928778d34c3d7662b0b5f009b403fcfabbb89`; module `apps/web/src/services/repositories/collective/` (mock + supabase + factory/flags `VITE_COLLECTIVE_REPOSITORY_MODE` / heranca de `VITE_ENABLE_SUPABASE_AUTH`); conexao de `ManagementCampaignsPage`/`ManagementActionPlanPage`; escopos `all_units`/`unit`/`selected_units`; leitura de aplicabilidades existentes; escritas multi-tabela (`selected_units`/audiencias/limpeza de aplicabilidades) retornam `ATOMICITY_REQUIRED` (**RPC/transacao atomica ainda pendente**, nao iniciada); sem fallback runtime Supabase→mock; overview/indicadores permanecem demo (**SUP-D02 nao iniciado**); `selectedUnitId` de sessao nao implementado; AuthContext/guards/rotas intactos; catch→mock clinico intacto; nenhuma migration nova no D01-C.
-   - **Auditoria independente do HEAD `4079287…`:** veredito **B**, sem P0/P1/P2; quatro achados anteriores corrigidos. **Divida tecnica P3 (nao bloqueante):** (1) falta de suite de integracao simetrica para `ManagementActionPlanPage`; (2) assert negativo explicito de ausencia de mensagem de sucesso apos falha; (3) `NO_ACTIVE_MEMBERSHIP` sem cobertura Vitest especifica do D01-C (coberto pela validacao SQL do D01-B).
+   - **D01-C (repositories + UI gestao)**: **CONCLUIDO E MERGEADO EM MAIN** — PR #22 (2026-08-01), merge commit `907f3ed0d0a53484553debb917cfebdf2566ccb8`, HEAD incorporado `407928778d34c3d7662b0b5f009b403fcfabbb89`; consolidacao documental pos-merge **PR #23** (`b32aa121292fe68a28b4d1fb918bb077ad84d749`); module `apps/web/src/services/repositories/collective/` (mock + supabase + factory/flags); UI campanhas/planos; no D01-C as escritas multi-tabela retornavam `ATOMICITY_REQUIRED` (limitacao historica, superada pelo D01-D neste change set); sem fallback runtime Supabase→mock; overview/indicadores demo (**SUP-D02 nao iniciado**); `selectedUnitId` de sessao nao implementado.
+   - **D01-D (mutacoes atomicas)**: **IMPLEMENTADO NESTE CHANGE SET — AINDA NAO INTEGRADO EM MAIN** — baseline de partida `b32aa12…` (PR #23); migration `0018` + rollback + validacao SQL; RPCs SECURITY INVOKER: `collective_create_campaign_atomic`, `collective_update_campaign_atomic`, `collective_delete_campaign_atomic`, `collective_create_action_plan_atomic`, `collective_update_action_plan_atomic`, `collective_delete_action_plan_atomic`; capacidades: `selected_units` + audiencia singular na mesma transacao; UNIQUE `campaign_audiences_one_per_campaign`; transicoes de escopo (limpeza/reescrita de aplicabilidades); concorrencia `expected_version` + `FOR UPDATE`; RLS autoridade final; repository/UI passam a persistir via RPC; codigo `ATOMICITY_REQUIRED` permanece disponivel para ops futuras nao implementadas. **Nao** declarar D01-D mergeado ate o change set estar em `main`. **SUP-D02 nao iniciado**.
+   - **Auditoria independente do HEAD `4079287…` (D01-C):** veredito **B**, sem P0/P1/P2; quatro achados anteriores corrigidos. **Dividas P3 de teste (D01-C) — RESOLVIDAS neste change set D01-D:** (1) suite de integracao `ManagementActionPlanPage`; (2) assert negativo de ausencia de mensagem de sucesso apos falha; (3) cobertura Vitest `NO_ACTIVE_MEMBERSHIP` no repository coletivo.
    - Gap residual `unit_id` clinico (SUP-C01): dívida **paralela**; **nao** bloqueia o D01.
 5. **Escopo incluido** (detalhe normativo em `SUP_D01_TECHNICAL_SPECIFICATION.md`):
    - consolidacao de `campaigns`, `campaign_audiences`, `action_plans` no dominio coletivo;
    - escopo `organization` | `unit`; aplicabilidade `all_units` | `selected_units`;
    - preparacao do contrato `suppressed` (enforcement pleno no SUP-D02);
    - status e periodos padronizados;
-   - repositories + UI de campanhas/planos (D01-C).
+   - repositories + UI de campanhas/planos (D01-C);
+   - mutacoes relacionais atomicas (D01-D, change set).
 6. **Fora do escopo**:
    - envio real de notificacoes;
    - integracao externa de BI;
    - indicadores/agregacoes/limiar completo (SUP-D02 — **nao iniciado**);
-   - escrita relacional atomica (`selected_units`/audiencias) — pendente de autorizacao separada;
    - gap C01 agenda; SUP-B04; SUP-C04.2b;
    - correcao catch→mock (ticket proprio);
    - tornar prontuario pessoal propriedade da organizacao.
@@ -781,76 +782,77 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 12. **Testes obrigatorios**:
    - integracao de CRUD gerencial permitido (apos autorizacao de repos/UI);
    - negacao para perfis clinicos/usuario final no painel gerencial;
-   - testes de schema sem dado nominal.  
+   - testes de schema sem dado nominal.
 13. **Riscos de seguranca/LGPD**:
    - reidentificacao por grupos pequenos ou filtros diferenciais (D02);
    - campos indiretos permitindo inferencia individual;
    - absorcao indevida de dado pessoal pelo vinculo institucional.
 14. **Estimativa**: media
-15. **Ordem recomendada**: 13 — D01-A/B/C em main (PRs #20–#22). **Proxima decisao humana (ainda nao tomada; nao iniciar nesta ordem):** (1) priorizar RPC/transacao atomica coletiva; ou (2) iniciar planejamento controlado do SUP-D02.
+15. **Ordem recomendada**: 13 — D01-A/B/C em main (PRs #20–#22; docs #23 `b32aa12…`). **D01-D** em change set (baseline de partida `b32aa12…`; integrar quando mergeado). Proximo apos integracao D01-D: planejamento controlado do **SUP-D02** (**nao iniciado**).
 
 ### SUP-D02
 
-1. **Identificador**: `SUP-D02`  
-2. **Titulo**: Camada de indicadores agregados e politicas anti-drilldown  
-3. **Finalidade**: garantir leitura coletiva segura em BioMed Gestao.  
-4. **Escopo incluido**:
+1. **Identificador**: `SUP-D02`
+2. **Titulo**: Camada de indicadores agregados e politicas anti-drilldown
+3. **Finalidade**: garantir leitura coletiva segura em BioMed Gestao.
+4. **Status**: **NAO INICIADO** (depende da integracao do D01-D em `main` e autorizacao especifica).
+5. **Escopo incluido**:
    - views/funcoes para agregacao por periodo/unidade/programa;
    - regra de limite minimo de grupo = 10 individuos;
-   - resposta sem identificadores pessoais.  
-5. **Fora do escopo**:
+   - resposta sem identificadores pessoais.
+6. **Fora do escopo**:
    - analytics preditiva;
-   - dashboards externos.  
-6. **Dependencias**: `SUP-D01` (limiar minimo de 10 ja aprovado).  
-7. **Entidades/tabelas**:
-   - dados de `assessments`, `user_journeys`, `campaigns`, `action_plans` via agregacoes.  
-8. **Perfis/permissoes afetados**: perfis gerenciais e auditoria de leitura.  
-9. **RLS necessaria**:
+   - dashboards externos.
+7. **Dependencias**: `SUP-D01` (limiar minimo de 10 ja aprovado).
+8. **Entidades/tabelas**:
+   - dados de `assessments`, `user_journeys`, `campaigns`, `action_plans` via agregacoes.
+9. **Perfis/permissoes afetados**: perfis gerenciais e auditoria de leitura.
+10. **RLS necessaria**:
    - acesso somente a agregacoes autorizadas;
-   - bloquear consulta raw em tabelas individuais por perfis gerenciais.  
-10. **Criterios de aceite**:
+   - bloquear consulta raw em tabelas individuais por perfis gerenciais.
+11. **Criterios de aceite**:
    - pagina de gestao nao exibe usuario individual;
    - filtros alteram apenas agregados permitidos;
    - consultas com grupo <10 suprimidas automaticamente;
-   - combinacao de filtros nao permite reidentificacao.  
-11. **Testes obrigatorios**:
+   - combinacao de filtros nao permite reidentificacao.
+12. **Testes obrigatorios**:
    - testes de anti-drilldown;
    - negacao de consulta individual para gestao;
-   - E2E em BioMed Gestao sem dado nominal.  
-12. **Riscos de seguranca/LGPD**:
+   - E2E em BioMed Gestao sem dado nominal.
+13. **Riscos de seguranca/LGPD**:
    - vazamento por combinacao de filtros;
-   - inferencia de individuo em grupos pequenos.  
-13. **Estimativa**: grande  
-14. **Ordem recomendada**: 14
+   - inferencia de individuo em grupos pequenos.
+14. **Estimativa**: grande
+15. **Ordem recomendada**: 14
 
 ### SUP-D03
 
-1. **Identificador**: `SUP-D03`  
-2. **Titulo**: Repositorios de gestao e migracao progressiva de indicadores mock  
-3. **Finalidade**: trocar dados mock de gestao sem impactar clinica e usuario final.  
+1. **Identificador**: `SUP-D03`
+2. **Titulo**: Repositorios de gestao e migracao progressiva de indicadores mock
+3. **Finalidade**: trocar dados mock de gestao sem impactar clinica e usuario final.
 4. **Escopo incluido**:
    - adapters para painel, indicadores, campanhas e plano de acao;
    - selecao explicita de modo por tela/feature (sem autorizar fallback que invente agregado ou oculte falha);
-   - validacao de formato agregado unico.  
+   - validacao de formato agregado unico.
 5. **Fora do escopo**:
    - troca de bibliotecas de grafico;
    - redesenho de UI aprovado;
    - sucesso degradado com colecao vazia/`null` fingindo ausencia real de campanhas/indicadores.
-6. **Dependencias**: `SUP-D01`, `SUP-D02`.  
-7. **Entidades/tabelas**: gestao + views agregadas + repositorios.  
-8. **Perfis/permissoes afetados**: perfis gerenciais e auditoria.  
-9. **RLS necessaria**: acesso somente ao conjunto agregado permitido por tenant.  
+6. **Dependencias**: `SUP-D01`, `SUP-D02`.
+7. **Entidades/tabelas**: gestao + views agregadas + repositorios.
+8. **Perfis/permissoes afetados**: perfis gerenciais e auditoria.
+9. **RLS necessaria**: acesso somente ao conjunto agregado permitido por tenant.
 10. **Criterios de aceite**:
    - filtros funcionando com dados reais agregados;
-   - nenhuma rota de gestao retorna lista nominal.  
+   - nenhuma rota de gestao retorna lista nominal.
 11. **Testes obrigatorios**:
    - integracao dos repositorios;
    - E2E de campanhas/plano/indicadores;
-   - testes de negacao nominal.  
+   - testes de negacao nominal.
 12. **Riscos de seguranca/LGPD**:
    - regressao para dado individual por endpoint errado;
-   - cache com payload nao agregado.  
-13. **Estimativa**: media  
+   - cache com payload nao agregado.
+13. **Estimativa**: media
 14. **Ordem recomendada**: 15
 
 ---
@@ -866,99 +868,99 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 
 ### SUP-E01
 
-1. **Identificador**: `SUP-E01`  
-2. **Titulo**: Implementacao de auditoria persistente append-only  
-3. **Finalidade**: garantir trilha imutavel de eventos sensiveis.  
+1. **Identificador**: `SUP-E01`
+2. **Titulo**: Implementacao de auditoria persistente append-only
+3. **Finalidade**: garantir trilha imutavel de eventos sensiveis.
 4. **Escopo incluido**:
    - persistencia em `audit_events`;
    - padrao de payload minimo;
    - escrita por RPC controlada;
-   - bloqueio de update/delete para app user.  
+   - bloqueio de update/delete para app user.
 5. **Fora do escopo**:
    - SIEM externo;
-   - assinatura criptografica de logs.  
-6. **Dependencias**: `SUP-A02`, `SUP-A03`, fases B/C/D funcionais.  
-7. **Entidades/tabelas**: `audit_events`.  
+   - assinatura criptografica de logs.
+6. **Dependencias**: `SUP-A02`, `SUP-A03`, fases B/C/D funcionais.
+7. **Entidades/tabelas**: `audit_events`.
 8. **Perfis/permissoes afetados**:
    - todos os atores como origem de evento;
-   - leitura restrita para auditor/perfis autorizados.  
+   - leitura restrita para auditor/perfis autorizados.
 9. **RLS necessaria**:
    - select restrito por tenant e papel;
    - insert controlado;
-   - update/delete negado para app user.  
+   - update/delete negado para app user.
 10. **Criterios de aceite**:
    - eventos de login, negacao e alteracao sensivel persistidos;
    - impossibilidade de escrita direta pelo cliente;
-   - impossibilidade de alteracao/exclusao por usuario comum.  
+   - impossibilidade de alteracao/exclusao por usuario comum.
 11. **Testes obrigatorios**:
    - SQL tests de append-only;
    - integracao de registro em fluxos criticos;
-   - E2E de auditoria somente leitura.  
+   - E2E de auditoria somente leitura.
 12. **Riscos de seguranca/LGPD**:
    - log excessivo de dado sensivel;
-   - trilha inconsistente entre modulos.  
-13. **Estimativa**: media  
+   - trilha inconsistente entre modulos.
+13. **Estimativa**: media
 14. **Ordem recomendada**: 16
 
 ### SUP-E02
 
-1. **Identificador**: `SUP-E02`  
-2. **Titulo**: Suite de seguranca de autorizacao e acesso cruzado  
-3. **Finalidade**: formalizar bateria automatizada de permit/deny em nivel app + banco.  
+1. **Identificador**: `SUP-E02`
+2. **Titulo**: Suite de seguranca de autorizacao e acesso cruzado
+3. **Finalidade**: formalizar bateria automatizada de permit/deny em nivel app + banco.
 4. **Escopo incluido**:
    - casos de tenant crossing;
    - casos de sem vinculo clinico;
    - casos de gestao sem dado nominal;
-   - casos de auditor sem escrita.  
+   - casos de auditor sem escrita.
 5. **Fora do escopo**:
    - pentest externo;
-   - auditoria juridica formal.  
-6. **Dependencias**: `SUP-A03`, `SUP-C04`, `SUP-D03`, `SUP-E01`.  
-7. **Entidades/tabelas**: todas as sensiveis cobertas por RLS.  
-8. **Perfis/permissoes afetados**: todos.  
-9. **RLS necessaria**: cobertura de politicas existentes com cenarios negativos.  
+   - auditoria juridica formal.
+6. **Dependencias**: `SUP-A03`, `SUP-C04`, `SUP-D03`, `SUP-E01`.
+7. **Entidades/tabelas**: todas as sensiveis cobertas por RLS.
+8. **Perfis/permissoes afetados**: todos.
+9. **RLS necessaria**: cobertura de politicas existentes com cenarios negativos.
 10. **Criterios de aceite**:
    - suite automatizada falha quando policy abre acesso indevido;
-   - relatorio de cobertura de cenarios criticos.  
+   - relatorio de cobertura de cenarios criticos.
 11. **Testes obrigatorios**:
    - unitarios de regras de dominio;
    - integracao de repositorios;
    - SQL tests permit/deny;
-   - E2E de bloqueios de URL direta.  
+   - E2E de bloqueios de URL direta.
 12. **Riscos de seguranca/LGPD**:
    - falso positivo de seguranca por falta de caso negativo;
-   - regressao silenciosa de policy em futuras migrations.  
-13. **Estimativa**: grande  
+   - regressao silenciosa de policy em futuras migrations.
+13. **Estimativa**: grande
 14. **Ordem recomendada**: 17
 
 ### SUP-E03
 
-1. **Identificador**: `SUP-E03`  
-2. **Titulo**: Hardening final de schema, indices e operacao de rollout  
-3. **Finalidade**: estabilizar desempenho e seguranca para transicao controlada.  
+1. **Identificador**: `SUP-E03`
+2. **Titulo**: Hardening final de schema, indices e operacao de rollout
+3. **Finalidade**: estabilizar desempenho e seguranca para transicao controlada.
 4. **Escopo incluido**:
    - indices criticos;
    - revisao de constraints e defaults;
-   - plano de cutover por modulo (mock->real).  
+   - plano de cutover por modulo (mock->real).
 5. **Fora do escopo**:
    - publicacao produtiva;
-   - escala global multi-regiao.  
-6. **Dependencias**: todas as fases anteriores.  
-7. **Entidades/tabelas**: todas do dominio; foco em tabelas de maior volume.  
-8. **Perfis/permissoes afetados**: todos, impacto transversal.  
-9. **RLS necessaria**: auditoria final de politicas e documentacao de excecoes (se houver).  
+   - escala global multi-regiao.
+6. **Dependencias**: todas as fases anteriores.
+7. **Entidades/tabelas**: todas do dominio; foco em tabelas de maior volume.
+8. **Perfis/permissoes afetados**: todos, impacto transversal.
+9. **RLS necessaria**: auditoria final de politicas e documentacao de excecoes (se houver).
 10. **Criterios de aceite**:
    - baseline de performance definido;
    - plano de rollback por modulo documentado;
-   - checklist de seguranca final aprovado.  
+   - checklist de seguranca final aprovado.
 11. **Testes obrigatorios**:
    - regressao completa;
    - testes de carga basica por rotas sensiveis;
-   - reexecucao da suite de seguranca.  
+   - reexecucao da suite de seguranca.
 12. **Riscos de seguranca/LGPD**:
    - indice inadequado causar timeout e fallback inseguro;
-   - rollout parcial sem travas de feature flag.  
-13. **Estimativa**: media  
+   - rollout parcial sem travas de feature flag.
+13. **Estimativa**: media
 14. **Ordem recomendada**: 18
 
 ---
@@ -989,7 +991,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 | 10 | SUP-C02 | C | C01 + aprovacao clinica | CONCLUIDA (PR #9) |
 | 11 | SUP-C03 | C | C02 | CONCLUIDA (PR #10; harden #11/#12) |
 | 12 | SUP-C04 | C | C01, C02, C03 | PARCIAL: C04.1+#13, C04.2a+#14, 42501+#15; C04.2b ENCERRADA SEM IMPLEMENTACAO |
-| 13 | SUP-D01 | D | SUP-A01 + decisao coletiva ratificada | D01-A/B/C em main (PRs #20–#22, merge D01-C `907f3ed…`); RPC atomica pendente; D02 nao iniciado |
+| 13 | SUP-D01 | D | SUP-A01 + decisao coletiva ratificada | D01-A/B/C em main (PRs #20–#22; docs #23 `b32aa12…`); D01-D em change set (nao em main); D02 nao iniciado |
 | 14 | SUP-D02 | D | D01 + limiar minimo 10 | Indicadores agregados sem nominal |
 | 15 | SUP-D03 | D | D01, D02 | Gestao em dados reais agregados |
 | 16 | SUP-E01 | E | A02, A03 + B/C/D | Auditoria append-only ativa |
@@ -1000,7 +1002,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 
 ## Caminho critico recomendado
 
-`SUP-A01 -> … -> [aprovacao formal SPEC #19] -> [D01-A #20] -> [D01-B #21 merged] -> [D01-C #22 merged `907f3ed…`] -> [decisao humana: RPC atomica OU planejamento D02] -> SUP-D02 -> …`
+`SUP-A01 -> … -> [aprovacao formal SPEC #19] -> [D01-A #20] -> [D01-B #21 merged] -> [D01-C #22 merged `907f3ed…`] -> [docs #23 `b32aa12…`] -> [D01-D change set — integrar quando mergeado] -> SUP-D02 -> …`
 
 Notas de caminho:
 
@@ -1008,8 +1010,9 @@ Notas de caminho:
 - SUP-B04 permanece aberta como alternativa posterior, apos revisao de fallback; **nao iniciar** agora.
 - Gap residual `unit_id` clinico (C01) e trilha **paralela**; nao bloqueia o D01 coletivo.
 - A aprovacao formal da SPEC **nao** autoriza automaticamente cada bloco; cada bloco exige ordem especifica.
-- Campanhas/planos conectados via D01-C; overview/indicadores agregados permanecem demonstrativos ate autorizacao do **SUP-D02** (**nao iniciado**).
-- Escrita relacional atomica (`selected_units`/audiencias) permanece pendente de autorizacao separada.
+- Campanhas/planos conectados via D01-C; mutacoes atomicas (`selected_units`/audiencia/transicoes) no D01-D (change set; **nao** em main ate merge).
+- Overview/indicadores agregados permanecem demonstrativos ate autorizacao do **SUP-D02** (**nao iniciado**).
+- Codigo `ATOMICITY_REQUIRED` permanece disponivel para operacoes futuras ainda nao implementadas; **nao** e mais limitacao permanente de `selected_units`/audiencia cobertos pelo D01-D.
 
 Justificativa:
 

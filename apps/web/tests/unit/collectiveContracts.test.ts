@@ -251,6 +251,17 @@ describe('SUP-D01-A collective contracts', () => {
         title: 'Novo titulo',
       };
       expectTypeOf(update.scope).toEqualTypeOf<CollectiveScope | undefined>();
+
+      // D01-D: audience null remove audiencia; undefined preserva
+      const clearAudience: UpdateCampaignInput = {
+        organizationId: 'org-1',
+        campaignId: 'c1',
+        audience: null,
+      };
+      expectTypeOf(clearAudience.audience).toEqualTypeOf<
+        import('@/domains/collective').CollectiveAudienceInput | null | undefined
+      >();
+      expect(clearAudience.audience).toBeNull();
     });
 
     it('tipa SafeAggregateResult com suppressed preparado (sem enforcement)', () => {

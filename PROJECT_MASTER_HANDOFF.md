@@ -15,11 +15,11 @@ Este documento é a **fonte oficial de continuidade e governança** do projeto B
 |---|---|
 | Repositório | `EdeMachado/BIOMEDHEALTH` |
 | Branch de referência | `main` |
-| Baseline de `origin/main` (pós PR #18) | `9930c61c87ad40689704ff5f127b3255609a4560` |
-| Último merge documental integrado | PR #18 — SPEC SUP-D01 |
+| Baseline de `origin/main` (pós PR #19) | `c35c6384be3faca500aa41171fe0c8a1917a7dfb` |
+| Último merge documental integrado | PR #19 — aprovação formal SPEC SUP-D01 |
 | Data desta atualização do handoff | 2026-08-01 |
 | Ratificação org×unit (coletivo) | PR #17 — decisão documental; sem implementação |
-| SPEC SUP-D01 | Aprovada para implementação controlada (revisão formal); impl. não iniciada |
+| SPEC SUP-D01 | Aprovada para implementação controlada; **D01-A (contratos/tipos) concluído** nesta trilha; D01-B não iniciado |
 
 ## 3. Propósito do BIOMED HEALTH e módulos
 
@@ -95,7 +95,7 @@ Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limia
 
 **Estado implementado (não confundir com a decisão):** schema atual exige `organization_id` em muitas tabelas MVP; `unit_id` só em bindings de access; campanhas/planos coletivos ainda sem coluna de unidade. Gap clínico C01 (agenda sem `unit_id`) permanece dívida **paralela** e **não** bloqueia, por si só, o SUP-D01.
 
-**SUP-D01:** especificação técnica incorporada pelo **PR #18** (`9930c61…`); revisão formal **aprovada para implementação controlada** (2026-08-01). **Implementação não iniciada.** D01-A (contratos/tipos) e D01-B (schema/migration) exigem **autorizações específicas** posteriores. Não autoriza D02, C01, B04 nem reabrir C04.2b. UI de gestão permanece demonstrativa até ordem explícita.
+**SUP-D01:** especificação técnica incorporada pelo **PR #18**; revisão formal **aprovada** (PR #19, `c35c638…`). **D01-A (contratos/tipos)** implementado em `apps/web/src/domains/collective/` (typecheck + testes unitários). **D01-B (schema/migration) não iniciado** e exige autorização específica. Sem schema/SQL/RLS/UI de gestão real. Não autoriza D02, C01, B04 nem reabrir C04.2b. UI de gestão permanece demonstrativa.
 
 ## 7. Status das fases SUP-A … SUP-E
 
@@ -104,7 +104,7 @@ Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limia
 | A — Acesso/tenant | Entregue na prática (A01–A04 via PRs de auth/access) | Detalhe fino no backlog |
 | B — Preventivo | Parcial | B01–B03 (+ filhas) entregues; **B04 aberto** (não iniciado) |
 | C — Clínico | Parcial | C01.1/C01.2, C02, C03 entregues; C01 parent com gap `unit_id`; C04 parcial (ver §8) |
-| D — Gestão agregada | Aberta | SPEC D01 **aprovada p/ impl. controlada** (PR #18 + revisão formal); **sem implementação**; D01-A pendente de autorização |
+| D — Gestão agregada | Aberta | SPEC aprovada; **D01-A concluído** (contratos); **D01-B não iniciado**; UI gestão ainda demo |
 | E — Auditoria/hardening | Aberta | Após B/C/D maduros |
 
 ## 8. Tickets e fatias C04 — status consolidado
@@ -160,7 +160,7 @@ Inelegível a qualquer fallback de dados.
 |---|---|
 | SUP-B04 | Aberto — revisar linguagem/mecanismos de fallback inseguro antes de executar |
 | SUP-C01 `unit_id` | Gap residual clínico **paralelo** (não bloqueia D01) |
-| SUP-D01 | SPEC incorporada (PR #18) e **aprovada p/ impl. controlada**; implementação **não** iniciada; D01-A pendente de ordem específica; D01-B não iniciado |
+| SUP-D01 | SPEC aprovada (PR #19); **D01-A concluído** (tipos/contratos); **D01-B não iniciado**; sem UI/backend gestão real |
 | SUP-D02…D03 | Abertos (após implementação futura controlada de D01) |
 | SUP-E01…E03 | Abertos (Fase E) |
 | Decisões humanas (jurídico/clínico/retention/rollout) | Pendentes (seção backlog) |
@@ -197,7 +197,7 @@ Granularidade coletiva org×unit (**ratificada** — §6.1). SPEC SUP-D01 **apro
 1. **Consolidação documental** — integrada via PR #16 (`d38c6c5…`).
 2. **Ratificação arquitetural org×unit (domínio coletivo)** — PR #17.
 3. **Especificação técnica do SUP-D01** — PR #18 incorporado em `main` (`9930c61…`); revisão formal **aprovada para implementação controlada**.
-4. **D01-A / D01-B / demais blocos** — somente após **autorização explícita por bloco**; esta aprovação documental **não** inicia implementação.
+4. **D01-A** — concluído (contratos/tipos). **D01-B / demais blocos** — somente após **autorização explícita por bloco**.
 5. **SUP-B04** — alternativa posterior; revisar fallback preventivo inseguro antes; **não iniciar** agora.
 6. Gap residual `unit_id` clínico (C01) — trilha **paralela**, não pré-requisito integral do D01.
 7. **SUP-C04.2b — não iniciar.**

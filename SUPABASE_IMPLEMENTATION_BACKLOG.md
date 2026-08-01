@@ -19,10 +19,12 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 - Substituicao gradual dos mocks por repositorios reais, sem big-bang.
 - Decisoes clinicas, juridicas e negociais com aprovacao humana formal.
 - JWT minimo; autorizacao efetiva por vinculos persistidos + RLS.
-- `organization_id` obrigatorio em dados institucionais.
-- `unit_id` obrigatorio somente em entidades operacionais vinculadas a unidade.
-- Indicadores gerenciais com grupo minimo de 10 individuos, com supressao abaixo do limiar.
-- Prevencao de reidentificacao por filtros combinados em BioMed Gestao.
+- No **dominio institucional/coletivo**: `organization_id` obrigatorio; `unit_id` obrigatorio quando houver recorte por unidade; `unit_id = null` = escopo organizacional **explicito** (nao ausencia generica de contexto nem ampliação de acesso); unidade, quando presente, deve pertencer a organizacao.
+- `organization_id` **nao** e obrigatorio universal do produto: dominios pessoais/assistenciais independentes e futuras operacoes B2C possuem regras proprias de titularidade (ver handoff §6.1).
+- Indicadores gerenciais com grupo minimo de 10 individuos **no recorte efetivo** (apos todos os filtros), com supressao abaixo do limiar.
+- Prevencao de reidentificacao por filtros combinados, cruzamentos, diferencas ou exportacoes em BioMed Gestao.
+- Organizacao patrocinadora nao se torna proprietaria do prontuario pessoal.
+- Usuario com atuacao restrita a uma unidade pode visualizar campanhas organizacionais aplicaveis a sua unidade (vinculo/papel validos; sem outras units; sem dados individuais indevidos; agregados com limiar).
 
 ---
 
@@ -738,41 +740,50 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 
 - Dados de gestao estritamente agregados e anonimizados.
 - Sem qualquer drill-down individual para perfis de gestao.
-- Campanhas e planos de acao com escopo por tenant e unidade.
+- Campanhas e planos de acao com escopo institucional coerente com a decisao ratificada (organizacao obrigatoria; unidade quando houver recorte operacional).
 - Testes de anti-reidentificacao e bloqueio nominal aprovados.
+- Dominios pessoais e clinicos preservados (titularidade do paciente; limiar nao bloqueia atendimento clinico autorizado).
 
 ### SUP-D01
 
 1. **Identificador**: `SUP-D01`  
 2. **Titulo**: Schema de gestao coletiva com recorte por unidade/programa  
-3. **Finalidade**: estruturar base para campanhas, indicadores e plano de acao coletivo.  
-4. **Escopo incluido**:
-   - consolidacao de `campaigns`, `campaign_audiences`, `action_plans`;
-   - chave `unit_id` somente para entidades operacionais onde houver vinculo de unidade;
+3. **Finalidade**: estruturar base para campanhas, indicadores e plano de acao coletivo no modulo BioMed Gestao (fundacao da gestao coletiva / inteligencia populacional; **nao** totalidade do produto).
+4. **Status**:
+   - Decisao arquitetural org×unit do dominio coletivo: **RESOLVIDA / RATIFICADA** (handoff §6.1).
+   - SUP-D01: **desbloqueado somente para especificação futura** (etapa documental posterior a esta ratificação).
+   - **Implementacao**: **NAO AUTORIZADA**.
+   - Gap residual `unit_id` clinico (SUP-C01): dívida **paralela**; **nao** constitui bloqueio integral da especificação futura do D01.
+5. **Escopo incluido** (alto nivel; detalhe tecnico na futura especificação):
+   - consolidacao de `campaigns`, `campaign_audiences`, `action_plans` no dominio coletivo;
+   - aplicacao das regras ratificadas de `organization_id` / `unit_id` / limiar / visibilidade unit-scoped;
    - status e periodos padronizados.  
-5. **Fora do escopo**:
+6. **Fora do escopo**:
    - envio real de notificacoes;
-   - integracao externa de BI.  
-6. **Dependencias**: `SUP-A01` (documento afirma granularidade de unidade aprovada).
-7. **Decisao pendente / contradicao operacional**: gap residual de `unit_id` em entidades clinicas operacionais (C01) permanece; **nao** declarar SUP-D01 incondicionalmente desbloqueada sem confirmar, para o schema de gestao, se a granularidade de unidade aplicavel a campanhas/planos esta aprovada e como o gap residual sera controlado.
-8. **Entidades/tabelas**: `campaigns`, `campaign_audiences`, `action_plans`, (eventual visao agregada).
+   - integracao externa de BI;
+   - implementacao nesta etapa de ratificação;
+   - gap C01 agenda; SUP-B04; SUP-C04.2b;
+   - tornar prontuario pessoal propriedade da organizacao.
+7. **Dependencias**: `SUP-A01` (tenant/units/memberships); decisao org×unit coletiva **ratificada**.
+8. **Entidades/tabelas**: `campaigns`, `campaign_audiences`, `action_plans` (e evolucoes a definir na especificação).
 9. **Perfis/permissoes afetados**:
-   - gestor_institucional, sst, admin_cliente, admin_biomed, auditor (leitura).  
-10. **RLS necessaria**:
-   - tenant + papeis gerenciais permitidos;
-   - proibicao de leitura nominal.  
+   - gestor_institucional, sst, admin_cliente, admin_biomed, auditor (leitura);
+   - usuario unit-scoped: leitura de campanhas org aplicaveis + da propria unit (regra ratificada).
+10. **RLS necessaria**: tenant + papeis gerenciais; proibicao de leitura nominal; isolamento unitario conforme decisao (detalhe na especificação).
 11. **Criterios de aceite**:
    - operacoes de campanha/plano no tenant correto;
-   - sem campos de identificacao individual nos retornos.  
+   - sem campos de identificacao individual nos retornos gerenciais;
+   - coerencia com as regras ratificadas de escopo e limiar.
 12. **Testes obrigatorios**:
    - integracao de CRUD gerencial permitido;
-   - negacao para perfis clinicos/usuario final;
+   - negacao para perfis clinicos/usuario final no painel gerencial;
    - testes de schema sem dado nominal.  
 13. **Riscos de seguranca/LGPD**:
-   - reidentificacao por grupos pequenos;
-   - campos indiretos permitindo inferencia individual.  
+   - reidentificacao por grupos pequenos ou filtros diferenciais;
+   - campos indiretos permitindo inferencia individual;
+   - absorcao indevida de dado pessoal pelo vinculo institucional.
 14. **Estimativa**: media
-15. **Ordem recomendada**: 13 (proximo ticket tecnico recomendado apos consolidacao documental; condicionado a §7 acima)
+15. **Ordem recomendada**: 13 (proxima etapa apos ratificação = **especificação**; implementacao so apos autorizacao explicita)
 
 ### SUP-D02
 
@@ -974,7 +985,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 | 10 | SUP-C02 | C | C01 + aprovacao clinica | CONCLUIDA (PR #9) |
 | 11 | SUP-C03 | C | C02 | CONCLUIDA (PR #10; harden #11/#12) |
 | 12 | SUP-C04 | C | C01, C02, C03 | PARCIAL: C04.1+#13, C04.2a+#14, 42501+#15; C04.2b ENCERRADA SEM IMPLEMENTACAO |
-| 13 | SUP-D01 | D | SUP-A01 + confirmacao granularidade unidade | RECOMENDADO apos docs; condicionado (ver ticket) |
+| 13 | SUP-D01 | D | SUP-A01 + decisao coletiva ratificada | Desbloqueado p/ especificação futura; impl. NAO autorizada |
 | 14 | SUP-D02 | D | D01 + limiar minimo 10 | Indicadores agregados sem nominal |
 | 15 | SUP-D03 | D | D01, D02 | Gestao em dados reais agregados |
 | 16 | SUP-E01 | E | A02, A03 + B/C/D | Auditoria append-only ativa |
@@ -985,13 +996,14 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 
 ## Caminho critico recomendado
 
-`SUP-A01 -> SUP-A02 -> SUP-A03 -> SUP-B02 -> SUP-C01 -> SUP-C02 -> SUP-C03 -> SUP-C04.1/C04.2a (+42501) -> [docs] -> SUP-D01 (condicionado) -> SUP-D02 -> SUP-E01 -> SUP-E02 -> SUP-E03`
+`SUP-A01 -> SUP-A02 -> SUP-A03 -> SUP-B02 -> SUP-C01 -> SUP-C02 -> SUP-C03 -> SUP-C04.1/C04.2a (+42501) -> [docs #16] -> [ratificacao org×unit] -> [especificação D01] -> SUP-D01 (impl. apos autorizacao) -> SUP-D02 -> SUP-E01 -> SUP-E02 -> SUP-E03`
 
 Notas de caminho:
 
 - SUP-C04.2b **nao** faz parte do caminho critico (encerrada sem implementacao).
-- SUP-B04 permanece aberta como alternativa posterior, apos revisao de fallback.
-- Gap residual `unit_id` (C01) e dependencia arquitetural quando aplicavel.
+- SUP-B04 permanece aberta como alternativa posterior, apos revisao de fallback; **nao iniciar** agora.
+- Gap residual `unit_id` clinico (C01) e trilha **paralela**; nao bloqueia a especificação futura do D01 coletivo.
+- A ratificação desbloqueia a **especificação** do D01; nao autoriza implementação.
 
 Justificativa:
 

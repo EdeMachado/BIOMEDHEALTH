@@ -4,16 +4,38 @@
 
 - Banco alvo: PostgreSQL (Supabase)
 - IDs: UUID
-- Tabelas sensiveis com `organization_id`
 - Auditoria e versionamento nativos
 - JSONB apenas quando tecnicamente justificado
+- O BIOMED HEALTH e um ecossistema modular (individual, clinico, gestao coletiva, ocupacional, intelligence) — Gestao nao e o proposito total do produto
+
+## Escopo de `organization_id` e `unit_id` (decisao ratificada 2026-07-31)
+
+Aplicacao do modelo hibrido **exclusivamente** ao dominio institucional e de gestao coletiva (detalhe: `PROJECT_MASTER_HANDOFF.md` §6.1).
+
+| Dominio | `organization_id` | `unit_id` |
+|---|---|---|
+| Institucional / gestao coletiva | **Obrigatorio** | Obrigatorio quando houver recorte operacional por unidade; `null` = escopo organizacional **explicito** |
+| Pessoal / B2C / titularidade do paciente | **Nao** obrigatorio como regra universal | N/A salvo vinculo opcional |
+| Clinico assistencial | Contextual (vinculo/programa); org patrocinadora **nao** dona o prontuario | Gap residual em agenda (C01) e dívida **paralela** ao D01 coletivo |
+
+Regras conceituais ratificadas:
+
+1. No dominio coletivo/institucional, todo registro exige `organization_id`.
+2. `unit_id` e condicional: obrigatorio apenas no recorte unitario; vedado usar `null` como unidade esquecida, contexto desconhecido, falha de selecao, ausencia acidental, fallback de autorizacao ou ampliação de acesso.
+3. Quando houver `unit_id`, a unidade deve pertencer ao `organization_id` informado.
+4. Dados pessoais e assistenciais independentes nao exigem organizacao universal.
+5. Organizacao patrocinadora/sediante nao se torna titular do prontuario pessoal.
+6. Informacoes coletivas/gerenciais exigem limiar minimo de **10** pessoas no recorte efetivamente consultado (apos todos os filtros), sem contorno por cruzamentos/exportacoes; o limiar nao impede atendimento clinico autorizado.
+7. Usuario unit-scoped pode visualizar campanhas organizacionais aplicaveis a sua unidade sob vinculo/papel validos, sem acesso a outras units nem a dados individuais indevidos.
+
+**Estado implementado (MVP atual — nao confundir com a decisao):** muitas tabelas sensiveis ja possuem `organization_id NOT NULL`; `unit_id` existe sobretudo em bindings de access (`user_roles` / `user_profiles`); campanhas/planos ainda sem coluna de unidade. Evolucoes de schema coletivo ficam para a especificação/implementação futuras do SUP-D01 (**ainda nao autorizadas**).
 
 ## Convencoes de colunas base
 
-Sempre que aplicavel:
+Sempre que aplicavel ao tipo de entidade:
 
 - `id uuid primary key`
-- `organization_id uuid not null`
+- `organization_id uuid not null` — **quando** a entidade for institucional/coletiva (nao como dogma universal)
 - `created_at timestamptz not null default now()`
 - `updated_at timestamptz not null default now()`
 - `created_by uuid null`
@@ -110,10 +132,12 @@ Sempre que aplicavel:
 
 ## Regras de privacidade no modelo
 
-- RH/Gestor institucional consulta apenas visoes agregadas.
-- Dados clinicos individualizados ficam em tabelas clinicas segregadas.
+- RH/Gestor institucional consulta apenas visoes agregadas (limiar minimo 10 no recorte efetivo).
+- Dados clinicos individualizados ficam em tabelas clinicas segregadas; painel gerencial nao e canal de prontuario.
 - Documentos em storage privado; banco guarda metadados.
 - Exportacao/correcao/revogacao gera evento em `audit_events`.
+- Desligamento de vinculo institucional nao elimina historico pessoal do usuario.
+- Dado coletivo derivado nao transfere titularidade do dado pessoal a organizacao.
 
 ## Estrategia de seed ficticio
 

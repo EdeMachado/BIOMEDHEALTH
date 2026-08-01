@@ -15,11 +15,11 @@ Este documento é a **fonte oficial de continuidade e governança** do projeto B
 |---|---|
 | Repositório | `EdeMachado/BIOMEDHEALTH` |
 | Branch de referência | `main` |
-| Baseline de `origin/main` (pós PR #21) | `0591ee73d1504ee76095a432ed2237a429ff749d` |
-| Último merge documental/código integrado | PR #21 — SUP-D01-B (persistência coletiva) |
+| Baseline de `origin/main` (pós PR #22) | `907f3ed0d0a53484553debb917cfebdf2566ccb8` |
+| Último merge documental/código integrado | PR #22 — SUP-D01-C (repositories + UI coletiva); merge commit `907f3ed…`; HEAD incorporado `407928778d34c3d7662b0b5f009b403fcfabbb89` |
 | Data desta atualização do handoff | 2026-08-01 |
 | Ratificação org×unit (coletivo) | PR #17 — decisão documental; sem implementação |
-| SPEC SUP-D01 | Aprovada; **D01-A** em `main` (PR #20); **D01-B** incorporado em `main` (PR #21); **D01-C** em PR próprio (repos/UI controlados) — **não** merged; SUP-D02 não iniciado |
+| SPEC SUP-D01 | Aprovada; **D01-A**, **D01-B** e **D01-C** concluídos e integrados em `main` (PRs #20, #21, #22); SUP-D02 **não** iniciado |
 
 ## 3. Propósito do BIOMED HEALTH e módulos
 
@@ -43,7 +43,7 @@ Carteira por vínculo ativo, agenda, leitura de jornada vinculada, ficha clínic
 
 ### BioMed Gestão (institucional / coletivo)
 
-Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limiar mínimo de 10 no recorte efetivo; sem drill-down nominal. Persistência estrutural D01-B em `main` (migration `0017` + RLS). **D01-C** conecta campanhas/planos via repository mock|supabase controlado (PR aberto, sem merge); overview/indicadores permanecem demonstrativos (D02). Sem fallback runtime Supabase→mock; `selectedUnitId` de sessão **não** implementado.
+Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limiar mínimo de 10 no recorte efetivo; sem drill-down nominal. Persistência estrutural D01-B em `main` (migration `0017` + RLS). **D01-C** em `main` (PR #22): repositories mock|supabase, factory/flags (`VITE_COLLECTIVE_REPOSITORY_MODE`), UI de campanhas e planos com escopos `all_units` / `unit` / `selected_units` (leitura de relações existentes; escritas relacionais não atômicas bloqueadas por `ATOMICITY_REQUIRED`); sem fallback silencioso Supabase→mock; isolamento org/unidade com RLS como autoridade final. Overview/indicadores permanecem demonstrativos (**SUP-D02** não iniciado). `selectedUnitId` de sessão **não** implementado.
 
 ## 4. Documentos canônicos
 
@@ -95,7 +95,11 @@ Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limia
 
 **Estado implementado (não confundir com a decisão):** schema atual exige `organization_id` em muitas tabelas MVP; `unit_id` em bindings de access e, no D01-B, em campanhas/planos coletivos conforme `scope_type`. Gap clínico C01 (agenda sem `unit_id`) permanece dívida **paralela**.
 
-**SUP-D01:** SPEC aprovada (PR #19). **D01-A** em `main` (PR #20). **D01-B** em `main` (PR #21, merge `0591ee7…`) — migration `0017` + RLS/constraints; B1 corrigido (helpers internos sem EXECUTE para PUBLIC/authenticated). **D01-C** — repositories + UI campanhas/planos em PR (modo `VITE_COLLECTIVE_REPOSITORY_MODE` / herança de auth); escritas multi-tabela (`selected_units`/audiências) **bloqueadas** com `ATOMICITY_REQUIRED` até RPC autorizada; sem alteração de banco; D02/C01/B04 fora; C04.2b encerrada; catch→mock clínico intacto; AuthContext/`selectedUnitId` intactos.
+**SUP-D01:** SPEC aprovada (PR #19). **D01-A** em `main` (PR #20). **D01-B** em `main` (PR #21) — migration `0017` + RLS/constraints; B1 corrigido. **D01-C** em `main` (PR #22, merge `907f3ed…`, HEAD `4079287…`, 2026-08-01) — module `apps/web/src/services/repositories/collective/` (mock + supabase + factory/flags); UI campanhas/planos; escopos `all_units`/`unit`/`selected_units`; leitura de aplicabilidades existentes; escritas multi-tabela **bloqueadas** com `ATOMICITY_REQUIRED` (RPC atômica **não** iniciada); sem fallback Supabase→mock; AuthContext/guards/rotas/`selectedUnitId` intactos; C01/B04 fora; C04.2b encerrada; catch→mock clínico intacto. **SUP-D02** expressamente **não** iniciado.
+
+**Auditoria independente pós-correção do PR #22 (HEAD `4079287…`):** veredito **B**, sem P0/P1/P2; nenhum achado bloqueante; quatro achados anteriores (delete falso; segundo get pós-mutação; edição `selected_units` reenviando escopo; tipagem care-plan) corrigidos. P3 remanescentes (dívida técnica não bloqueante): (1) falta de suíte de integração simétrica para `ManagementActionPlanPage`; (2) assert negativo explícito de ausência de mensagem de sucesso após falha; (3) `NO_ACTIVE_MEMBERSHIP` sem cobertura Vitest específica do D01-C (coberto pela validação SQL do D01-B).
+
+**Evidência histórica do merge (auditoria do HEAD `4079287…`):** typecheck PASS; lint PASS; unitários 269; integração 81; collective específico 55; build PASS; migrations `0001`–`0017` + validação D01-B + regressão B1 PASS. **Não** executados naquela auditoria: Supabase remoto; Playwright/E2E; CI do GitHub (sem checks publicados no PR).
 
 ## 7. Status das fases SUP-A … SUP-E
 
@@ -104,7 +108,7 @@ Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limia
 | A — Acesso/tenant | Entregue na prática (A01–A04 via PRs de auth/access) | Detalhe fino no backlog |
 | B — Preventivo | Parcial | B01–B03 (+ filhas) entregues; **B04 aberto** (não iniciado) |
 | C — Clínico | Parcial | C01.1/C01.2, C02, C03 entregues; C01 parent com gap `unit_id`; C04 parcial (ver §8) |
-| D — Gestão agregada | Parcial | SPEC aprovada; **D01-A/B** em main; **D01-C** em PR (repos/UI; atomicidade parcial); D02 não iniciado |
+| D — Gestão agregada | Parcial | SPEC aprovada; **D01-A/B/C** em main (PRs #20–#22); escritas relacionais atômicas pendentes; **D02** não iniciado |
 | E — Auditoria/hardening | Aberta | Após B/C/D maduros |
 
 ## 8. Tickets e fatias C04 — status consolidado
@@ -160,8 +164,8 @@ Inelegível a qualquer fallback de dados.
 |---|---|
 | SUP-B04 | Aberto — revisar linguagem/mecanismos de fallback inseguro antes de executar |
 | SUP-C01 `unit_id` | Gap residual clínico **paralelo** (não bloqueia D01) |
-| SUP-D01 | SPEC aprovada (PR #19); **D01-A** em main (PR #20); **D01-B** em main (PR #21); **D01-C** em PR (repos/UI controlados; atomicidade parcial); D02 não iniciado |
-| SUP-D02…D03 | Abertos (após implementação futura controlada de D01) |
+| SUP-D01 | SPEC aprovada (PR #19); **D01-A/B/C** concluídos em `main` (PRs #20–#22, merge D01-C `907f3ed…`); RPC atômica coletiva ainda pendente; P3 de teste não bloqueantes |
+| SUP-D02…D03 | Abertos — **SUP-D02 não iniciado**; decisão humana pendente (RPC atômica vs planejamento D02) |
 | SUP-E01…E03 | Abertos (Fase E) |
 | Decisões humanas (jurídico/clínico/retention/rollout) | Pendentes (seção backlog) |
 
@@ -190,14 +194,14 @@ Inelegível a qualquer fallback de dados.
 
 ## 11. Decisões humanas pendentes
 
-Granularidade coletiva org×unit (**ratificada** — §6.1). SPEC SUP-D01 **aprovada**. D01-A/B em `main`. Pendentes: auditoria independente + merge humano do PR D01-C; bases legais/texto de consentimento; estrutura final da ficha; retention/exportação de auditoria; rollout por tenant/módulo; autorização separada para RPC atômica coletiva / D02.
+Granularidade coletiva org×unit (**ratificada** — §6.1). SPEC SUP-D01 **aprovada**. D01-A/B/C em `main`. Pendentes: bases legais/texto de consentimento; estrutura final da ficha; retention/exportação de auditoria; rollout por tenant/módulo; **decisão humana ainda não tomada** entre (1) priorizar RPC/transação atômica coletiva ou (2) iniciar planejamento controlado do SUP-D02 — nenhuma das duas iniciada nesta consolidação.
 
 ## 12. Sequência recomendada de retomada
 
 1. **Consolidação documental** — integrada via PR #16 (`d38c6c5…`).
 2. **Ratificação arquitetural org×unit (domínio coletivo)** — PR #17.
 3. **Especificação técnica do SUP-D01** — PR #18 incorporado em `main` (`9930c61…`); revisão formal **aprovada para implementação controlada**.
-4. **D01-A/B** — concluídos em `main`. **D01-C** — repos/UI em PR (auditoria independente; sem merge automático nesta execução). **D02** — somente após autorização explícita; RPC atômica para `selected_units`/audiências exige ordem separada.
+4. **D01-A/B/C** — concluídos em `main` (PRs #20–#22). Próxima decisão humana (não tomada): RPC atômica coletiva **ou** planejamento controlado do **SUP-D02** (ainda não iniciado).
 5. **SUP-B04** — alternativa posterior; revisar fallback preventivo inseguro antes; **não iniciar** agora.
 6. Gap residual `unit_id` clínico (C01) — trilha **paralela**, não pré-requisito integral do D01.
 7. **SUP-C04.2b — não iniciar.**

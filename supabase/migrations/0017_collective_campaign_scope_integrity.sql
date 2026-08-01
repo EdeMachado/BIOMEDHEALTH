@@ -439,9 +439,34 @@ as $$
   select app_auth.can_write_campaign(p_organization_id, p_scope_type, p_unit_id);
 $$;
 
-grant execute on function app_auth.unit_belongs_to_organization(uuid, uuid) to authenticated;
-grant execute on function app_auth.has_org_wide_collective_role(uuid, text[]) to authenticated;
-grant execute on function app_auth.has_unit_collective_role(uuid, uuid, text[]) to authenticated;
+-- Privilegio minimo (SUP-D01-B / B1):
+-- - helpers internos (unit_belongs / has_*_collective_role): sem EXECUTE para PUBLIC/authenticated/anon;
+--   usados apenas por triggers e por can_* SECURITY DEFINER (owner).
+-- - can_select_* / can_write_*: EXECUTE somente authenticated (chamados pelas policies RLS).
+revoke all on function app_auth.unit_belongs_to_organization(uuid, uuid) from public;
+revoke all on function app_auth.unit_belongs_to_organization(uuid, uuid) from authenticated;
+revoke all on function app_auth.has_org_wide_collective_role(uuid, text[]) from public;
+revoke all on function app_auth.has_org_wide_collective_role(uuid, text[]) from authenticated;
+revoke all on function app_auth.has_unit_collective_role(uuid, uuid, text[]) from public;
+revoke all on function app_auth.has_unit_collective_role(uuid, uuid, text[]) from authenticated;
+revoke all on function app_auth.can_select_campaign(uuid, text, uuid, text, uuid) from public;
+revoke all on function app_auth.can_write_campaign(uuid, text, uuid) from public;
+revoke all on function app_auth.can_select_action_plan(uuid, text, uuid, text, uuid) from public;
+revoke all on function app_auth.can_write_action_plan(uuid, text, uuid) from public;
+
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'anon') then
+    execute 'revoke all on function app_auth.unit_belongs_to_organization(uuid, uuid) from anon';
+    execute 'revoke all on function app_auth.has_org_wide_collective_role(uuid, text[]) from anon';
+    execute 'revoke all on function app_auth.has_unit_collective_role(uuid, uuid, text[]) from anon';
+    execute 'revoke all on function app_auth.can_select_campaign(uuid, text, uuid, text, uuid) from anon';
+    execute 'revoke all on function app_auth.can_write_campaign(uuid, text, uuid) from anon';
+    execute 'revoke all on function app_auth.can_select_action_plan(uuid, text, uuid, text, uuid) from anon';
+    execute 'revoke all on function app_auth.can_write_action_plan(uuid, text, uuid) from anon';
+  end if;
+end $$;
+
 grant execute on function app_auth.can_select_campaign(uuid, text, uuid, text, uuid) to authenticated;
 grant execute on function app_auth.can_write_campaign(uuid, text, uuid) to authenticated;
 grant execute on function app_auth.can_select_action_plan(uuid, text, uuid, text, uuid) to authenticated;
@@ -770,6 +795,43 @@ before insert or update of campaign_id, organization_id
 on public.campaign_audiences
 for each row
 execute function public.enforce_campaign_audience_inherits_org();
+
+-- Triggers SECURITY DEFINER: uso interno apenas (sem EXECUTE para PUBLIC/authenticated)
+revoke all on function public.enforce_campaign_organization_immutable() from public;
+revoke all on function public.enforce_action_plan_organization_immutable() from public;
+revoke all on function public.enforce_campaign_unit_belongs_to_org() from public;
+revoke all on function public.enforce_action_plan_unit_belongs_to_org() from public;
+revoke all on function public.enforce_campaign_unit_applicability_row() from public;
+revoke all on function public.enforce_action_plan_unit_applicability_row() from public;
+revoke all on function public.enforce_campaign_applicability_cardinality() from public;
+revoke all on function public.enforce_action_plan_applicability_cardinality() from public;
+revoke all on function public.enforce_campaign_audience_inherits_org() from public;
+
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'authenticated') then
+    execute 'revoke all on function public.enforce_campaign_organization_immutable() from authenticated';
+    execute 'revoke all on function public.enforce_action_plan_organization_immutable() from authenticated';
+    execute 'revoke all on function public.enforce_campaign_unit_belongs_to_org() from authenticated';
+    execute 'revoke all on function public.enforce_action_plan_unit_belongs_to_org() from authenticated';
+    execute 'revoke all on function public.enforce_campaign_unit_applicability_row() from authenticated';
+    execute 'revoke all on function public.enforce_action_plan_unit_applicability_row() from authenticated';
+    execute 'revoke all on function public.enforce_campaign_applicability_cardinality() from authenticated';
+    execute 'revoke all on function public.enforce_action_plan_applicability_cardinality() from authenticated';
+    execute 'revoke all on function public.enforce_campaign_audience_inherits_org() from authenticated';
+  end if;
+  if exists (select 1 from pg_roles where rolname = 'anon') then
+    execute 'revoke all on function public.enforce_campaign_organization_immutable() from anon';
+    execute 'revoke all on function public.enforce_action_plan_organization_immutable() from anon';
+    execute 'revoke all on function public.enforce_campaign_unit_belongs_to_org() from anon';
+    execute 'revoke all on function public.enforce_action_plan_unit_belongs_to_org() from anon';
+    execute 'revoke all on function public.enforce_campaign_unit_applicability_row() from anon';
+    execute 'revoke all on function public.enforce_action_plan_unit_applicability_row() from anon';
+    execute 'revoke all on function public.enforce_campaign_applicability_cardinality() from anon';
+    execute 'revoke all on function public.enforce_action_plan_applicability_cardinality() from anon';
+    execute 'revoke all on function public.enforce_campaign_audience_inherits_org() from anon';
+  end if;
+end $$;
 
 -- ---------------------------------------------------------------------------
 -- 5) RLS: substituir JWT legado; habilitar audiencias/associacoes

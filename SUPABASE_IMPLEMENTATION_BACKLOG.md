@@ -753,7 +753,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
    - Decisao arquitetural org×unit do dominio coletivo: **RESOLVIDA / RATIFICADA** (handoff §6.1).
    - Especificacao tecnica: **INCORPORADA** (PR #18) e **APROVADA PARA IMPLEMENTACAO CONTROLADA** (PR #19).
    - **D01-A (contratos/tipos)**: **CONCLUIDO** — `apps/web/src/domains/collective/` + `tests/unit/collectiveContracts.test.ts`; typecheck e testes unitarios OK (PR #20, `36c6d2…`).
-   - **D01-B (schema/migration/RLS)**: **IMPLEMENTADO NESTA TRILHA** — `supabase/migrations/0017_collective_campaign_scope_integrity.sql`, rollback `0017_…_rollback.sql`, validacao `supabase/policies/SUP_D01_B_COLLECTIVE_PERSISTENCE_VALIDATION.sql` (+ harness local). Validado em Postgres 15 descartavel (Docker): migrations 0001..0017 + ALL PASS. **Sem** UI, repositories, AuthContext, D02, acesso nominal. PR pendente de revisao humana (sem merge automatico).
+   - **D01-B (schema/migration/RLS)**: **EM PR #21 (OPEN, nao merged)** — `0017_collective_campaign_scope_integrity.sql` + rollback + `SUP_D01_B_COLLECTIVE_PERSISTENCE_VALIDATION.sql`. Auditoria previa: veredito B (bloqueador B1 — EXECUTE de `unit_belongs_to_organization` para authenticated/PUBLIC). **Correcao B1** na mesma branch: REVOKE PUBLIC/authenticated em helpers internos; GRANT authenticated so em `can_select_*`/`can_write_*`; teste de nao-sondagem. Requer **nova auditoria** antes de merge. Sem UI/repos/D02/acesso nominal.
    - Gestao coletiva permanece demonstrativa / nao conectada ao backend.
    - Gap residual `unit_id` clinico (SUP-C01): dívida **paralela**; **nao** bloqueia o D01.
 5. **Escopo incluido** (detalhe normativo em `SUP_D01_TECHNICAL_SPECIFICATION.md`):

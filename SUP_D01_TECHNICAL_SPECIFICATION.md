@@ -558,12 +558,12 @@ Decisões D1–D7 e a ratificação do PR #17 **não** são reabertas aqui.
 | Especificação SUP-D01 (PR #18) | Incorporada em `main` (`9930c61…`) |
 | Revisão formal desta SPEC | **Aprovada para implementação controlada** (2026-08-01) |
 | D01-A (contratos/tipos) | **Concluído** — `apps/web/src/domains/collective/` (PR #20, `36c6d2…`) |
-| D01-B (schema/migration/RLS) | **Implementado nesta trilha** — `0017_collective_campaign_scope_integrity.sql`; validação local PASS; PR pendente de revisão humana; **sem** UI/repos |
+| D01-B (schema/migration/RLS) | **Em PR #21 (não merged)** — `0017`; correção B1 (grants SECURITY DEFINER) aplicada; pendente nova auditoria; **sem** UI/repos |
 | Repos / UI real de gestão | **Não autorizados** |
 | SUP-D02 / C01 / B04 / C04.2b | Fora / paralelo / não iniciar / encerrada |
 
 > **Rastreabilidade D01-A:** entrega tipada conforme §9; `suppressed` apenas no contrato `SafeAggregateResult`; sem persistência naquele bloco.
-> **Rastreabilidade D01-B:** persistência estrutural + constraints + RLS membership conforme §4–§6; audiência herda org da campanha (coluna física preexistente com trigger); sem agregações/limiar; sem acesso nominal. O SUP-D01 **não** está integralmente implementado (faltam UI/repos e D02).
+> **Rastreabilidade D01-B:** persistência estrutural + constraints + RLS membership conforme §4–§6; audiência herda org da campanha (coluna física preexistente com trigger); sem agregações/limiar; sem acesso nominal. Hardening B1: `app_auth.unit_belongs_to_organization` e helpers internos sem EXECUTE para papéis de aplicação; `can_*` apenas para `authenticated` após `REVOKE` de `PUBLIC`. O SUP-D01 **não** está integralmente implementado (faltam UI/repos e D02); D01-B **não** incorporado a `main`.
 
 ---
 

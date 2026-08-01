@@ -95,7 +95,7 @@ Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limia
 
 **Estado implementado (não confundir com a decisão):** schema atual exige `organization_id` em muitas tabelas MVP; `unit_id` em bindings de access e, no D01-B, em campanhas/planos coletivos conforme `scope_type`. Gap clínico C01 (agenda sem `unit_id`) permanece dívida **paralela**.
 
-**SUP-D01:** SPEC aprovada (PR #19). **D01-A** em `main` (PR #20, `36c6d2…`). **D01-B** — migration `0017_collective_campaign_scope_integrity.sql` + rollback + validação SQL local (Postgres descartável): colunas de escopo/aplicabilidade, `campaign_unit_applicabilities` / `action_plan_unit_applicabilities`, CHECKs/FKs/triggers `unit→organization`, RLS membership (substitui JWT legado de campaigns/action_plans), RLS em `campaign_audiences`. Sem acesso nominal; sem `program_participations`; `suppressed` sem lógica (D02). Gestão coletiva **ainda não** conectada à UI. D02/C01/B04 fora; C04.2b encerrada; catch→mock intacto. Próximo passo: revisão humana do PR D01-B (sem merge automático).
+**SUP-D01:** SPEC aprovada (PR #19). **D01-A** em `main` (PR #20, `36c6d2…`). **D01-B** — migration `0017` + RLS/constraints em PR #21 (ainda **não** merged). Correção de segurança B1 aplicada na mesma branch: `unit_belongs_to_organization` sem EXECUTE para PUBLIC/authenticated; helpers internos revogados; teste de não-sondagem. Pendente **nova auditoria independente** antes de merge. Sem UI/repos; D02/C01/B04 fora; C04.2b encerrada; catch→mock intacto.
 
 ## 7. Status das fases SUP-A … SUP-E
 

@@ -559,7 +559,218 @@ begin
     raise exception 'SCOPE: program_participations nao deve existir neste bloco';
   end if;
 
-  raise notice 'SUP-D01-B VALIDATION: ALL PASS';
+  -- ---------------------------------------------------------------------------
+  -- B1: unit_belongs_to_organization nao e oraculo cross-tenant
+  -- ---------------------------------------------------------------------------
+  if has_function_privilege(
+    'public',
+    'app_auth.unit_belongs_to_organization(uuid,uuid)',
+    'execute'
+  ) then
+    raise exception 'B1: PUBLIC nao deve ter EXECUTE em unit_belongs_to_organization';
+  end if;
+
+  if has_function_privilege(
+    'authenticated',
+    'app_auth.unit_belongs_to_organization(uuid,uuid)',
+    'execute'
+  ) then
+    raise exception 'B1: authenticated nao deve ter EXECUTE em unit_belongs_to_organization';
+  end if;
+
+  if has_function_privilege(
+    'authenticated',
+    'app_auth.has_org_wide_collective_role(uuid,text[])',
+    'execute'
+  ) then
+    raise exception 'B1: authenticated nao deve ter EXECUTE em has_org_wide_collective_role';
+  end if;
+
+  if has_function_privilege(
+    'authenticated',
+    'app_auth.has_unit_collective_role(uuid,uuid,text[])',
+    'execute'
+  ) then
+    raise exception 'B1: authenticated nao deve ter EXECUTE em has_unit_collective_role';
+  end if;
+
+  if not has_function_privilege(
+    'authenticated',
+    'app_auth.can_select_campaign(uuid,text,uuid,text,uuid)',
+    'execute'
+  ) then
+    raise exception 'B1: authenticated DEVE ter EXECUTE em can_select_campaign (RLS)';
+  end if;
+
+  if has_function_privilege(
+    'public',
+    'app_auth.can_select_campaign(uuid,text,uuid,text,uuid)',
+    'execute'
+  ) then
+    raise exception 'B1: PUBLIC nao deve ter EXECUTE em can_select_campaign';
+  end if;
+
+  -- Sem membership: chamada direta a unit_belongs deve ser permission denied (nunca true/false)
+  reset role;
+  perform set_config('request.jwt.claim.sub', '99999999-9999-9999-9999-999999999999', true);
+  execute 'set local role authenticated';
+  begin
+    v_failed := false;
+    execute format(
+      'select app_auth.unit_belongs_to_organization(%L::uuid, %L::uuid)',
+      v_unit_a1,
+      v_org_a
+    );
+  exception when insufficient_privilege then
+    v_failed := true;
+  when others then
+    if sqlstate = '42501' then
+      v_failed := true;
+    else
+      raise exception 'B1: esperava permission denied no par correto; got % %', sqlstate, sqlerrm;
+    end if;
+  end;
+  if not v_failed then
+    raise exception 'B1: authenticated sem membership nao deve executar unit_belongs (par correto)';
+  end if;
+
+  begin
+    v_failed := false;
+    execute format(
+      'select app_auth.unit_belongs_to_organization(%L::uuid, %L::uuid)',
+      v_unit_b1,
+      v_org_a
+    );
+  exception when insufficient_privilege then
+    v_failed := true;
+  when others then
+    if sqlstate = '42501' then
+      v_failed := true;
+    else
+      raise exception 'B1: esperava permission denied no par estrangeiro; got % %', sqlstate, sqlerrm;
+    end if;
+  end;
+  if not v_failed then
+    raise exception 'B1: authenticated sem membership nao deve executar unit_belongs (par estrangeiro)';
+  end if;
+
+  -- Com membership (gestor): ainda sem EXECUTE direto em unit_belongs
+  reset role;
+  perform set_config('request.jwt.claim.sub', v_gestor::text, true);
+  execute 'set local role authenticated';
+  begin
+    v_failed := false;
+    execute format(
+      'select app_auth.unit_belongs_to_organization(%L::uuid, %L::uuid)',
+      v_unit_a1,
+      v_org_a
+    );
+  exception when insufficient_privilege then
+    v_failed := true;
+  when others then
+    if sqlstate = '42501' then
+      v_failed := true;
+    else
+      raise exception 'B1: gestor com membership ainda nao deve executar unit_belongs; got % %', sqlstate, sqlerrm;
+    end if;
+  end;
+  if not v_failed then
+    raise exception 'B1: authenticated COM membership nao deve executar unit_belongs diretamente';
+  end if;
+
+  -- Helpers RLS expostos: sem membership => false (sem revelar topologia unit↔org)
+  reset role;
+  perform set_config('request.jwt.claim.sub', '99999999-9999-9999-9999-999999999999', true);
+  execute 'set local role authenticated';
+  execute format(
+    'select app_auth.can_select_campaign(%L::uuid, %L, null::uuid, %L, %L::uuid)',
+    v_org_a,
+    'organization',
+    'all_units',
+    v_camp
+  ) into v_ok;
+  if v_ok then
+    raise exception 'B1: can_select_campaign sem membership deve ser false';
+  end if;
+  execute format(
+    'select app_auth.can_write_campaign(%L::uuid, %L, null::uuid)',
+    v_org_a,
+    'organization'
+  ) into v_ok;
+  if v_ok then
+    raise exception 'B1: can_write_campaign sem membership deve ser false';
+  end if;
+
+  -- Papel autorizado: can_select true; can_write true para gestor
+  reset role;
+  perform set_config('request.jwt.claim.sub', v_gestor::text, true);
+  execute 'set local role authenticated';
+  execute format(
+    'select app_auth.can_select_campaign(%L::uuid, %L, null::uuid, %L, %L::uuid)',
+    v_org_a,
+    'organization',
+    'all_units',
+    v_camp
+  ) into v_ok;
+  if not v_ok then
+    raise exception 'B1: gestor deve can_select campanha org A';
+  end if;
+  execute format(
+    'select app_auth.can_select_campaign(%L::uuid, %L, null::uuid, %L, %L::uuid)',
+    v_org_b,
+    'organization',
+    'all_units',
+    v_camp_b
+  ) into v_ok;
+  if v_ok then
+    raise exception 'B1: gestor A nao deve can_select campanha org B';
+  end if;
+
+  -- anon: sem EXECUTE em unit_belongs (se papel existir)
+  reset role;
+  if exists (select 1 from pg_roles where rolname = 'anon') then
+    if has_function_privilege('anon', 'app_auth.unit_belongs_to_organization(uuid,uuid)', 'execute') then
+      raise exception 'B1: anon nao deve ter EXECUTE em unit_belongs_to_organization';
+    end if;
+  end if;
+
+  -- Triggers ainda protegem unit→organization (INSERT invalido como owner)
+  reset role;
+  begin
+    v_failed := false;
+    insert into public.campaigns (
+      organization_id, title, description, channel, starts_at, ends_at, campaign_status,
+      scope_type, unit_id, unit_applicability
+    ) values (
+      v_org_a, 'cross unit after B1', 'd', 'email', current_date, current_date + 1, 'ativa',
+      'unit', v_unit_b1, null
+    );
+  exception when check_violation then
+    v_failed := true;
+  when others then
+    if sqlstate = '23514' then
+      v_failed := true;
+    else
+      raise;
+    end if;
+  end;
+  if not v_failed then
+    raise exception 'B1: trigger unit→organization regressou apos hardening de grants';
+  end if;
+
+  -- INSERT valido permanece (gestor via RLS)
+  reset role;
+  perform set_config('request.jwt.claim.sub', v_gestor::text, true);
+  execute 'set local role authenticated';
+  insert into public.campaigns (
+    organization_id, title, description, channel, starts_at, ends_at, campaign_status,
+    scope_type, unit_id, unit_applicability
+  ) values (
+    v_org_a, 'post-B1 ok', 'd', 'email', current_date, current_date + 1, 'ativa',
+    'organization', null, 'all_units'
+  );
+
+  raise notice 'SUP-D01-B VALIDATION: ALL PASS (incl. B1 nao-sondagem)';
 end $$;
 
 rollback;

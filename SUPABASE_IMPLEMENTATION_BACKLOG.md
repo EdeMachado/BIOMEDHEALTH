@@ -751,10 +751,10 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 3. **Finalidade**: estruturar base para campanhas, indicadores e plano de acao coletivo no modulo BioMed Gestao (fundacao da gestao coletiva / inteligencia populacional; **nao** totalidade do produto).
 4. **Status**:
    - Decisao arquitetural org×unit do dominio coletivo: **RESOLVIDA / RATIFICADA** (handoff §6.1).
-   - Especificacao tecnica: **INCORPORADA** (PR #18, merge `9930c61…`) e **APROVADA PARA IMPLEMENTACAO CONTROLADA** (revisao formal 2026-08-01).
-   - **Implementacao**: **NAO INICIADA**.
-   - Proximo bloco possivel: **D01-A** (contratos/tipos), somente com **autorizacao especifica**.
-   - **D01-B** (schema/migration): **nao iniciado**; condicionado a D01-A verificado + autorizacao especifica.
+   - Especificacao tecnica: **INCORPORADA** (PR #18) e **APROVADA PARA IMPLEMENTACAO CONTROLADA** (PR #19).
+   - **D01-A (contratos/tipos)**: **CONCLUIDO** — `apps/web/src/domains/collective/` + `tests/unit/collectiveContracts.test.ts`; typecheck e testes unitarios OK.
+   - **D01-B (schema/migration)**: **NAO INICIADO**; exige autorizacao especifica apos revisao do D01-A.
+   - Sem SQL/migration/RLS/repos Supabase/UI de gestao nesta entrega.
    - Gap residual `unit_id` clinico (SUP-C01): dívida **paralela**; **nao** bloqueia o D01.
 5. **Escopo incluido** (detalhe normativo em `SUP_D01_TECHNICAL_SPECIFICATION.md`):
    - consolidacao de `campaigns`, `campaign_audiences`, `action_plans` no dominio coletivo;
@@ -785,7 +785,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
    - campos indiretos permitindo inferencia individual;
    - absorcao indevida de dado pessoal pelo vinculo institucional.
 14. **Estimativa**: media
-15. **Ordem recomendada**: 13 — SPEC aprovada; proximo passo humano = autorizar **D01-A**; D01-B so apos D01-A; D02 separado.
+15. **Ordem recomendada**: 13 — D01-A entregue; proximo passo humano = revisar PR do D01-A e, se aprovado, autorizar **D01-B**; D02 separado.
 
 ### SUP-D02
 
@@ -987,7 +987,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 | 10 | SUP-C02 | C | C01 + aprovacao clinica | CONCLUIDA (PR #9) |
 | 11 | SUP-C03 | C | C02 | CONCLUIDA (PR #10; harden #11/#12) |
 | 12 | SUP-C04 | C | C01, C02, C03 | PARCIAL: C04.1+#13, C04.2a+#14, 42501+#15; C04.2b ENCERRADA SEM IMPLEMENTACAO |
-| 13 | SUP-D01 | D | SUP-A01 + decisao coletiva ratificada | SPEC aprovada p/ impl. controlada (PR #18); impl. NAO iniciada; D01-A pendente |
+| 13 | SUP-D01 | D | SUP-A01 + decisao coletiva ratificada | SPEC aprovada (PR #19); D01-A concluido; D01-B NAO iniciado |
 | 14 | SUP-D02 | D | D01 + limiar minimo 10 | Indicadores agregados sem nominal |
 | 15 | SUP-D03 | D | D01, D02 | Gestao em dados reais agregados |
 | 16 | SUP-E01 | E | A02, A03 + B/C/D | Auditoria append-only ativa |
@@ -998,7 +998,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 
 ## Caminho critico recomendado
 
-`SUP-A01 -> SUP-A02 -> SUP-A03 -> SUP-B02 -> SUP-C01 -> SUP-C02 -> SUP-C03 -> SUP-C04.1/C04.2a (+42501) -> [docs #16] -> [ratificacao org×unit #17] -> [especificação D01 #18] -> [aprovacao formal SPEC] -> [D01-A apos autorizacao] -> [D01-B apos D01-A] -> SUP-D01 (demais blocos) -> SUP-D02 -> SUP-E01 -> SUP-E02 -> SUP-E03`
+`SUP-A01 -> … -> [aprovacao formal SPEC #19] -> [D01-A] -> [D01-B apos autorizacao] -> SUP-D01 (demais blocos) -> SUP-D02 -> …`
 
 Notas de caminho:
 

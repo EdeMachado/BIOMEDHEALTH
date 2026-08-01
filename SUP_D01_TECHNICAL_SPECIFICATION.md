@@ -557,10 +557,12 @@ Decisões D1–D7 e a ratificação do PR #17 **não** são reabertas aqui.
 | Ratificação org×unit (PR #17) | Integrada em `main` |
 | Especificação SUP-D01 (PR #18) | Incorporada em `main` (`9930c61…`) |
 | Revisão formal desta SPEC | **Aprovada para implementação controlada** (2026-08-01) |
-| D01-A (contratos/tipos) | **Não autorizado** — exige ordem específica |
-| D01-B (schema/migration) | **Não iniciado** — condicionado a D01-A + ordem específica |
-| Repos / RLS / UI real de gestão | **Não autorizados** nesta aprovação |
+| D01-A (contratos/tipos) | **Concluído** — `apps/web/src/domains/collective/` (tipos + guards estruturais + testes) |
+| D01-B (schema/migration) | **Não iniciado** — exige autorização específica após revisão do D01-A |
+| Repos / RLS / UI real de gestão | **Não autorizados** |
 | SUP-D02 / C01 / B04 / C04.2b | Fora / paralelo / não iniciar / encerrada |
+
+> **Rastreabilidade D01-A:** entrega tipada conforme §9; `suppressed` apenas no contrato `SafeAggregateResult`; sem persistência. O SUP-D01 **não** está integralmente implementado.
 
 ---
 

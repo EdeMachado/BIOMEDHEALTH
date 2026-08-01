@@ -345,14 +345,19 @@ Legenda: C=criar, R=ler metadados coletivos, U=alterar, E=encerrar, A=ver agrega
 
 ## 8. Repositories e serviços futuros
 
-**Implementação futura / proposta técnica** (não existentes como módulo gestão no MVP atual):
+**Estado de implementação:**
+- **D01-A:** contratos/tipos em `apps/web/src/domains/collective/` (main).
+- **D01-B:** persistência/RLS migration `0017` (main).
+- **D01-C (PR, não merged):** module `apps/web/src/services/repositories/collective/` + UI campanhas/planos; modo `mock`|`supabase` via `VITE_COLLECTIVE_REPOSITORY_MODE` (herança de `VITE_ENABLE_SUPABASE_AUTH`); fail-closed; sem fallback runtime. Escritas multi-tabela (`selected_units`, audiências, limpeza de aplicabilidades) **não** executadas — `ATOMICITY_REQUIRED` até RPC/transação autorizada em ordem separada (esta SPEC não autoriza migration/RPC no D01-C).
+
+Regras preservadas:
 
 1. Operações coletivas exigem contexto institucional (`organizationId` + ator + papel + contexto unitário quando aplicável).
 2. Jornadas/pessoais independentes **não** passam por este repository.
 3. APIs distinguem `organization` vs `unit` e `all_units` vs `selected_units`.
 4. Rejeitar `unitId` incompatível (`UNIT_ORG_MISMATCH`); rejeitar `selected_units` sem associações.
 5. Sem fallback silencioso.
-6. Filtros de escopo/aplicabilidade no servidor.
+6. Filtros de escopo/aplicabilidade no servidor (defesa adicional; RLS autoridade final).
 7. Interface de agregação segura preparada; enforcement no D02.
 8. Auditoria dos eventos da §10.
 

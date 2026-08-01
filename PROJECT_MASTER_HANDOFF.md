@@ -15,11 +15,11 @@ Este documento é a **fonte oficial de continuidade e governança** do projeto B
 |---|---|
 | Repositório | `EdeMachado/BIOMEDHEALTH` |
 | Branch de referência | `main` |
-| Baseline de `origin/main` (pós PR #20) | `36c6d2bd2fd34f396313fc4ee181a5c0ec191ffe` |
-| Último merge documental/código integrado | PR #20 — SUP-D01-A (contratos/tipos) |
+| Baseline de `origin/main` (pós PR #21) | `0591ee73d1504ee76095a432ed2237a429ff749d` |
+| Último merge documental/código integrado | PR #21 — SUP-D01-B (persistência coletiva) |
 | Data desta atualização do handoff | 2026-08-01 |
 | Ratificação org×unit (coletivo) | PR #17 — decisão documental; sem implementação |
-| SPEC SUP-D01 | Aprovada; **D01-A concluído** (PR #20); **D01-B (persistência) implementado nesta trilha** — PR pendente de revisão humana; sem merge automático |
+| SPEC SUP-D01 | Aprovada; **D01-A** em `main` (PR #20); **D01-B** incorporado em `main` (PR #21); **D01-C** em PR próprio (repos/UI controlados) — **não** merged; SUP-D02 não iniciado |
 
 ## 3. Propósito do BIOMED HEALTH e módulos
 
@@ -43,7 +43,7 @@ Carteira por vínculo ativo, agenda, leitura de jornada vinculada, ficha clínic
 
 ### BioMed Gestão (institucional / coletivo)
 
-Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limiar mínimo de 10 no recorte efetivo; sem drill-down nominal. Persistência estrutural D01-B (schema/RLS) entregue em PR pendente; UI/gestão ainda demonstrativa e **não** conectada ao backend.
+Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limiar mínimo de 10 no recorte efetivo; sem drill-down nominal. Persistência estrutural D01-B em `main` (migration `0017` + RLS). **D01-C** conecta campanhas/planos via repository mock|supabase controlado (PR aberto, sem merge); overview/indicadores permanecem demonstrativos (D02). Sem fallback runtime Supabase→mock; `selectedUnitId` de sessão **não** implementado.
 
 ## 4. Documentos canônicos
 
@@ -95,7 +95,7 @@ Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limia
 
 **Estado implementado (não confundir com a decisão):** schema atual exige `organization_id` em muitas tabelas MVP; `unit_id` em bindings de access e, no D01-B, em campanhas/planos coletivos conforme `scope_type`. Gap clínico C01 (agenda sem `unit_id`) permanece dívida **paralela**.
 
-**SUP-D01:** SPEC aprovada (PR #19). **D01-A** em `main` (PR #20, `36c6d2…`). **D01-B** — migration `0017` + RLS/constraints em PR #21 (ainda **não** merged). Correção de segurança B1 aplicada na mesma branch: `unit_belongs_to_organization` sem EXECUTE para PUBLIC/authenticated; helpers internos revogados; teste de não-sondagem. Pendente **nova auditoria independente** antes de merge. Sem UI/repos; D02/C01/B04 fora; C04.2b encerrada; catch→mock intacto.
+**SUP-D01:** SPEC aprovada (PR #19). **D01-A** em `main` (PR #20). **D01-B** em `main` (PR #21, merge `0591ee7…`) — migration `0017` + RLS/constraints; B1 corrigido (helpers internos sem EXECUTE para PUBLIC/authenticated). **D01-C** — repositories + UI campanhas/planos em PR (modo `VITE_COLLECTIVE_REPOSITORY_MODE` / herança de auth); escritas multi-tabela (`selected_units`/audiências) **bloqueadas** com `ATOMICITY_REQUIRED` até RPC autorizada; sem alteração de banco; D02/C01/B04 fora; C04.2b encerrada; catch→mock clínico intacto; AuthContext/`selectedUnitId` intactos.
 
 ## 7. Status das fases SUP-A … SUP-E
 
@@ -104,7 +104,7 @@ Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limia
 | A — Acesso/tenant | Entregue na prática (A01–A04 via PRs de auth/access) | Detalhe fino no backlog |
 | B — Preventivo | Parcial | B01–B03 (+ filhas) entregues; **B04 aberto** (não iniciado) |
 | C — Clínico | Parcial | C01.1/C01.2, C02, C03 entregues; C01 parent com gap `unit_id`; C04 parcial (ver §8) |
-| D — Gestão agregada | Aberta | SPEC aprovada; **D01-A** em main; **D01-B** em PR (schema/RLS); UI gestão ainda demo; D02 não iniciado |
+| D — Gestão agregada | Parcial | SPEC aprovada; **D01-A/B** em main; **D01-C** em PR (repos/UI; atomicidade parcial); D02 não iniciado |
 | E — Auditoria/hardening | Aberta | Após B/C/D maduros |
 
 ## 8. Tickets e fatias C04 — status consolidado
@@ -160,7 +160,7 @@ Inelegível a qualquer fallback de dados.
 |---|---|
 | SUP-B04 | Aberto — revisar linguagem/mecanismos de fallback inseguro antes de executar |
 | SUP-C01 `unit_id` | Gap residual clínico **paralelo** (não bloqueia D01) |
-| SUP-D01 | SPEC aprovada (PR #19); **D01-A** em main (PR #20); **D01-B** schema/RLS em PR (sem UI/repos funcionais); D02 não iniciado |
+| SUP-D01 | SPEC aprovada (PR #19); **D01-A** em main (PR #20); **D01-B** em main (PR #21); **D01-C** em PR (repos/UI controlados; atomicidade parcial); D02 não iniciado |
 | SUP-D02…D03 | Abertos (após implementação futura controlada de D01) |
 | SUP-E01…E03 | Abertos (Fase E) |
 | Decisões humanas (jurídico/clínico/retention/rollout) | Pendentes (seção backlog) |
@@ -190,14 +190,14 @@ Inelegível a qualquer fallback de dados.
 
 ## 11. Decisões humanas pendentes
 
-Granularidade coletiva org×unit (**ratificada** — §6.1). SPEC SUP-D01 **aprovada**. D01-A e D01-B (persistência) entregues sob autorização por bloco. Pendentes: revisão/merge humano do PR D01-B; bases legais/texto de consentimento; estrutura final da ficha; retention/exportação de auditoria; rollout por tenant/módulo; autorização separada para D01-C/UI/D02.
+Granularidade coletiva org×unit (**ratificada** — §6.1). SPEC SUP-D01 **aprovada**. D01-A/B em `main`. Pendentes: auditoria independente + merge humano do PR D01-C; bases legais/texto de consentimento; estrutura final da ficha; retention/exportação de auditoria; rollout por tenant/módulo; autorização separada para RPC atômica coletiva / D02.
 
 ## 12. Sequência recomendada de retomada
 
 1. **Consolidação documental** — integrada via PR #16 (`d38c6c5…`).
 2. **Ratificação arquitetural org×unit (domínio coletivo)** — PR #17.
 3. **Especificação técnica do SUP-D01** — PR #18 incorporado em `main` (`9930c61…`); revisão formal **aprovada para implementação controlada**.
-4. **D01-A** — concluído (PR #20). **D01-B** — persistência/RLS entregue em PR (revisão humana; sem merge automático). **UI/repos/D02** — somente após autorização explícita.
+4. **D01-A/B** — concluídos em `main`. **D01-C** — repos/UI em PR (auditoria independente; sem merge automático nesta execução). **D02** — somente após autorização explícita; RPC atômica para `selected_units`/audiências exige ordem separada.
 5. **SUP-B04** — alternativa posterior; revisar fallback preventivo inseguro antes; **não iniciar** agora.
 6. Gap residual `unit_id` clínico (C01) — trilha **paralela**, não pré-requisito integral do D01.
 7. **SUP-C04.2b — não iniciar.**

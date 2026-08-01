@@ -752,9 +752,9 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 4. **Status**:
    - Decisao arquitetural org×unit do dominio coletivo: **RESOLVIDA / RATIFICADA** (handoff §6.1).
    - Especificacao tecnica: **INCORPORADA** (PR #18) e **APROVADA PARA IMPLEMENTACAO CONTROLADA** (PR #19).
-   - **D01-A (contratos/tipos)**: **CONCLUIDO** — `apps/web/src/domains/collective/` + `tests/unit/collectiveContracts.test.ts`; typecheck e testes unitarios OK (PR #20, `36c6d2…`).
-   - **D01-B (schema/migration/RLS)**: **EM PR #21 (OPEN, nao merged)** — `0017_collective_campaign_scope_integrity.sql` + rollback + `SUP_D01_B_COLLECTIVE_PERSISTENCE_VALIDATION.sql`. Auditoria previa: veredito B (bloqueador B1 — EXECUTE de `unit_belongs_to_organization` para authenticated/PUBLIC). **Correcao B1** na mesma branch: REVOKE PUBLIC/authenticated em helpers internos; GRANT authenticated so em `can_select_*`/`can_write_*`; teste de nao-sondagem. Requer **nova auditoria** antes de merge. Sem UI/repos/D02/acesso nominal.
-   - Gestao coletiva permanece demonstrativa / nao conectada ao backend.
+   - **D01-A (contratos/tipos)**: **CONCLUIDO** — `apps/web/src/domains/collective/` + `tests/unit/collectiveContracts.test.ts` (PR #20, `36c6d2…`).
+   - **D01-B (schema/migration/RLS)**: **CONCLUIDO EM MAIN** — PR #21 merge `0591ee73d1504ee76095a432ed2237a429ff749d`; migration `0017` + rollback + validacao SQL; B1 corrigido (REVOKE helpers internos).
+   - **D01-C (repositories + UI gestao)**: **EM PR (nao merged)** — `apps/web/src/services/repositories/collective/` + conexao de `ManagementCampaignsPage`/`ManagementActionPlanPage`; flag `VITE_COLLECTIVE_REPOSITORY_MODE` (mock|supabase, heranca de `VITE_ENABLE_SUPABASE_AUTH`); sem fallback runtime; escritas multi-tabela (`selected_units`/audiencias) retornam `ATOMICITY_REQUIRED` (sem RPC nesta ordem); overview/indicadores permanecem demo (D02); `selectedUnitId` de sessao nao implementado; AuthContext/guards/rotas intactos; catch→mock clinico intacto; nenhuma migration nova.
    - Gap residual `unit_id` clinico (SUP-C01): dívida **paralela**; **nao** bloqueia o D01.
 5. **Escopo incluido** (detalhe normativo em `SUP_D01_TECHNICAL_SPECIFICATION.md`):
    - consolidacao de `campaigns`, `campaign_audiences`, `action_plans` no dominio coletivo;
@@ -785,7 +785,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
    - campos indiretos permitindo inferencia individual;
    - absorcao indevida de dado pessoal pelo vinculo institucional.
 14. **Estimativa**: media
-15. **Ordem recomendada**: 13 — D01-A em main; D01-B em PR; proximo passo humano = revisar/mergear D01-B; depois autorizar UI/repos ou D02 separadamente.
+15. **Ordem recomendada**: 13 — D01-A/B em main; D01-C em PR (auditoria/merge humano); depois autorizar RPC atomica coletiva (se necessario) e/ou SUP-D02.
 
 ### SUP-D02
 
@@ -987,7 +987,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 | 10 | SUP-C02 | C | C01 + aprovacao clinica | CONCLUIDA (PR #9) |
 | 11 | SUP-C03 | C | C02 | CONCLUIDA (PR #10; harden #11/#12) |
 | 12 | SUP-C04 | C | C01, C02, C03 | PARCIAL: C04.1+#13, C04.2a+#14, 42501+#15; C04.2b ENCERRADA SEM IMPLEMENTACAO |
-| 13 | SUP-D01 | D | SUP-A01 + decisao coletiva ratificada | SPEC aprovada; D01-A em main; D01-B schema/RLS em PR |
+| 13 | SUP-D01 | D | SUP-A01 + decisao coletiva ratificada | SPEC aprovada; D01-A/B em main; D01-C repos/UI em PR |
 | 14 | SUP-D02 | D | D01 + limiar minimo 10 | Indicadores agregados sem nominal |
 | 15 | SUP-D03 | D | D01, D02 | Gestao em dados reais agregados |
 | 16 | SUP-E01 | E | A02, A03 + B/C/D | Auditoria append-only ativa |
@@ -998,7 +998,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 
 ## Caminho critico recomendado
 
-`SUP-A01 -> … -> [aprovacao formal SPEC #19] -> [D01-A #20] -> [D01-B schema/RLS em PR] -> [UI/repos sob autorizacao] -> SUP-D02 -> …`
+`SUP-A01 -> … -> [aprovacao formal SPEC #19] -> [D01-A #20] -> [D01-B #21 merged] -> [D01-C repos/UI em PR] -> [RPC atomica se autorizada] -> SUP-D02 -> …`
 
 Notas de caminho:
 

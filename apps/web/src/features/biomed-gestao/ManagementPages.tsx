@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -12,10 +12,85 @@ import {
   YAxis,
 } from 'recharts';
 import { listAuditEvents } from '@/domains/audit/auditTrail';
+import type { CollectiveScope } from '@/domains/collective';
+import {
+  canWriteCollective,
+  formatPeriod,
+  formatScopeLabel,
+  sanitizeCollectiveUiMessage,
+} from '@/features/biomed-gestao/collectiveUi';
+import { getSupabaseClient } from '@/services/api/supabaseClient';
+import { useAuth } from '@/services/auth/AuthContext';
+import {
+  createCollectiveRepositoryFactory,
+  resolveCollectiveRepositoryMode,
+  type ActionPlanRecord,
+  type CampaignRecord,
+  type CollectiveContext,
+  type CollectiveRepository,
+  type SupabaseCollectiveClient,
+} from '@/services/repositories/collective';
 import { collectiveIndicators, programDistribution, riskDistribution, roleLabel, trendByMonth } from '@/services/repositories/demoData';
 import { Button } from '@/shared/ui/button';
 import { Card, CardDescription, CardTitle } from '@/shared/ui/card';
 import { Alert } from '@/shared/ui/alert';
+
+type RepositoryBootstrap =
+  | { ok: true; mode: 'mock' | 'supabase'; repository: CollectiveRepository }
+  | { ok: false; message: string };
+
+function bootstrapCollectiveRepository(): RepositoryBootstrap {
+  try {
+    const mode = resolveCollectiveRepositoryMode(import.meta.env);
+    if (mode === 'mock') {
+      return { ok: true, mode, repository: createCollectiveRepositoryFactory({ mode: 'mock' }) };
+    }
+    const client = getSupabaseClient() as unknown as SupabaseCollectiveClient | null;
+    if (!client) {
+      return {
+        ok: false,
+        message: 'Modo Supabase ativo sem cliente configurado. Gestao coletiva indisponivel (fail-closed).',
+      };
+    }
+    return {
+      ok: true,
+      mode,
+      repository: createCollectiveRepositoryFactory({ mode: 'supabase', supabaseClient: client }),
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : 'Configuracao invalida do repository coletivo.';
+    return { ok: false, message };
+  }
+}
+
+function buildCollectiveContext(user: { id: string; organizationId: string } | null): CollectiveContext | null {
+  if (!user?.id || !user.organizationId) return null;
+  return { userId: user.id, organizationId: user.organizationId, selectedUnitId: null };
+}
+
+function buildSingleTableScope(input: {
+  scopeKind: 'all_units' | 'unit';
+  unitId: string;
+}): { ok: true; scope: CollectiveScope } | { ok: false; message: string } {
+  if (input.scopeKind === 'all_units') {
+    return {
+      ok: true,
+      scope: { scopeType: 'organization', unitId: null, unitApplicability: 'all_units' },
+    };
+  }
+  const unitId = input.unitId.trim();
+  if (!unitId) {
+    return {
+      ok: false,
+      message:
+        'Escopo unitario exige unitId explicito no formulario. selectedUnitId de sessao nao esta disponivel no D01-C.',
+    };
+  }
+  return { ok: true, scope: { scopeType: 'unit', unitId } };
+}
 
 export function ManagementOverviewPage() {
   const [period, setPeriod] = useState('30d');
@@ -140,23 +215,243 @@ export function ManagementOverviewPage() {
 }
 
 export function ManagementCampaignsPage() {
+  const { user } = useAuth();
+  const bootstrap = useMemo(() => bootstrapCollectiveRepository(), []);
+  const context = useMemo(() => buildCollectiveContext(user), [user]);
+  const canWrite = canWriteCollective(user?.role);
+  const submittingRef = useRef(false);
+
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('todos');
+  const [loading, setLoading] = useState(true);
+  const [campaigns, setCampaigns] = useState<CampaignRecord[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState('');
-  const campaigns = [
-    { nome: 'Semana do Sono', objetivo: 'Aumentar adesão às rotinas de sono', publico: 'Adultos ativos', periodo: '01/08 a 15/08', status: 'Ativa', adesao: '68%', responsavel: 'Marina Gestora' },
-    { nome: 'Movimente-se com Saúde', objetivo: 'Incentivar atividade física leve', publico: 'Programa cardiovascular', periodo: '16/08 a 31/08', status: 'Agendada', adesao: '—', responsavel: 'Helena SST' },
-    { nome: 'Prevenção no Trabalho', objetivo: 'Reduzir sedentarismo ocupacional', publico: 'Unidade Norte', periodo: '01/07 a 30/07', status: 'Encerrada', adesao: '74%', responsavel: 'Paulo Admin Cliente' },
-  ];
-  const filtered = campaigns.filter((item) => (status === 'todos' || item.status === status) && item.nome.toLowerCase().includes(search.toLowerCase()));
+  const [submitting, setSubmitting] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [channel, setChannel] = useState('email');
+  const [startsAt, setStartsAt] = useState('2026-08-01');
+  const [endsAt, setEndsAt] = useState('2026-08-15');
+  const [scopeKind, setScopeKind] = useState<'all_units' | 'unit'>('all_units');
+  const [unitId, setUnitId] = useState('');
+
+  async function loadCampaigns(repo: CollectiveRepository, ctx: CollectiveContext) {
+    setLoading(true);
+    setError(null);
+    const result = await repo.listCampaigns({
+      context: ctx,
+      campaignStatus: status === 'todos' ? undefined : status,
+      search: search.trim() || undefined,
+    });
+    if (!result.ok) {
+      setCampaigns([]);
+      setError(sanitizeCollectiveUiMessage(result.error));
+      setLoading(false);
+      return;
+    }
+    setCampaigns(result.data);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    if (!bootstrap.ok) {
+      setLoading(false);
+      setError(bootstrap.message);
+      return;
+    }
+    if (!context) {
+      setLoading(false);
+      setCampaigns([]);
+      setError('Sessao ausente para gestao coletiva.');
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    void bootstrap.repository
+      .listCampaigns({
+        context,
+        campaignStatus: status === 'todos' ? undefined : status,
+        search: search.trim() || undefined,
+      })
+      .then((result) => {
+        if (cancelled) return;
+        if (!result.ok) {
+          setCampaigns([]);
+          setError(sanitizeCollectiveUiMessage(result.error));
+          setLoading(false);
+          return;
+        }
+        setCampaigns(result.data);
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [bootstrap, context, search, status]);
+
+  async function reloadCampaigns() {
+    if (!bootstrap.ok || !context) return;
+    await loadCampaigns(bootstrap.repository, context);
+  }
+
+  function resetForm() {
+    setEditingId(null);
+    setTitle('');
+    setDescription('');
+    setChannel('email');
+    setStartsAt('2026-08-01');
+    setEndsAt('2026-08-15');
+    setScopeKind('all_units');
+    setUnitId('');
+  }
+
+  function openCreate() {
+    resetForm();
+    setShowForm(true);
+    setMessage('');
+    setError(null);
+  }
+
+  function openEdit(campaign: CampaignRecord) {
+    setEditingId(campaign.id);
+    setTitle(campaign.title);
+    setDescription(campaign.description);
+    setChannel(campaign.channel);
+    setStartsAt(campaign.startsAt);
+    setEndsAt(campaign.endsAt);
+    if (campaign.scope.scopeType === 'unit') {
+      setScopeKind('unit');
+      setUnitId(campaign.scope.unitId);
+    } else {
+      setScopeKind('all_units');
+      setUnitId('');
+      if (campaign.scope.unitApplicability === 'selected_units') {
+        setMessage(
+          'Campanha com selected_units: leitura ok; alteracao de escopo/audiencia bloqueada sem RPC atomica.'
+        );
+      }
+    }
+    setShowForm(true);
+    setError(null);
+  }
+
+  async function submitForm() {
+    if (!bootstrap.ok || !context || submittingRef.current || !canWrite) return;
+    const scoped = buildSingleTableScope({ scopeKind, unitId });
+    if (!scoped.ok) {
+      setError(scoped.message);
+      return;
+    }
+    submittingRef.current = true;
+    setSubmitting(true);
+    setError(null);
+    try {
+      if (editingId) {
+        const result = await bootstrap.repository.updateCampaign(context, {
+          organizationId: context.organizationId,
+          campaignId: editingId,
+          title,
+          description,
+          channel,
+          startsAt,
+          endsAt,
+          scope: scoped.scope,
+        });
+        if (!result.ok) {
+          setError(sanitizeCollectiveUiMessage(result.error));
+          return;
+        }
+        setMessage(`Campanha "${result.data.title}" atualizada.`);
+      } else {
+        const result = await bootstrap.repository.createCampaign(context, {
+          organizationId: context.organizationId,
+          title,
+          description,
+          channel,
+          startsAt,
+          endsAt,
+          scope: scoped.scope,
+        });
+        if (!result.ok) {
+          setError(sanitizeCollectiveUiMessage(result.error));
+          return;
+        }
+        setMessage(`Campanha "${result.data.title}" criada.`);
+      }
+      setShowForm(false);
+      resetForm();
+      await reloadCampaigns();
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
+  }
+
+  async function closeCampaign(campaign: CampaignRecord) {
+    if (!bootstrap.ok || !context || submittingRef.current || !canWrite) return;
+    submittingRef.current = true;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const result = await bootstrap.repository.updateCampaign(context, {
+        organizationId: context.organizationId,
+        campaignId: campaign.id,
+        campaignStatus: 'Encerrada',
+      });
+      if (!result.ok) {
+        setError(sanitizeCollectiveUiMessage(result.error));
+        return;
+      }
+      setMessage(`Campanha "${campaign.title}" encerrada.`);
+      await reloadCampaigns();
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
+  }
+
+  async function removeCampaign(campaign: CampaignRecord) {
+    if (!bootstrap.ok || !context || submittingRef.current || !canWrite) return;
+    submittingRef.current = true;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const result = await bootstrap.repository.deleteCampaign(context, campaign.id);
+      if (!result.ok) {
+        setError(sanitizeCollectiveUiMessage(result.error));
+        return;
+      }
+      setMessage(`Campanha "${campaign.title}" excluida.`);
+      await reloadCampaigns();
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
+  }
 
   return (
     <Card className="space-y-3">
       <CardTitle>Campanhas</CardTitle>
-      <CardDescription>Estados: Rascunho, Agendada, Ativa, Encerrada e Cancelada.</CardDescription>
+      <CardDescription>
+        Persistencia via repository coletivo ({bootstrap.ok ? bootstrap.mode : 'indisponivel'}). Escopos
+        single-table: organization/all_units e unit. selected_units e audiencias exigem RPC (fora do D01-C).
+      </CardDescription>
       <div className="grid gap-2 sm:grid-cols-[1fr_240px_auto]">
-        <input className="focus-ring h-10 rounded-xl border px-3 text-sm" placeholder="Buscar campanha" value={search} onChange={(e) => setSearch(e.target.value)} />
-        <select className="focus-ring h-10 rounded-xl border px-3 text-sm" value={status} onChange={(e) => setStatus(e.target.value)}>
+        <input
+          className="focus-ring h-10 rounded-xl border px-3 text-sm"
+          placeholder="Buscar campanha"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <select
+          className="focus-ring h-10 rounded-xl border px-3 text-sm"
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+        >
           <option value="todos">Todos os status</option>
           <option value="Rascunho">Rascunho</option>
           <option value="Agendada">Agendada</option>
@@ -164,37 +459,132 @@ export function ManagementCampaignsPage() {
           <option value="Encerrada">Encerrada</option>
           <option value="Cancelada">Cancelada</option>
         </select>
-        <Button size="sm" onClick={() => setMessage('Nova campanha criada em modo demonstração.')}>Nova campanha</Button>
+        <Button size="sm" disabled={!canWrite || !bootstrap.ok || submitting} onClick={openCreate}>
+          Nova campanha
+        </Button>
       </div>
+      {!canWrite ? (
+        <Alert>Perfil com leitura coletiva apenas. Escrita desabilitada na interface.</Alert>
+      ) : null}
+      {loading ? <p className="text-sm text-[var(--muted-foreground)]">Carregando campanhas…</p> : null}
+      {error ? <Alert>{error}</Alert> : null}
+      {!loading && !error && campaigns.length === 0 ? (
+        <p className="text-sm text-[var(--muted-foreground)]">Nenhuma campanha autorizada neste escopo.</p>
+      ) : null}
+      {showForm ? (
+        <div className="grid gap-2 rounded-xl border p-3 sm:grid-cols-2">
+          <input
+            className="focus-ring h-10 rounded-xl border px-3 text-sm"
+            placeholder="Titulo"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <input
+            className="focus-ring h-10 rounded-xl border px-3 text-sm"
+            placeholder="Canal"
+            value={channel}
+            onChange={(e) => setChannel(e.target.value)}
+          />
+          <input
+            className="focus-ring h-10 rounded-xl border px-3 text-sm sm:col-span-2"
+            placeholder="Descricao / objetivo"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+          <input
+            className="focus-ring h-10 rounded-xl border px-3 text-sm"
+            type="date"
+            value={startsAt}
+            onChange={(e) => setStartsAt(e.target.value)}
+          />
+          <input
+            className="focus-ring h-10 rounded-xl border px-3 text-sm"
+            type="date"
+            value={endsAt}
+            onChange={(e) => setEndsAt(e.target.value)}
+          />
+          <select
+            className="focus-ring h-10 rounded-xl border px-3 text-sm"
+            value={scopeKind}
+            onChange={(e) => setScopeKind(e.target.value as 'all_units' | 'unit')}
+          >
+            <option value="all_units">Organizacao / todas as unidades</option>
+            <option value="unit">Unidade (unitId explicito)</option>
+          </select>
+          <input
+            className="focus-ring h-10 rounded-xl border px-3 text-sm"
+            placeholder="unitId (obrigatorio se escopo unit)"
+            value={unitId}
+            disabled={scopeKind !== 'unit'}
+            onChange={(e) => setUnitId(e.target.value)}
+          />
+          <p className="sm:col-span-2 text-xs text-[var(--muted-foreground)]">
+            selected_units e audiencia nao estao disponiveis sem operacao atomica autorizada.
+          </p>
+          <div className="sm:col-span-2 flex flex-wrap gap-2">
+            <Button size="sm" disabled={submitting || !title.trim() || !description.trim()} onClick={() => void submitForm()}>
+              {editingId ? 'Salvar alteracoes' : 'Criar campanha'}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={submitting}
+              onClick={() => {
+                setShowForm(false);
+                resetForm();
+              }}
+            >
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      ) : null}
       <div className="overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead>
             <tr className="border-b text-left">
               <th className="p-2">Nome</th>
               <th className="p-2">Objetivo</th>
-              <th className="p-2">Público elegível</th>
-              <th className="p-2">Período</th>
+              <th className="p-2">Escopo</th>
+              <th className="p-2">Periodo</th>
               <th className="p-2">Status</th>
-              <th className="p-2">Adesão</th>
-              <th className="p-2">Responsável</th>
-              <th className="p-2">Ações</th>
+              <th className="p-2">Acoes</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((item) => (
-              <tr key={item.nome} className="border-b">
-                <td className="p-2">{item.nome}</td>
-                <td className="p-2">{item.objetivo}</td>
-                <td className="p-2">{item.publico}</td>
-                <td className="p-2">{item.periodo}</td>
-                <td className="p-2">{item.status}</td>
-                <td className="p-2">{item.adesao}</td>
-                <td className="p-2">{item.responsavel}</td>
+            {campaigns.map((item) => (
+              <tr key={item.id} className="border-b">
+                <td className="p-2">{item.title}</td>
+                <td className="p-2">{item.description}</td>
+                <td className="p-2">{formatScopeLabel(item.scope)}</td>
+                <td className="p-2">{formatPeriod(item.startsAt, item.endsAt)}</td>
+                <td className="p-2">{item.campaignStatus}</td>
                 <td className="p-2">
                   <div className="flex flex-wrap gap-1">
-                    <Button size="sm" variant="outline" onClick={() => setMessage(`Edição da campanha "${item.nome}" aberta em modo demonstração.`)}>Editar</Button>
-                    <Button size="sm" variant="outline" onClick={() => setMessage(`Campanha "${item.nome}" duplicada em modo demonstração.`)}>Duplicar</Button>
-                    <Button size="sm" variant="secondary" onClick={() => setMessage(`Campanha "${item.nome}" encerrada em modo demonstração.`)}>Encerrar</Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={!canWrite || submitting}
+                      onClick={() => openEdit(item)}
+                    >
+                      Editar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={!canWrite || submitting || item.campaignStatus === 'Encerrada'}
+                      onClick={() => void closeCampaign(item)}
+                    >
+                      Encerrar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={!canWrite || submitting}
+                      onClick={() => void removeCampaign(item)}
+                    >
+                      Excluir
+                    </Button>
                   </div>
                 </td>
               </tr>
@@ -208,48 +598,377 @@ export function ManagementCampaignsPage() {
 }
 
 export function ManagementActionPlanPage() {
+  const { user } = useAuth();
+  const bootstrap = useMemo(() => bootstrapCollectiveRepository(), []);
+  const context = useMemo(() => buildCollectiveContext(user), [user]);
+  const canWrite = canWriteCollective(user?.role);
+  const submittingRef = useRef(false);
+
   const [statusFilter, setStatusFilter] = useState('todos');
-  const plans = [
-    { origem: 'Adesão ao programa', problema: 'Baixa participação na unidade norte', acao: 'Reforçar comunicação segmentada', responsavel: 'Marina Gestora', prazo: '15/08/2026', prioridade: 'Alta', status: 'Em andamento', indicador: 'Adesão semanal', atualizacao: '29/07/2026' },
-    { origem: 'Conclusão de avaliações', problema: 'Queda de conclusão no turno noturno', acao: 'Ajustar janela de atendimento', responsavel: 'Helena SST', prazo: '20/08/2026', prioridade: 'Média', status: 'Planejado', indicador: 'Conclusão mensal', atualizacao: '28/07/2026' },
-  ];
-  const filtered = plans.filter((plan) => statusFilter === 'todos' || plan.status === statusFilter);
+  const [loading, setLoading] = useState(true);
+  const [plans, setPlans] = useState<ActionPlanRecord[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [originIndicator, setOriginIndicator] = useState('');
+  const [issueDescription, setIssueDescription] = useState('');
+  const [actionText, setActionText] = useState('');
+  const [ownerName, setOwnerName] = useState('');
+  const [dueDate, setDueDate] = useState('2026-08-15');
+  const [priority, setPriority] = useState('Media');
+  const [scopeKind, setScopeKind] = useState<'all_units' | 'unit'>('all_units');
+  const [unitId, setUnitId] = useState('');
+
+  async function loadPlans(repo: CollectiveRepository, ctx: CollectiveContext) {
+    setLoading(true);
+    setError(null);
+    const result = await repo.listActionPlans({
+      context: ctx,
+      actionStatus: statusFilter === 'todos' ? undefined : statusFilter,
+    });
+    if (!result.ok) {
+      setPlans([]);
+      setError(sanitizeCollectiveUiMessage(result.error));
+      setLoading(false);
+      return;
+    }
+    setPlans(result.data);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    if (!bootstrap.ok) {
+      setLoading(false);
+      setError(bootstrap.message);
+      return;
+    }
+    if (!context) {
+      setLoading(false);
+      setPlans([]);
+      setError('Sessao ausente para gestao coletiva.');
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    void bootstrap.repository
+      .listActionPlans({
+        context,
+        actionStatus: statusFilter === 'todos' ? undefined : statusFilter,
+      })
+      .then((result) => {
+        if (cancelled) return;
+        if (!result.ok) {
+          setPlans([]);
+          setError(sanitizeCollectiveUiMessage(result.error));
+          setLoading(false);
+          return;
+        }
+        setPlans(result.data);
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [bootstrap, context, statusFilter]);
+
+  async function reloadPlans() {
+    if (!bootstrap.ok || !context) return;
+    await loadPlans(bootstrap.repository, context);
+  }
+  function resetForm() {
+    setEditingId(null);
+    setOriginIndicator('');
+    setIssueDescription('');
+    setActionText('');
+    setOwnerName(user?.nome ?? '');
+    setDueDate('2026-08-15');
+    setPriority('Media');
+    setScopeKind('all_units');
+    setUnitId('');
+  }
+
+  function openCreate() {
+    resetForm();
+    setShowForm(true);
+    setMessage('');
+    setError(null);
+  }
+
+  function openEdit(plan: ActionPlanRecord) {
+    setEditingId(plan.id);
+    setOriginIndicator(plan.originIndicator);
+    setIssueDescription(plan.issueDescription);
+    setActionText(plan.actionText);
+    setOwnerName(plan.ownerName);
+    setDueDate(plan.dueDate);
+    setPriority(plan.priority);
+    if (plan.scope.scopeType === 'unit') {
+      setScopeKind('unit');
+      setUnitId(plan.scope.unitId);
+    } else {
+      setScopeKind('all_units');
+      setUnitId('');
+    }
+    setShowForm(true);
+    setError(null);
+  }
+
+  async function submitForm() {
+    if (!bootstrap.ok || !context || submittingRef.current || !canWrite) return;
+    const scoped = buildSingleTableScope({ scopeKind, unitId });
+    if (!scoped.ok) {
+      setError(scoped.message);
+      return;
+    }
+    submittingRef.current = true;
+    setSubmitting(true);
+    setError(null);
+    try {
+      if (editingId) {
+        const result = await bootstrap.repository.updateActionPlan(context, {
+          organizationId: context.organizationId,
+          actionPlanId: editingId,
+          originIndicator,
+          issueDescription,
+          actionText,
+          ownerName,
+          dueDate,
+          priority,
+          scope: scoped.scope,
+        });
+        if (!result.ok) {
+          setError(sanitizeCollectiveUiMessage(result.error));
+          return;
+        }
+        setMessage('Plano de acao atualizado.');
+      } else {
+        const result = await bootstrap.repository.createActionPlan(context, {
+          organizationId: context.organizationId,
+          originIndicator,
+          issueDescription,
+          actionText,
+          ownerName,
+          dueDate,
+          priority,
+          scope: scoped.scope,
+        });
+        if (!result.ok) {
+          setError(sanitizeCollectiveUiMessage(result.error));
+          return;
+        }
+        setMessage('Plano de acao criado.');
+      }
+      setShowForm(false);
+      resetForm();
+      await reloadPlans();
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
+  }
+
+  async function advanceStatus(plan: ActionPlanRecord) {
+    if (!bootstrap.ok || !context || submittingRef.current || !canWrite) return;
+    const nextStatus =
+      plan.actionStatus === 'Planejado'
+        ? 'Em andamento'
+        : plan.actionStatus === 'Em andamento'
+          ? 'Concluido'
+          : plan.actionStatus;
+    submittingRef.current = true;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const result = await bootstrap.repository.updateActionPlan(context, {
+        organizationId: context.organizationId,
+        actionPlanId: plan.id,
+        actionStatus: nextStatus,
+      });
+      if (!result.ok) {
+        setError(sanitizeCollectiveUiMessage(result.error));
+        return;
+      }
+      setMessage(`Status atualizado para ${nextStatus}.`);
+      await reloadPlans();
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
+  }
+
+  async function removePlan(plan: ActionPlanRecord) {
+    if (!bootstrap.ok || !context || submittingRef.current || !canWrite) return;
+    submittingRef.current = true;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const result = await bootstrap.repository.deleteActionPlan(context, plan.id);
+      if (!result.ok) {
+        setError(sanitizeCollectiveUiMessage(result.error));
+        return;
+      }
+      setMessage('Plano de acao excluido.');
+      await reloadPlans();
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
+  }
 
   return (
     <Card className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <CardTitle>Plano de ação coletivo</CardTitle>
         <div className="flex gap-2">
-          <select className="focus-ring h-9 rounded-lg border px-2 text-sm" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <select
+            className="focus-ring h-9 rounded-lg border px-2 text-sm"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
             <option value="todos">Todos os status</option>
             <option value="Planejado">Planejado</option>
             <option value="Em andamento">Em andamento</option>
-            <option value="Concluído">Concluído</option>
+            <option value="Concluido">Concluído</option>
           </select>
-          <Button size="sm">Nova ação</Button>
+          <Button size="sm" disabled={!canWrite || !bootstrap.ok || submitting} onClick={openCreate}>
+            Nova ação
+          </Button>
         </div>
       </div>
+      <CardDescription>
+        Repository ({bootstrap.ok ? bootstrap.mode : 'indisponivel'}). Escritas single-table apenas; selected_units
+        bloqueado sem RPC.
+      </CardDescription>
+      {!canWrite ? (
+        <Alert>Perfil com leitura coletiva apenas. Escrita desabilitada na interface.</Alert>
+      ) : null}
+      {loading ? <p className="text-sm text-[var(--muted-foreground)]">Carregando planos…</p> : null}
+      {error ? <Alert>{error}</Alert> : null}
+      {!loading && !error && plans.length === 0 ? (
+        <p className="text-sm text-[var(--muted-foreground)]">Nenhum plano de acao autorizado neste escopo.</p>
+      ) : null}
+      {showForm ? (
+        <div className="grid gap-2 rounded-xl border p-3 sm:grid-cols-2">
+          <input
+            className="focus-ring h-10 rounded-xl border px-3 text-sm"
+            placeholder="Indicador de origem"
+            value={originIndicator}
+            onChange={(e) => setOriginIndicator(e.target.value)}
+          />
+          <input
+            className="focus-ring h-10 rounded-xl border px-3 text-sm"
+            placeholder="Responsavel"
+            value={ownerName}
+            onChange={(e) => setOwnerName(e.target.value)}
+          />
+          <input
+            className="focus-ring h-10 rounded-xl border px-3 text-sm sm:col-span-2"
+            placeholder="Problema / descricao"
+            value={issueDescription}
+            onChange={(e) => setIssueDescription(e.target.value)}
+          />
+          <input
+            className="focus-ring h-10 rounded-xl border px-3 text-sm sm:col-span-2"
+            placeholder="Acao"
+            value={actionText}
+            onChange={(e) => setActionText(e.target.value)}
+          />
+          <input
+            className="focus-ring h-10 rounded-xl border px-3 text-sm"
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+          />
+          <select
+            className="focus-ring h-10 rounded-xl border px-3 text-sm"
+            value={priority}
+            onChange={(e) => setPriority(e.target.value)}
+          >
+            <option value="Alta">Alta</option>
+            <option value="Media">Média</option>
+            <option value="Baixa">Baixa</option>
+          </select>
+          <select
+            className="focus-ring h-10 rounded-xl border px-3 text-sm"
+            value={scopeKind}
+            onChange={(e) => setScopeKind(e.target.value as 'all_units' | 'unit')}
+          >
+            <option value="all_units">Organizacao / todas as unidades</option>
+            <option value="unit">Unidade (unitId explicito)</option>
+          </select>
+          <input
+            className="focus-ring h-10 rounded-xl border px-3 text-sm"
+            placeholder="unitId (obrigatorio se escopo unit)"
+            value={unitId}
+            disabled={scopeKind !== 'unit'}
+            onChange={(e) => setUnitId(e.target.value)}
+          />
+          <div className="sm:col-span-2 flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              disabled={
+                submitting ||
+                !originIndicator.trim() ||
+                !issueDescription.trim() ||
+                !actionText.trim() ||
+                !ownerName.trim()
+              }
+              onClick={() => void submitForm()}
+            >
+              {editingId ? 'Salvar alteracoes' : 'Criar plano'}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={submitting}
+              onClick={() => {
+                setShowForm(false);
+                resetForm();
+              }}
+            >
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      ) : null}
       <div className="grid gap-2">
-        {filtered.map((plan, index) => (
-          <article key={`${plan.acao}-${index}`} className="rounded-xl border p-3 text-sm">
-            <p className="font-semibold">{plan.acao}</p>
-            <p>{plan.problema}</p>
+        {plans.map((plan) => (
+          <article key={plan.id} className="rounded-xl border p-3 text-sm">
+            <p className="font-semibold">{plan.actionText}</p>
+            <p>{plan.issueDescription}</p>
             <p className="text-[var(--muted-foreground)]">
-              Origem: {plan.origem} • Responsável: {plan.responsavel}
+              Origem: {plan.originIndicator} • Responsavel: {plan.ownerName} • Escopo:{' '}
+              {formatScopeLabel(plan.scope)}
             </p>
             <p>
-              Prazo: {plan.prazo} • Prioridade: {plan.prioridade} • Status: {plan.status}
+              Prazo: {plan.dueDate} • Prioridade: {plan.priority} • Status: {plan.actionStatus}
             </p>
-            <p>Indicador de acompanhamento: {plan.indicador}</p>
-            <p className="text-xs text-[var(--muted-foreground)]">Última atualização: {plan.atualizacao}</p>
+            <p className="text-xs text-[var(--muted-foreground)]">
+              Ultima atualizacao: {new Date(plan.updatedAt).toLocaleString('pt-BR')}
+            </p>
             <div className="mt-2 flex flex-wrap gap-2">
-              <Button size="sm" variant="outline">Editar</Button>
-              <Button size="sm" variant="secondary">Atualizar status</Button>
-              <Button size="sm" variant="outline">Ver histórico</Button>
+              <Button size="sm" variant="outline" disabled={!canWrite || submitting} onClick={() => openEdit(plan)}>
+                Editar
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={!canWrite || submitting || plan.actionStatus === 'Concluido'}
+                onClick={() => void advanceStatus(plan)}
+              >
+                Atualizar status
+              </Button>
+              <Button size="sm" variant="outline" disabled={!canWrite || submitting} onClick={() => void removePlan(plan)}>
+                Excluir
+              </Button>
             </div>
           </article>
         ))}
       </div>
+      {message ? <p className="rounded-lg bg-[var(--secondary)] p-2 text-sm">{message}</p> : null}
     </Card>
   );
 }

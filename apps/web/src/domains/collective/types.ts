@@ -74,7 +74,12 @@ export type UpdateCampaignInput = {
   startsAt?: string;
   endsAt?: string;
   campaignStatus?: string;
-  audience?: CollectiveAudienceInput;
+  /**
+   * `undefined` — não alterar audiência.
+   * `null` — remover audiência explicitamente.
+   * objeto — upsert da audiência singular.
+   */
+  audience?: CollectiveAudienceInput | null;
 };
 
 /** Leitura contratual (sem afirmar persistência D01-B). */

@@ -346,15 +346,25 @@ Legenda: C=criar, R=ler metadados coletivos, U=alterar, E=encerrar, A=ver agrega
 ## 8. Repositories e serviços futuros
 
 **Estado de implementação:**
-- **D01-A:** contratos/tipos em `apps/web/src/domains/collective/` (**main**, PR #20).
-- **D01-B:** persistência/RLS migration `0017` (**main**, PR #21).
-- **D01-C (implementado e incorporado em `main`):** PR #22; HEAD `407928778d34c3d7662b0b5f009b403fcfabbb89`; merge commit `907f3ed0d0a53484553debb917cfebdf2566ccb8` (2026-08-01). Module `apps/web/src/services/repositories/collective/` + UI campanhas/planos; modo `mock`|`supabase` via `VITE_COLLECTIVE_REPOSITORY_MODE` (herança de `VITE_ENABLE_SUPABASE_AUTH`); fail-closed; sem fallback runtime Supabase→mock. Escopos `all_units` / `unit` / `selected_units` (leitura de relações existentes). Escritas multi-tabela (`selected_units`, audiências, limpeza de aplicabilidades) **não** executadas — `ATOMICITY_REQUIRED` até RPC/transação autorizada em ordem separada (**não** iniciada). Overview/indicadores agregados: ainda demonstrativos (**SUP-D02** não iniciado).
+- **D01-A (integrado em `main`):** contratos/tipos em `apps/web/src/domains/collective/` (PR #20).
+- **D01-B (integrado em `main`):** persistência/RLS migration `0017` (PR #21).
+- **D01-C (integrado em `main`):** PR #22; HEAD `407928778d34c3d7662b0b5f009b403fcfabbb89`; merge commit `907f3ed0d0a53484553debb917cfebdf2566ccb8`; consolidação documental PR #23 (`b32aa12…`). Module `apps/web/src/services/repositories/collective/` + UI campanhas/planos; modo `mock`|`supabase` via `VITE_COLLECTIVE_REPOSITORY_MODE`; fail-closed; sem fallback runtime Supabase→mock. No D01-C, escritas multi-tabela retornavam `ATOMICITY_REQUIRED` (limitação histórica do bloco C).
+- **D01-D (implementado neste change set — ainda não em `main`):** baseline de partida `b32aa12…`. Migration `0018` + RPCs SECURITY INVOKER:
+  - `collective_create_campaign_atomic`
+  - `collective_update_campaign_atomic`
+  - `collective_delete_campaign_atomic`
+  - `collective_create_action_plan_atomic`
+  - `collective_update_action_plan_atomic`
+  - `collective_delete_action_plan_atomic`
+  Capacidades: atomicidade (`selected_units` + audiência singular na mesma transação); UNIQUE uma audiência por campanha; transições de escopo com limpeza/reescrita de aplicabilidades; concorrência `expected_version` + `FOR UPDATE`; RLS autoridade final. Repository/UI passam a persistir via essas RPCs. Código `ATOMICITY_REQUIRED` permanece disponível para operações futuras ainda não implementadas. **Fora deste bloco:** agregações/limiar/nominal (**SUP-D02**); seletor de sessão `selectedUnitId`. **Não** declarar D01-D mergeado até o change set estar em `main`.
 
-**Implementado no D01-C:** repositories mock/supabase, factory/flags, CRUD single-table de campanhas/planos, isolamento org com RLS final, bloqueio explícito de mutações multi-tabela.
+**Implementado no D01-C (main):** repositories mock/supabase, factory/flags, CRUD/leitura, isolamento org com RLS final.
 
-**Limitações deliberadamente mantidas:** sem RPC atômica; sem escrita de aplicabilidades/audiências; sem `selectedUnitId` de sessão; sem alteração de AuthContext/guards/rotas.
+**Implementado no D01-D (change set):** mutações atômicas de campanhas/planos incluindo `selected_units`, audiência singular e transições de escopo.
 
-**Itens futuros ainda não autorizados:** RPC/transação atômica coletiva; **SUP-D02** (agregações/limiar); C01/B04/C04.2b conforme governança vigente.
+**Limitações deliberadamente mantidas:** sem `selectedUnitId` de sessão; sem alteração de AuthContext/guards/rotas; sem agregações/limiar/nominal.
+
+**Itens futuros ainda não autorizados:** **SUP-D02** (agregações/limiar); C01/B04/C04.2b conforme governança vigente.
 
 Regras preservadas:
 
@@ -570,13 +580,14 @@ Decisões D1–D7 e a ratificação do PR #17 **não** são reabertas aqui.
 | Revisão formal desta SPEC | **Aprovada para implementação controlada** (2026-08-01) |
 | D01-A (contratos/tipos) | **Concluído** — `apps/web/src/domains/collective/` (PR #20, `36c6d2…`) |
 | D01-B (schema/migration/RLS) | **Concluído em `main`** — PR #21 merge `0591ee73…`; migration `0017`; B1 (grants SECURITY DEFINER) |
-| D01-C (repos / UI gestão) | **Concluído em `main`** — PR #22; HEAD `407928778d34c3d7662b0b5f009b403fcfabbb89`; merge commit `907f3ed0d0a53484553debb917cfebdf2566ccb8` (2026-08-01); auditoria independente veredito B (sem P0/P1/P2) |
-| RPC/transação atômica coletiva | **Não autorizada / não iniciada** — escritas `selected_units`/audiências permanecem `ATOMICITY_REQUIRED` |
+| D01-C (repos / UI gestão) | **Concluído em `main`** — PR #22; HEAD `407928778d34c3d7662b0b5f009b403fcfabbb89`; merge commit `907f3ed0d0a53484553debb917cfebdf2566ccb8`; consolidação documental PR #23 (`b32aa12…`); auditoria independente veredito B (sem P0/P1/P2) |
+| D01-D (RPCs atômicas) | **Implementado neste change set — ainda não em `main`** — baseline de partida `b32aa12…`; migration `0018`; RPCs `collective_*_campaign_atomic` / `collective_*_action_plan_atomic`; `selected_units` + audiência singular + transições; concorrência por versão; RLS final; `ATOMICITY_REQUIRED` só para ops futuras |
 | SUP-D02 / C01 / B04 / C04.2b | Fora / paralelo / não iniciar / encerrada |
 
 > **Rastreabilidade D01-A:** entrega tipada conforme §9; `suppressed` apenas no contrato `SafeAggregateResult`; sem persistência naquele bloco.
 > **Rastreabilidade D01-B:** persistência estrutural + constraints + RLS membership conforme §4–§6; audiência herda org da campanha (coluna física preexistente com trigger); sem agregações/limiar; sem acesso nominal. Hardening B1: `app_auth.unit_belongs_to_organization` e helpers internos sem EXECUTE para papéis de aplicação; `can_*` apenas para `authenticated` após `REVOKE` de `PUBLIC`.
-> **Rastreabilidade D01-C:** repositories + UI de campanhas/planos em `main`; mutações single-table; leitura de aplicabilidades; bloqueio fail-closed de multi-tabela; sem fallback Supabase→mock. O SUP-D01 fundacional A/B/C está em `main`; **SUP-D02** e RPC atômica **não** fazem parte deste aceite.
+> **Rastreabilidade D01-C:** repositories + UI de campanhas/planos em `main`; no bloco C, mutações multi-tabela eram bloqueadas com `ATOMICITY_REQUIRED` (limitação histórica).
+> **Rastreabilidade D01-D:** RPCs atômicas + UNIQUE audiência singular + repository/UI neste change set; **não** integrado em `main` até merge. **SUP-D02** (agregações/limiar/nominal) **não** faz parte deste aceite.
 
 ---
 

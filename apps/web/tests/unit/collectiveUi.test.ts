@@ -25,4 +25,10 @@ describe('collectiveUi helpers', () => {
     expect(msg).not.toMatch(/secret|42501|table/i);
     expect(msg).toMatch(/nao autorizada/i);
   });
+
+  it('mensagens ATOMICITY_REQUIRED refletem reserva D01-D (operacoes futuras)', () => {
+    const msg = sanitizeCollectiveUiMessage(collectiveError('ATOMICITY_REQUIRED'));
+    expect(msg).toMatch(/persistencia atomica reservada para operacoes futuras ainda nao implementadas/i);
+    expect(msg).toMatch(/Nao foi executada/i);
+  });
 });

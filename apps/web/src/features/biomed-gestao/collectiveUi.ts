@@ -1,5 +1,5 @@
 /**
- * Helpers de UX para BioMed Gestão × repository coletivo (SUP-D01-C).
+ * Helpers de UX para BioMed Gestão × repository coletivo (SUP-D01-D).
  * Autorização definitiva permanece na RLS; papéis aqui só controlam a experiência.
  */
 
@@ -36,7 +36,7 @@ export function sanitizeCollectiveUiMessage(error: CollectiveError): string {
     case 'CONFLICT':
       return 'Conflito ao salvar. Recarregue e tente novamente.';
     case 'ATOMICITY_REQUIRED':
-      return 'Esta operacao exige persistencia atomica multi-tabela (RPC autorizada fora do D01-C). Nao foi executada.';
+      return 'Esta operacao exige persistencia atomica reservada para operacoes futuras ainda nao implementadas. Nao foi executada.';
     case 'TECHNICAL_ERROR':
     default:
       return 'Falha tecnica ao acessar gestao coletiva.';

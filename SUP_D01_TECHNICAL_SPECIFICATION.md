@@ -5,7 +5,8 @@
 | Ticket | `SUP-D01` |
 | Título | Schema de gestão coletiva com recorte por unidade/programa |
 | Status deste documento | **APROVADA PARA IMPLEMENTAÇÃO CONTROLADA** |
-| Baseline da revisão de aprovação | `origin/main` = `9930c61c87ad40689704ff5f127b3255609a4560` |
+| Baseline histórico da revisão de aprovação da SPEC | `origin/main` = `9930c61c87ad40689704ff5f127b3255609a4560` |
+| Estado atual da implementação (pós PR #24) | Ciclo **D01-A/B/C/D** integrado em `main`; baseline de `main` = `00b7b3f727b5eaba2432640af4c5751db52d1f05` |
 | Incorporação documental | PR #18 (merge `9930c61…`) |
 | Ratificação arquitetural | PR #17 — fronteira org×unit no domínio institucional/coletivo |
 | Data da aprovação formal | 2026-08-01 |
@@ -348,23 +349,25 @@ Legenda: C=criar, R=ler metadados coletivos, U=alterar, E=encerrar, A=ver agrega
 **Estado de implementação:**
 - **D01-A (integrado em `main`):** contratos/tipos em `apps/web/src/domains/collective/` (PR #20).
 - **D01-B (integrado em `main`):** persistência/RLS migration `0017` (PR #21).
-- **D01-C (integrado em `main`):** PR #22; HEAD `407928778d34c3d7662b0b5f009b403fcfabbb89`; merge commit `907f3ed0d0a53484553debb917cfebdf2566ccb8`; consolidação documental PR #23 (`b32aa12…`). Module `apps/web/src/services/repositories/collective/` + UI campanhas/planos; modo `mock`|`supabase` via `VITE_COLLECTIVE_REPOSITORY_MODE`; fail-closed; sem fallback runtime Supabase→mock. No D01-C, escritas multi-tabela retornavam `ATOMICITY_REQUIRED` (limitação histórica do bloco C).
-- **D01-D (implementado neste change set — ainda não em `main`):** baseline de partida `b32aa12…`. Migration `0018` + RPCs SECURITY INVOKER:
+- **D01-C (integrado em `main`):** PR #22; HEAD `407928778d34c3d7662b0b5f009b403fcfabbb89`; merge commit `907f3ed0d0a53484553debb917cfebdf2566ccb8`; consolidação documental PR #23 (`b32aa12…` — baseline de partida histórico do PR #24). Module `apps/web/src/services/repositories/collective/` + UI campanhas/planos; modo `mock`|`supabase` via `VITE_COLLECTIVE_REPOSITORY_MODE`; fail-closed; sem fallback runtime Supabase→mock. No D01-C, escritas multi-tabela retornavam `ATOMICITY_REQUIRED` (limitação histórica do bloco C).
+- **D01-D (integrado em `main`):** PR #24; HEAD auditado `ebfd700cf3d55c74011dc2ef869845e3a0e8da26`; merge commit `00b7b3f727b5eaba2432640af4c5751db52d1f05`; baseline de partida histórico `b32aa12…`. Migration `0018` + RPCs SECURITY INVOKER:
   - `collective_create_campaign_atomic`
   - `collective_update_campaign_atomic`
   - `collective_delete_campaign_atomic`
   - `collective_create_action_plan_atomic`
   - `collective_update_action_plan_atomic`
   - `collective_delete_action_plan_atomic`
-  Capacidades: atomicidade (`selected_units` + audiência singular na mesma transação); UNIQUE uma audiência por campanha; transições de escopo com limpeza/reescrita de aplicabilidades; concorrência `expected_version` + `FOR UPDATE`; RLS autoridade final. Repository/UI passam a persistir via essas RPCs. Código `ATOMICITY_REQUIRED` permanece disponível para operações futuras ainda não implementadas. **Fora deste bloco:** agregações/limiar/nominal (**SUP-D02**); seletor de sessão `selectedUnitId`. **Não** declarar D01-D mergeado até o change set estar em `main`.
+  Capacidades: atomicidade (`selected_units` + audiência singular na mesma transação); UNIQUE uma audiência por campanha; transições de escopo com limpeza/reescrita de aplicabilidades; concorrência `expected_version` + `FOR UPDATE`; RLS autoridade final. Repository/UI persistem via essas RPCs. Código `ATOMICITY_REQUIRED` permanece disponível para operações futuras ainda não implementadas. **Fora do D01 (permanece no SUP-D02 / fora):** agregações; enforcement do limiar de 10; estado `suppressed` em runtime; anti-diferencial; exportações; dados nominais; `program_participations`; seletor de sessão `selectedUnitId`; implementação do **SUP-D02**.
+
+**Auditoria independente do PR #24 (HEAD `ebfd700…`):** veredito **B**; nenhum P1/P2; nenhum achado bloqueante; prova concorrente aprovada; rollback/reaplicação da `0018` aprovados; SQL D01-D aprovado. **P3 residual (não bloqueante):** issue **#25** (mensagem de sucesso residual após falha de close/delete) — aberta; follow-up isolado.
 
 **Implementado no D01-C (main):** repositories mock/supabase, factory/flags, CRUD/leitura, isolamento org com RLS final.
 
-**Implementado no D01-D (change set):** mutações atômicas de campanhas/planos incluindo `selected_units`, audiência singular e transições de escopo.
+**Implementado no D01-D (main):** mutações atômicas de campanhas/planos incluindo `selected_units`, audiência singular e transições de escopo.
 
 **Limitações deliberadamente mantidas:** sem `selectedUnitId` de sessão; sem alteração de AuthContext/guards/rotas; sem agregações/limiar/nominal.
 
-**Itens futuros ainda não autorizados:** **SUP-D02** (agregações/limiar); C01/B04/C04.2b conforme governança vigente.
+**Itens futuros ainda não autorizados:** **SUP-D02** (agregações/limiar — **não** iniciado / **não** autorizado); C01/B04/C04.2b conforme governança vigente.
 
 Regras preservadas:
 
@@ -581,13 +584,13 @@ Decisões D1–D7 e a ratificação do PR #17 **não** são reabertas aqui.
 | D01-A (contratos/tipos) | **Concluído** — `apps/web/src/domains/collective/` (PR #20, `36c6d2…`) |
 | D01-B (schema/migration/RLS) | **Concluído em `main`** — PR #21 merge `0591ee73…`; migration `0017`; B1 (grants SECURITY DEFINER) |
 | D01-C (repos / UI gestão) | **Concluído em `main`** — PR #22; HEAD `407928778d34c3d7662b0b5f009b403fcfabbb89`; merge commit `907f3ed0d0a53484553debb917cfebdf2566ccb8`; consolidação documental PR #23 (`b32aa12…`); auditoria independente veredito B (sem P0/P1/P2) |
-| D01-D (RPCs atômicas) | **Implementado neste change set — ainda não em `main`** — baseline de partida `b32aa12…`; migration `0018`; RPCs `collective_*_campaign_atomic` / `collective_*_action_plan_atomic`; `selected_units` + audiência singular + transições; concorrência por versão; RLS final; `ATOMICITY_REQUIRED` só para ops futuras |
-| SUP-D02 / C01 / B04 / C04.2b | Fora / paralelo / não iniciar / encerrada |
+| D01-D (RPCs atômicas) | **Concluído em `main`** — PR #24; HEAD auditado `ebfd700cf3d55c74011dc2ef869845e3a0e8da26`; merge commit `00b7b3f727b5eaba2432640af4c5751db52d1f05`; baseline de partida histórico `b32aa12…`; migration `0018`; seis RPCs `collective_*_campaign_atomic` / `collective_*_action_plan_atomic`; `selected_units` + audiência singular + transições; concorrência por versão; RLS final; `ATOMICITY_REQUIRED` só para ops futuras; auditoria independente veredito **B** (sem P1/P2/bloqueadores); P3 residual issue **#25** (aberta) |
+| SUP-D02 / C01 / B04 / C04.2b | Fora / paralelo / não iniciar / encerrada — **SUP-D02 não iniciado / não autorizado** |
 
 > **Rastreabilidade D01-A:** entrega tipada conforme §9; `suppressed` apenas no contrato `SafeAggregateResult`; sem persistência naquele bloco.
 > **Rastreabilidade D01-B:** persistência estrutural + constraints + RLS membership conforme §4–§6; audiência herda org da campanha (coluna física preexistente com trigger); sem agregações/limiar; sem acesso nominal. Hardening B1: `app_auth.unit_belongs_to_organization` e helpers internos sem EXECUTE para papéis de aplicação; `can_*` apenas para `authenticated` após `REVOKE` de `PUBLIC`.
 > **Rastreabilidade D01-C:** repositories + UI de campanhas/planos em `main`; no bloco C, mutações multi-tabela eram bloqueadas com `ATOMICITY_REQUIRED` (limitação histórica).
-> **Rastreabilidade D01-D:** RPCs atômicas + UNIQUE audiência singular + repository/UI neste change set; **não** integrado em `main` até merge. **SUP-D02** (agregações/limiar/nominal) **não** faz parte deste aceite.
+> **Rastreabilidade D01-D:** RPCs atômicas + UNIQUE audiência singular + repository/UI **integrados em `main`** (PR #24). Dívidas P3 de teste do D01-C encerradas pelos testes do D01-D. Issue **#25** = P3 UI residual distinto (não bloqueante). **SUP-D02** (agregações/limiar/nominal/`suppressed` runtime/anti-diferencial/exportações) **não** faz parte deste aceite e **não** está autorizado.
 
 ---
 

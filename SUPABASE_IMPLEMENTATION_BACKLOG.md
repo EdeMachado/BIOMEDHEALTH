@@ -791,7 +791,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
    - campos indiretos permitindo inferencia individual;
    - absorcao indevida de dado pessoal pelo vinculo institucional.
 14. **Estimativa**: media
-15. **Ordem recomendada**: 13 — ciclo D01 em main. Proximo: **nova auditoria** do PR #27 (SPEC D02 corrigida); so entao Gate D02-0 / D02-A. Issue **#25** isolada.
+15. **Ordem recomendada**: 13 — ciclo D01 em main; SPEC D02 via PR #27 em main. Proximo: **auditoria independente** do pacote Gate D02-0; D02-A **bloqueado**. Issue **#25** isolada.
 
 ### SUP-D02
 
@@ -800,26 +800,30 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 3. **Finalidade**: garantir leitura coletiva segura em BioMed Gestao.
 4. **Status**:
    - Dependencia tecnica D01: **SATISFEITA**.
-   - Planejamento / SPEC: produzidos em `SUP_D02_TECHNICAL_SPECIFICATION.md` (PR #27 draft); **correcao documental** dos P2/P3 da 1a auditoria; **nova auditoria independente obrigatoria** antes de aprovar.
+   - Planejamento / SPEC: integrados em `main` via **PR #27** (`547c60c…`).
+   - **Gate D02-0**: `em revisao documental` — decisoes propostas em `SUP_D02_GATE_D02_0_DECISIONS.md` (**PROPOSTO**; PR draft pendente de auditoria independente e merge). **Nao** ratificado enquanto draft.
    - **Implementacao**: **NAO INICIADA** e **NAO AUTORIZADA**.
-   - **Bloqueantes para D02-A:** aprovacao formal da SPEC; nova auditoria; catalogo piloto; modelo de privilegio (INVOKER do D01 **nao** ratificado para D02; ampliar SELECT bruto **proibido**); deny/leitura de fontes (incl. `risk_results`); anti-diff + politica sem `n` exato; auditoria minima do D02 (nao adiavel integralmente a E01); timezone/granularidade; piloto `organization` para fontes sem unit historica.
-5. **Escopo incluido** (detalhe na SPEC D02 corrigida):
-   - agregacao server-side; limiar 10 (necessario, nao suficiente);
-   - `ok` / `empty` / `suppressed` **sem** `n`/denominador exato ao cliente;
-   - anti-diferencial **desde D02-A** (antes de qualquer exposicao);
-   - auditoria minima de consultas no D02;
-   - piloto organizacional para `assessments`/`user_journeys`/`risk_results` (sem `unit_id` no fato);
+   - **D02-A e posteriores**: **BLOQUEADOS** ate: (a) auditoria independente aprovada do pacote Gate; (b) merge em `main`; (c) criterios `D02-0.10` itens 12–14; (d) **autorizacao humana separada**.
+   - **Desbloqueio objetivo de D02-A (todos obrigatorios):** modelo privilegio DEFINER proposto aceito na auditoria; desenho deny `risk_results`; catalogo fechado; contrato sem `n`; escopo `organization`; anti-diff; auditoria + **fail-closed**; ordem `D02-0.9`; sem contradicao documental; auditoria+merge+ordem humana.
+5. **Escopo incluido** (detalhe na SPEC + Gate):
+   - agregacao server-side via RPC **SECURITY DEFINER** endurecida (proposta);
+   - limiar 10 (necessario, nao suficiente);
+   - `ok` / `empty` / `suppressed` / `error` **sem** `n`/denominador exato ao cliente;
+   - anti-diferencial **desde D02-A**;
+   - auditoria minima + **fail-closed** antes da exposicao;
+   - catalogo piloto `IND-D02-P01`…`P05`;
+   - piloto organizacional para fontes sem `unit_id`; rejeitar `unitId`/`unitIds` com erro;
    - faseamento Gate D02-0 → A → B → C → D.
-6. **Fora do escopo**: analytics preditiva; dashboards externos; nominal; D03; usar membership atual como unit historica; issue #25; implementacao neste PR.
-7. **Dependencias**: SUP-D01; limiar 10 ratificado; Gate D02-0.
-8. **Entidades/tabelas**: fontes candidatas sem unit historica comprovada — agregar so em escopo `organization` no piloto.
-9. **Perfis**: gerenciais/auditor leitura agregada; sem nominal.
-10. **RLS / privilegio**: decisao pendente bloqueante (DEFINER endurecida / pre-agregacao / equivalente); sem ampliar SELECT bruto para “fazer INVOKER funcionar”.
-11. **Criterios de aceite**: SPEC D02 §16.
-12. **Testes**: SPEC D02 §14 (planejados).
-13. **Riscos**: reidentificacao por diferenca/`n`; leitura bruta (`risk_results`); unit falsa via membership.
+6. **Fora do escopo**: analytics preditiva; dashboards externos; nominal; D03; membership como unit historica; issue #25; implementacao neste PR documental; exportacao no piloto.
+7. **Dependencias**: SUP-D01; limiar 10; Gate D02-0 (auditoria+merge+ordem humana).
+8. **Entidades/tabelas**: `assessments`, `user_journeys`, `risk_results` (agregar so em `organization` no piloto).
+9. **Perfis**: gerenciais/auditor leitura agregada; sem nominal; sem SELECT bruto gerencial em `risk_results` (desenho futuro).
+10. **RLS / privilegio**: proposta DEFINER endurecida; **proibido** ampliar SELECT bruto para INVOKER; INVOKER do D01 **nao** justifica D02.
+11. **Criterios de aceite**: SPEC D02 §16 + Gate `D02-0.10`.
+12. **Testes**: SPEC §14 + matriz adversaria do Gate §6.
+13. **Riscos**: reidentificacao; leitura bruta residual ate migration; estado remoto nao inventariado.
 14. **Estimativa**: grande
-15. **Ordem**: apos nova auditoria do PR #27 + Gate D02-0 → D02-A…; **nao** iniciar D02-A antes.
+15. **Ordem**: apos auditoria+merge do Gate + ordem humana → D02-A…; **nao** iniciar D02-A antes.
 
 ### SUP-D03
 
@@ -988,7 +992,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 | 11 | SUP-C03 | C | C02 | CONCLUIDA (PR #10; harden #11/#12) |
 | 12 | SUP-C04 | C | C01, C02, C03 | PARCIAL: C04.1+#13, C04.2a+#14, 42501+#15; C04.2b ENCERRADA SEM IMPLEMENTACAO |
 | 13 | SUP-D01 | D | SUP-A01 + decisao coletiva ratificada | Ciclo A/B/C/D em main (PRs #20–#24; docs #26 `89de7ab…`) |
-| 14 | SUP-D02 | D | D01 + limiar 10 | SPEC em correcao (PR #27); **implementacao nao iniciada**; Gate D02-0 bloqueante |
+| 14 | SUP-D02 | D | D01 + limiar 10 | SPEC em main (PR #27); Gate D02-0 **em revisao documental**; **implementacao nao iniciada**; D02-A bloqueado |
 | 15 | SUP-D03 | D | D01, D02 | Gestao em dados reais agregados |
 | 16 | SUP-E01 | E | A02, A03 + B/C/D | Auditoria append-only ativa |
 | 17 | SUP-E02 | E | A03, C04 residual, D03, E01 | Suite de seguranca completa |
@@ -998,17 +1002,19 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 
 ## Caminho critico recomendado
 
-`SUP-A01 -> … -> [D01 #20–#24] -> [docs #23/#26] -> [SPEC D02 PR #27 + correcao auditoria] -> [nova auditoria independente] -> [Gate D02-0] -> [D02-A… — nao autorizada ainda] -> SUP-D03 -> …`
+`SUP-A01 -> … -> [D01 #20–#24] -> [docs #23/#26] -> [SPEC D02 #27 `547c60c…`] -> [Gate D02-0 docs — auditoria+merge pendentes] -> [autorizacao humana D02-A] -> [D02-A… — nao autorizada ainda] -> SUP-D03 -> …`
 
 Notas de caminho:
 
 - SUP-C04.2b fora do caminho critico.
 - Overview/indicadores **demo** ate liberacao D02.
-- INVOKER do D01 **nao** e solucao ratificada do D02.
-- Anti-diff e auditoria minima **antes** da UI.
-- Piloto de pessoas: escopo `organization` sem unit historica.
+- INVOKER do D01 **nao** e solucao do D02; proposta Gate = DEFINER endurecida.
+- Anti-diff, auditoria minima e **fail-closed** **antes** da UI.
+- Piloto de pessoas: escopo `organization`; `unitId`/`unitIds` rejeitados.
+- Contrato cliente **sem** `n`.
 - Issue **#25** isolada.
-- Fonte: `SUP_D02_TECHNICAL_SPECIFICATION.md`.
+- Fontes: `SUP_D02_TECHNICAL_SPECIFICATION.md`, `SUP_D02_GATE_D02_0_DECISIONS.md`.
+- Gate draft **nao** ratifica D02-A.
 
 Justificativa:
 

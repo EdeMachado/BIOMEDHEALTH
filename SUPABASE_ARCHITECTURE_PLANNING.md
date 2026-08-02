@@ -493,3 +493,29 @@ Este documento permanece o registro **historico** das decisoes de 2026-07-29/31 
 
 **SUP-D02:** especificacao tecnica em `SUP_D02_TECHNICAL_SPECIFICATION.md` (planejamento autorizado). **Implementacao do D02 nao iniciada e nao autorizada** por este adendo.
 
+---
+
+## Adendo de continuidade (2026-08-02) — Gate D02-0
+
+Registro **aditivo** (nao reescreve decisoes historicas de 2026-07-29/31).
+
+**Documento canônico das decisoes propostas:** `SUP_D02_GATE_D02_0_DECISIONS.md` (status **PROPOSTO — PENDENTE DE AUDITORIA INDEPENDENTE E MERGE**).
+
+**Baseline:** `origin/main` = `547c60c992c64b9f9038db1029734c3b9c9ec93e` (PR #27 mergeado).
+
+**Propostas do Gate (nao sao implementacao):** RPC `SECURITY DEFINER` endurecida; deny de SELECT bruto gerencial em `risk_results`; catalogo piloto fechado; escopo `organization` apenas; contrato cliente sem `n`; anti-diferencial; auditoria minima; **fail-closed** se a auditoria nao persistir; ordem futura D02-0.9.
+
+**Explicitamente nao autorizado por este adendo:** D02-A, SQL/migration/policy, UI, SUP-D03, Fase E, acesso ao Supabase remoto.
+
+**Estado corrente:** consultar `PROJECT_MASTER_HANDOFF.md` e o documento do Gate.
+
+---
+
+## Adendo corretivo (2026-08-02) — Gate D02-0 pos-auditoria
+
+Aditivo: a 1a auditoria independente do PR #28 **reprovou** o pacote (B1–B6/O1). Correcoes documentais no mesmo PR **substituem** a decisao anterior que publicava contagens exatas como `value`, mantinha estado publico `empty` e rejeitava banding no piloto.
+
+**Politica selecionada como proposta (nao ratificada):** bandas obrigatorias P01–P04; `support_n` interno; `suppressed` unificado para zero e baixa cardinalidade; contrato canônico unico em `SUP_D02_GATE_D02_0_DECISIONS.md` §5.5.1; `IND-D02-P05` bloqueado/diferido; mes civil UTC; fail-closed preservado.
+
+**Nao autoriza** D02-A nem implementacao. Reauditoria independente obrigatoria.
+

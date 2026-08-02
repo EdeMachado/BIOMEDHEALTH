@@ -18,11 +18,11 @@ Este documento é a **fonte oficial de continuidade e governança** do projeto B
 | Baseline de `origin/main` (pós PR #26) | `89de7abb02262236d5633c82ebedd09424c65a49` |
 | Último merge documental integrado | PR #26 — consolidação pós-merge SUP-D01-D; HEAD `ec84b82a163e9c236be6b3735e587c295e128f62`; merge `89de7ab…` |
 | Último merge funcional integrado | PR #24 — SUP-D01-D; HEAD auditado `ebfd700…`; merge `00b7b3f…` |
-| Change set em curso (não mergeado) | **Planejamento/SPEC SUP-D02** (documental); implementação D02 **não** iniciada / **não** autorizada |
+| Change set em curso (não mergeado) | **PR #27** (draft) — SPEC SUP-D02 em **correção documental** pós-auditoria; implementação D02 **não** iniciada / **não** autorizada |
 | Data desta atualização do handoff | 2026-08-01 |
 | Ratificação org×unit (coletivo) | PR #17 — decisão documental |
 | SPEC SUP-D01 | Aprovada; ciclo **A/B/C/D** em `main` (PRs #20–#24; docs #23/#26) |
-| SPEC SUP-D02 | `SUP_D02_TECHNICAL_SPECIFICATION.md` — planejamento/especificação **autorizados**; implementação **não** iniciada / **não** autorizada |
+| SPEC SUP-D02 | `SUP_D02_TECHNICAL_SPECIFICATION.md` — planejamento/especificação; **correção documental dos P2/P3 da 1ª auditoria** (PR #27); implementação **não** iniciada / **não** autorizada; modelo de privilégio e Gate D02-0 **ainda pendentes** |
 
 ## 3. Propósito do BIOMED HEALTH e módulos
 
@@ -46,7 +46,7 @@ Carteira por vínculo ativo, agenda, leitura de jornada vinculada, ficha clínic
 
 ### BioMed Gestão (institucional / coletivo)
 
-Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limiar mínimo de 10 no recorte efetivo; sem drill-down nominal. Persistência estrutural e mutações atômicas **D01-A/B/C/D** em `main`. Overview/indicadores da UI permanecem **demonstrativos** até implementação autorizada do **SUP-D02** (e migração ampla no **SUP-D03**). Fonte técnica do D02: `SUP_D02_TECHNICAL_SPECIFICATION.md` (planejamento/especificação; **implementação não iniciada / não autorizada**). `selectedUnitId` de sessão **não** implementado. Issue **#25** = P3 UI residual (campanhas/planos), fora do D02.
+Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limiar mínimo de 10 (**necessário, não suficiente** contra reidentificação). D01-A/B/C/D em `main`. Overview/indicadores **demo** até liberação autorizada do D02. Fonte: `SUP_D02_TECHNICAL_SPECIFICATION.md`. Piloto de indicadores de pessoas: escopo **`organization`** enquanto não houver unidade histórica no fato. Anti-diferencial e auditoria mínima **antes** de qualquer exposição à app. Modelo de privilégio SQL (**não** ratificar INVOKER do D01 para D02) = **bloqueante**. Implementação D02 **não** iniciada / **não** autorizada. Issue **#25** = P3 isolado (fora do D02).
 
 ## 4. Documentos canônicos
 
@@ -102,7 +102,7 @@ Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limia
 
 **SUP-D01:** SPEC aprovada (PR #19). Ciclo técnico **D01-A/B/C/D concluído e integrado em `main`**. **D01-A** (PR #20). **D01-B** (PR #21) — migration `0017` + RLS/constraints; B1 corrigido. **D01-C** (PR #22, merge `907f3ed…`, HEAD `4079287…`) — repositories + UI campanhas/planos; consolidação documental pós-merge **PR #23** (`b32aa12…`, baseline de partida do PR #24). **D01-D** (PR #24, merge `00b7b3f…`, HEAD auditado `ebfd700…`) — migration `0018` + seis RPCs atômicas; consolidação documental **PR #26** (`89de7ab…`). Sem fallback Supabase→mock; AuthContext/guards/rotas/`selectedUnitId` intactos; C01/B04 fora; C04.2b encerrada.
 
-**SUP-D02:** planejamento/especificação em `SUP_D02_TECHNICAL_SPECIFICATION.md` (**autorizados** neste caminho documental). **Implementação** expressamente **não iniciada** e **não autorizada** — exige aprovação formal da SPEC e ordem mutável por fatia (D02-A…).
+**SUP-D02:** SPEC em `SUP_D02_TECHNICAL_SPECIFICATION.md` (PR #27 draft; **correção documental** dos achados P2/P3 da 1ª auditoria — **não** declarar aprovados antes da nova auditoria). **Implementação não iniciada / não autorizada.** Sequência futura: Gate D02-0 → D02-A (fundação + anti-diff + auditoria mínima + sem `n` exato) → D02-B → D02-C → D02-D. Piloto organizacional para fontes sem `unit_id` histórico. Modelo de privilégio = **pendente bloqueante** (INVOKER do D01 **não** transportável automaticamente).
 
 **Auditoria independente do PR #24 (HEAD `ebfd700…`):** veredito **B**; nenhum P1/P2; nenhum achado bloqueante; prova concorrente (duas sessões) aprovada; rollback e reaplicação da `0018` aprovados; validação SQL D01-D aprovada. **Único P3 residual** (não bloqueante): mensagem de sucesso residual após falha de close/delete na UI coletiva — rastreado na issue **#25** (aberta; follow-up isolado).
 
@@ -117,7 +117,7 @@ Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limia
 | A — Acesso/tenant | Entregue na prática (A01–A04 via PRs de auth/access) | Detalhe fino no backlog |
 | B — Preventivo | Parcial | B01–B03 (+ filhas) entregues; **B04 aberto** (não iniciado) |
 | C — Clínico | Parcial | C01.1/C01.2, C02, C03 entregues; C01 parent com gap `unit_id`; C04 parcial (ver §8) |
-| D — Gestão agregada | Parcial | **D01-A/B/C/D** em main; SPEC D02 elaborada; **implementação D02 não iniciada / não autorizada**; D03 não iniciado |
+| D — Gestão agregada | Parcial | D01 em main; SPEC D02 em correção (PR #27); impl. D02 não iniciada; privilégio/anti-diff/Gate D02-0 pendentes; D03 não iniciado |
 | E — Auditoria/hardening | Aberta | Após B/C/D maduros |
 
 ## 8. Tickets e fatias C04 — status consolidado
@@ -174,7 +174,7 @@ Inelegível a qualquer fallback de dados.
 | SUP-B04 | Aberto — revisar linguagem/mecanismos de fallback inseguro antes de executar |
 | SUP-C01 `unit_id` | Gap residual clínico **paralelo** (não bloqueia D01) |
 | SUP-D01 | Ciclo **A/B/C/D** concluído em `main` (PRs #20–#24; docs #23/#26 `89de7ab…`); P3 residual UI issue **#25** (aberta) |
-| SUP-D02…D03 | **D02:** SPEC em `SUP_D02_TECHNICAL_SPECIFICATION.md` (planejamento autorizado); **implementação não iniciada / não autorizada**; dependência D01 satisfeita. **D03:** não iniciado |
+| SUP-D02…D03 | **D02:** SPEC corrigida no PR #27 (aguardando **nova** auditoria); impl. **não** iniciada / **não** autorizada; bloqueantes: privilégio, catálogo, deny raw, auditoria mínima, timezone. **D03:** não iniciado |
 | SUP-E01…E03 | Abertos (Fase E) |
 | Decisões humanas (jurídico/clínico/retention/rollout) | Pendentes (seção backlog) |
 
@@ -203,19 +203,19 @@ Inelegível a qualquer fallback de dados.
 
 ## 11. Decisões humanas pendentes
 
-Granularidade coletiva org×unit (**ratificada**). SPEC SUP-D01 **aprovada** e ciclo A/B/C/D em `main`. SPEC SUP-D02 **elaborada** (planejamento); **implementação D02** exige aprovação formal + ordem mutável por fatia. Pendentes: bases legais/consentimento; ficha/retention; rollout; catálogo de indicadores (D02); timezone/intervalos; desenho deny de SELECT raw gerencial. Issue **#25** = follow-up P3 isolado.
+Granularidade coletiva org×unit (**ratificada**). D01 concluído. SPEC D02 em correção documental (PR #27): limiar 10; sem `n` exato; anti-diff antes da UI; piloto `organization` sem unit histórica; modelo de privilégio **pendente**. Pendentes humanos: catálogo piloto; privilégio SQL; deny `risk_results`/fontes; timezone; aprovação formal + nova auditoria. Issue **#25** isolada.
 
 ## 12. Sequência recomendada de retomada
 
 1. **Consolidação documental** — PR #16.
 2. **Ratificação org×unit** — PR #17.
 3. **SPEC SUP-D01** — PRs #18/#19; implementação A/B/C/D — PRs #20–#24; docs pós-merge #23/#26 (`89de7ab…`).
-4. **Planejamento/SPEC SUP-D02** — `SUP_D02_TECHNICAL_SPECIFICATION.md` (este change set documental); **não** implementar sem aprovação formal + ordem de fatia.
-5. **Após aprovação da SPEC D02:** fatias D02-A… (SQL/RPC → repository → UI controlada → anti-diff), cada uma com auditoria pré-merge.
-6. **Issue #25** — follow-up P3 isolado (não bloqueia D02).
-7. **SUP-D03** — após D02; não iniciar agora.
-8. **SUP-B04** / gap C01 / **C04.2b** — conforme governança vigente; C04.2b não iniciar.
-9. **Fase E** — não iniciar neste caminho até D maduro.
+4. **Planejamento/SPEC SUP-D02** — `SUP_D02_TECHNICAL_SPECIFICATION.md` (PR #27 draft); correção documental dos P2/P3 da 1ª auditoria; **nova auditoria independente** do HEAD corrigido **antes** de qualquer implementação.
+5. **Após nova auditoria + aprovação formal + Gate D02-0:** D02-A → D02-B → D02-C → D02-D (anti-diff **desde** A; UI só após A+B).
+6. **Issue #25** — follow-up P3 isolado.
+7. **SUP-D03** — após D02 liberado; não iniciar agora.
+8. **SUP-B04** / gap C01 / **C04.2b** — governança vigente; C04.2b não iniciar.
+9. **Fase E** — não substitui auditoria mínima do D02; não iniciar como atalho.
 
 ## 13. Instruções para retomada segura
 

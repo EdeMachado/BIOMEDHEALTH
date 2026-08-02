@@ -19,11 +19,11 @@ Este documento é a **fonte oficial de continuidade e governança** do projeto B
 | Último merge documental integrado | **PR #27** — SPEC SUP-D02; HEAD `7258208d76d49c12bff56543a60d65a86bf0ee7d`; merge `547c60c…` (pais `89de7ab…` + `7258208…`) |
 | Merge documental anterior | PR #26 — consolidação pós-merge SUP-D01-D; merge `89de7ab…` |
 | Último merge funcional integrado | PR #24 — SUP-D01-D; HEAD auditado `ebfd700…`; merge `00b7b3f…` |
-| Change set em curso (não mergeado) | Branch/PR **Gate D02-0** (`docs/sup-d02-gate-d02-0`) — decisões documentais **propostas**; **pendente** de auditoria independente e merge; D02-A **proibido** |
+| Change set em curso (não mergeado) | **PR #28** (draft) — Gate D02-0: 1ª auditoria independente **reprovou**; correções **B1–B6 e O1** neste PR; **pendente de reauditoria**; Gate **não** ratificado; D02-A **proibido** |
 | Data desta atualização do handoff | 2026-08-02 |
 | Ratificação org×unit (coletivo) | PR #17 — decisão documental |
 | SPEC SUP-D01 | Aprovada; ciclo **A/B/C/D** em `main` (PRs #20–#24; docs #23/#26) |
-| SPEC SUP-D02 | `SUP_D02_TECHNICAL_SPECIFICATION.md` em `main` (PR #27). Gate: `SUP_D02_GATE_D02_0_DECISIONS.md` (**PROPOSTO**). Implementação **não** iniciada / **não** autorizada |
+| SPEC SUP-D02 | Em `main` (PR #27). Gate: `SUP_D02_GATE_D02_0_DECISIONS.md` (**PROPOSTO**; correção pós-auditoria). Implementação **não** iniciada / **não** autorizada |
 
 ## 3. Propósito do BIOMED HEALTH e módulos
 
@@ -47,7 +47,7 @@ Carteira por vínculo ativo, agenda, leitura de jornada vinculada, ficha clínic
 
 ### BioMed Gestão (institucional / coletivo)
 
-Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limiar mínimo de 10 (**necessário, não suficiente** contra reidentificação). D01-A/B/C/D em `main`. Overview/indicadores **demo** até liberação autorizada do D02. Fontes: `SUP_D02_TECHNICAL_SPECIFICATION.md` + `SUP_D02_GATE_D02_0_DECISIONS.md` (**PROPOSTO** — não ratificado em draft). Piloto de pessoas: escopo **`organization`**; rejeitar `unitId`/`unitIds`. Anti-diferencial, auditoria mínima e **fail-closed** **antes** de qualquer exposição. Modelo de privilégio proposto: RPC **`SECURITY DEFINER` endurecida** (INVOKER do D01 **não** transferível; sem ampliar SELECT bruto). Implementação D02 **não** iniciada / **não** autorizada. Issue **#25** = P3 isolado (fora do D02).
+Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limiar interno 10 (**necessário, não suficiente**). D01 em `main`. Overview/indicadores **demo** até liberação autorizada do D02. Fontes: SPEC D02 + `SUP_D02_GATE_D02_0_DECISIONS.md` (**PROPOSTO** — não ratificado; 1ª auditoria reprovou; correções B1–B6/O1 em andamento no PR #28). Piloto: `organization`; bandas; sem `empty`/contagem exata; P05 diferido; rejeitar `unitId`/`unitIds`. Anti-diff, auditoria e **fail-closed** antes da exposição. Privilégio proposto: DEFINER endurecida. Implementação D02 **não** iniciada. Issue **#25** isolada.
 
 ## 4. Documentos canônicos
 
@@ -104,7 +104,7 @@ Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limia
 
 **SUP-D01:** SPEC aprovada (PR #19). Ciclo técnico **D01-A/B/C/D concluído e integrado em `main`**. **D01-A** (PR #20). **D01-B** (PR #21) — migration `0017` + RLS/constraints; B1 corrigido. **D01-C** (PR #22, merge `907f3ed…`, HEAD `4079287…`) — repositories + UI campanhas/planos; consolidação documental pós-merge **PR #23** (`b32aa12…`, baseline de partida do PR #24). **D01-D** (PR #24, merge `00b7b3f…`, HEAD auditado `ebfd700…`) — migration `0018` + seis RPCs atômicas; consolidação documental **PR #26** (`89de7ab…`). Sem fallback Supabase→mock; AuthContext/guards/rotas/`selectedUnitId` intactos; C01/B04 fora; C04.2b encerrada.
 
-**SUP-D02:** SPEC em `SUP_D02_TECHNICAL_SPECIFICATION.md` **integrada** via PR #27 (`547c60c…`). Gate D02-0: `SUP_D02_GATE_D02_0_DECISIONS.md` (**PROPOSTO** — pendente auditoria independente e merge; **não** ratificado em draft). **Implementação não iniciada / não autorizada.** Sequência: Gate (auditoria+merge+ordem humana) → D02-A (DEFINER + anti-diff + auditoria + **fail-closed** + sem `n`) → D02-B → D02-C → D02-D. Piloto `organization`; rejeitar `unitId`/`unitIds`. Privilégio proposto: **DEFINER endurecida** (INVOKER do D01 **não** transportável; sem ampliar SELECT bruto). D02-A **proibido** até autorização humana separada.
+**SUP-D02:** SPEC integrada via PR #27 (`547c60c…`). Gate D02-0 (`SUP_D02_GATE_D02_0_DECISIONS.md`): **PROPOSTO**; 1ª auditoria independente **reprovou**; correções documentais **B1–B6 e O1** no PR #28 (mesmo draft); **pendente de reauditoria**; **não** ratificado. Contrato canônico: bandas; `support_n` interno; sem `empty`/contagem exata; P05 diferido. **Implementação não iniciada / não autorizada.** D02-A **proibido** até reauditoria + merge + ordem humana separada.
 
 **Auditoria independente do PR #24 (HEAD `ebfd700…`):** veredito **B**; nenhum P1/P2; nenhum achado bloqueante; prova concorrente (duas sessões) aprovada; rollback e reaplicação da `0018` aprovados; validação SQL D01-D aprovada. **Único P3 residual** (não bloqueante): mensagem de sucesso residual após falha de close/delete na UI coletiva — rastreado na issue **#25** (aberta; follow-up isolado).
 
@@ -205,16 +205,16 @@ Inelegível a qualquer fallback de dados.
 
 ## 11. Decisões humanas pendentes
 
-Granularidade coletiva org×unit (**ratificada**). D01 concluído. PR #27 integrado. Gate D02-0 em **resolução documental proposta** (DEFINER; catálogo; contrato sem `n`; anti-diff; auditoria; **fail-closed**; escopo org): pendente **auditoria independente**, merge e **autorização humana separada** para D02-A. Inventário remoto de grants/policies antes de SQL. Issue **#25** isolada. SUP-D03 / Fase E não iniciados.
+Granularidade coletiva org×unit (**ratificada**). D01 concluído. PR #27 integrado. Gate D02-0 **PROPOSTO** no PR #28: 1ª auditoria **reprovou**; correções B1–B6/O1 (UTF-8, bandas, `suppressed` unificado, contrato canônico, mês UTC, governança, P05 diferido) **em elaboração/concluídas neste PR** — exigem **reauditoria**. Pendentes: reauditoria + merge + autorização humana para D02-A; inventário remoto. Issue **#25** isolada. SUP-D03 / Fase E não iniciados.
 
 ## 12. Sequência recomendada de retomada
 
 1. **Consolidação documental** — PR #16.
 2. **Ratificação org×unit** — PR #17.
-3. **SPEC SUP-D01** — PRs #18/#19; implementação A/B/C/D — PRs #20–#24; docs pós-merge #23/#26.
+3. **SPEC SUP-D01** — PRs #18/#19; implementação A/B/C/D — PRs #20–#24; docs #23/#26.
 4. **SPEC SUP-D02** — PR #27 mergeado (`547c60c…`).
-5. **Gate D02-0** — decisões documentais propostas (`SUP_D02_GATE_D02_0_DECISIONS.md`); **auditoria independente** + merge; **D02-A proibido** até ordem humana separada.
-6. **Após Gate satisfeito + ordem humana:** D02-A → D02-B → D02-C → D02-D (anti-diff e auditoria **desde** A; UI só após A+B).
+5. **Gate D02-0** — PR #28 draft; 1ª auditoria reprovou; correções B1–B6/O1; **reauditoria** + merge; **D02-A proibido** até ordem humana separada.
+6. **Após Gate satisfeito + ordem humana:** D02-A → D02-B → D02-C → D02-D.
 7. **Issue #25** — follow-up P3 isolado.
 8. **SUP-D03** — após D02 liberado; não iniciar agora.
 9. **SUP-B04** / gap C01 / **C04.2b** — governança vigente; C04.2b não iniciar.

@@ -4,9 +4,9 @@
 |---|---|
 | Ticket | `SUP-D02` |
 | Título | Camada de indicadores agregados e políticas anti-drilldown |
-| Status deste documento | **PLANEJAMENTO / ESPECIFICAÇÃO** — Gate D02-0 em **resolução documental proposta** (`SUP_D02_GATE_D02_0_DECISIONS.md`); **pendente** de auditoria independente e merge; **não** ratificado enquanto o PR do Gate estiver draft |
+| Status deste documento | **PLANEJAMENTO / ESPECIFICAÇÃO** — Gate D02-0 **PROPOSTO** (`SUP_D02_GATE_D02_0_DECISIONS.md`); 1ª auditoria **reprovou**; correções B1–B6/O1 neste PR; **pendente de reauditoria**; **não** ratificado enquanto draft |
 | Baseline corrente | `origin/main` = `547c60c992c64b9f9038db1029734c3b9c9ec93e` (merge PR #27) |
-| Gate D02-0 (canônico) | `SUP_D02_GATE_D02_0_DECISIONS.md` — **PROPOSTO**; decisões canônicas propostas (privilégio DEFINER, catálogo, contrato sem `n`, anti-diff, auditoria, **fail-closed**) |
+| Gate D02-0 (canônico) | `SUP_D02_GATE_D02_0_DECISIONS.md` — **PROPOSTO**; contrato cliente canônico único; bandas; `support_n` interno; sem `empty`; P05 diferido; DEFINER; fail-closed |
 | Dependência D01 | **Satisfeita** — ciclo SUP-D01-A/B/C/D em `main` (PRs #20–#24; docs #23/#26/#27) |
 | Implementação | **NÃO INICIADA** e **NÃO AUTORIZADA** por este documento nem pelo Gate proposto |
 | Documento mestre | `PROJECT_MASTER_HANDOFF.md` |
@@ -47,7 +47,7 @@
 ### 1.2 Estado canônico
 
 - Planejamento e especificação: **autorizados** (documento); PR #27 **integrado** em `main` (`547c60c…`).
-- Gate D02-0: **resolução documental proposta** em `SUP_D02_GATE_D02_0_DECISIONS.md` — **não ratificada** enquanto o PR do Gate estiver draft / sem auditoria+merge.
+- Gate D02-0: **PROPOSTO** em `SUP_D02_GATE_D02_0_DECISIONS.md` — 1ª auditoria independente **reprovou**; correções documentais B1–B6/O1 neste PR; **pendente de reauditoria** + merge; **não ratificado** enquanto draft.
 - Implementação: **não iniciada** / **não autorizada**.
 - Fatias D02-A…D: **não iniciadas** / **não autorizadas**.
 - SUP-D03 / Fase E: **não iniciados**.
@@ -79,7 +79,7 @@ Dados-fonte (`assessments`, `user_journeys`, `risk_results`, metadados de `campa
 
 Entregar a **camada de agregação com limiar e anti-drilldown** de modo que:
 
-1. toda resposta gerencial de indicador seja agregada, `empty` ou `suppressed`;
+1. toda resposta gerencial de indicador seja `ok` (banda), `suppressed` (unificado) ou `error`;
 2. o limiar mínimo de **10** indivíduos no recorte efetivo seja enforced no **servidor**;
 3. o limiar 10 seja **necessário, mas não suficiente** — controles anti-diferenciais são obrigatórios **antes** de qualquer exposição à aplicação;
 4. nenhum ID/nome/campo clínico individual, nem `n`/denominador exato, retorne ao cliente;
@@ -137,7 +137,7 @@ Entregar a **camada de agregação com limiar e anti-drilldown** de modo que:
 ### 4.1 Incluído (**contrato desta SPEC**)
 
 - Agregação **server-side** com limiar 10 e anti-diferencial **na fundação** (D02-A).
-- Estados `ok` / `empty` / `suppressed` (cliente **sem** `n` exato).
+- Estados `ok` (banda) / `suppressed` (unificado; inclui zero) / `error` — contrato canônico no Gate; **sem** `empty`/`n`/valor numérico.
 - Piloto organizacional para indicadores baseados em fontes sem unidade histórica.
 - Whitelist de indicadores, dimensões e filtros.
 - Auditoria mínima de consultas **no D02** (antes da exposição).
@@ -149,7 +149,7 @@ Entregar a **camada de agregação com limiar e anti-drilldown** de modo que:
 | Classe | Tratamento |
 |---|---|
 | Fixtures demo | **Não** são catálogo aprovado |
-| Indicadores de pessoas sobre `assessments` / `user_journeys` / `risk_results` | Piloto: escopo **`organization` apenas**; pedidos `unit` / `unitId` / `unitIds` / filtro de unidade → **erro seguro de consulta inválida** (não ignorar). Catálogo fechado: Gate `D02-0.3` (`IND-D02-P01`…`P05`) |
+| Indicadores de pessoas sobre `assessments` / `user_journeys` | Piloto exposto: `IND-D02-P01`…`P04` (Gate); escopo **`organization`**; `unit`/`unitId`/`unitIds` → erro seguro. Bandas obrigatórias; sem contagem exata; sem `empty` público. `IND-D02-P05` (**risk_results**) = **BLOQUEADO/DIFERIDO** |
 | Metadados de campanhas/planos sem indivíduos | Podem não aplicar limiar de pessoas; escopo segue RLS D01 |
 | Futuro `unit` | Só com `unit_id` no fato, snapshot imutável ou modelo temporal **aprovado** |
 
@@ -164,14 +164,15 @@ Entregar a **camada de agregação com limiar e anti-drilldown** de modo que:
 ### 4.4 Dimensões / filtros / multi-unit
 
 - Organização: sempre do contexto autenticado (cliente não impõe org estrangeira).
-- Unidade no piloto de pessoas: **não aplicável** (rejeitar).
-- Período: granularidade mínima **mês civil UTC** (Gate `D02-0.6`); períodos menores → rejeitar.
+- Unidade no piloto de pessoas: **não aplicável** (rejeitar com erro).
+- Período: **um** mês civil UTC por consulta, canônico `YYYY-MM` (Gate `D02-0.6`). Sem intervalos arbitrários, dias/semanas, janelas móveis ou sobreposição configurável pelo cliente.
 - Múltiplas units no piloto de pessoas: **não** inferir da membership atual.
+- Filtros demográficos / dimensões livres / subgrupos: **proibidos** no piloto.
 
 ### 4.5 Exportação e drill-down
 
 - Drill-down nominal: **proibido**.
-- Exportação: mesmos controles; se existir, só após controles de D02-A e sem `n` exato.
+- Exportação: **proibida** no piloto.
 
 ### 4.6 Fora do escopo
 
@@ -195,36 +196,40 @@ Frontend **não** é fronteira de segurança.
 
 ---
 
-## 6. Limiar de privacidade
+## 6. Limiar de privacidade e cardinalidade
 
 ### 6.1 Valor
 
 | Tema | Status |
 |---|---|
-| `minGroup = 10` | **Decisão ratificada** |
-| Configurável por org | **Não** no MVP; default fixo 10 |
-| Suficiência | Limiar 10 é **necessário, mas não suficiente** contra reidentificação |
+| `support_n` / limiar interno = 10 | **Decisão ratificada** (architecture/D01); aplicação detalhada no Gate |
+| Contagem exata ao cliente | **Proibida** (Gate `D02-0.3`/`0.5`) |
+| Bandas P01–P04 | **Obrigatórias** (proposta Gate) |
+| Estado público `empty` | **Removido** (proposta Gate) |
+| Suficiência | Limiar 10 é **necessário, mas não suficiente** |
 
 ### 6.2 Momento e autoridade
 
 - Aplicado **no servidor**, após montar o universo e **antes** da resposta.
-- Cliente **não** controla `minGroup`; parâmetros tentando reduzir limiar → ignorar ou `INVALID_INPUT`.
+- Cliente **não** controla limiar/`support_n`.
 
-### 6.3 Tratamentos
+### 6.3 Tratamentos (contrato Gate — fonte canônica)
 
-| Caso | Resposta ao cliente |
+| Caso interno | Resposta pública |
 |---|---|
-| Sem observações | `empty` (sem valor; sem contagem auxiliar) |
-| `0 < n < 10` | `suppressed` + `reason: 'BELOW_MIN_GROUP'` + `minGroup: 10`; **sem** valor; **sem** `n` |
-| `n ≥ 10` | `ok` + **somente** o valor agregado necessário; **sem** `n` exato; **sem** denominador exato |
-| Taxas | Suprimir se numerador ou denominador &lt; 10 (regra por indicador) |
+| `support_n = 0` | `suppressed` (`reason: 'privacy_protection'`) — **mesmo** payload que 1–9 |
+| `support_n = 1–9` | Mesmo `suppressed` |
+| valor bruto &lt; 10 | Mesmo `suppressed` |
+| `support_n ≥ 10` e bruto ≥ 10 e anti-diff ok | `ok` + **banda** (`valueKind: 'count_band'`) — **nunca** número exato |
+| Falha / indicador indisponível (ex.: P05) | `error` `aggregate_unavailable` |
 
-### 6.4 Política obrigatória de `n` (**contrato desta SPEC**)
+Detalhe normativo: `SUP_D02_GATE_D02_0_DECISIONS.md` §§5.3 e 5.5.
 
-- **Não** retornar `n` exato em `ok`.
-- **Não** retornar contagem/denominador/aproximação da amostra em `suppressed`.
-- **Não** embutir bruto em erros, logs ou metadados.
-- Faixa/bucket/`n` arredondado: **decisão posterior** + testes de reidentificação; até lá, **bloqueio total** de `n` ao cliente.
+### 6.4 Política obrigatória
+
+- **Não** retornar `n`, `support_n`, `minGroup`, valor bruto ou contagem aproximada.
+- **Não** distinguir publicamente zero de baixa cardinalidade.
+- Bandas determinísticas; sem faixas adicionais/estimativas.
 - Qualquer exceção exige aprovação humana específica.
 
 ---
@@ -233,73 +238,47 @@ Frontend **não** é fronteira de segurança.
 
 | Controle | Classificação |
 |---|---|
-| Whitelist fechada de indicadores | **Obrigatório antes da exposição** (D02-A) |
+| Whitelist fechada de indicadores (P01–P04) | **Obrigatório antes da exposição** (D02-A) |
 | Whitelist de dimensões/filtros; rejeitar combos não autorizados | **Obrigatório (D02-A)** |
-| Granularidade temporal mínima | **Obrigatório (D02-A)**; valor exato = pendente no Gate D02-0 |
-| Categorias raras / células | **Obrigatório (D02-A)** |
-| Bloqueio de complemento previsível (total − subconjunto) | **Obrigatório (D02-A)** |
-| Sem `n`/denominador exato ao cliente | **Obrigatório (D02-A)** |
+| Granularidade temporal | **Decisão selecionada como proposta no Gate D02-0: mês civil UTC.** Vigência depende de reauditoria independente aprovada, merge documental e autorização posterior para D02-A. Um mês `YYYY-MM` por consulta; sem intervalos/dias/semanas/janelas móveis |
+| Categorias raras / células | **Obrigatório (D02-A)**; P05 diferido |
+| Bloqueio de complemento previsível | **Obrigatório (D02-A)** |
+| Sem `n`/contagem exata; bandas obrigatórias | **Obrigatório (D02-A)** — Gate |
 | Sem drill-down nominal | **Obrigatório** |
-| Cache segregado por tenant/escopo; só respostas já safe | **Obrigatório se houver cache** |
-| Logs sem valores/`n` sensíveis | **Obrigatório** |
-| Testes de consultas repetidas e pequenas diferenças | **Obrigatório (D02-A)** |
-| Consistência cartões/gráficos/export | **Obrigatório** |
-| Rate limit / buckets históricos | **Pendente (follow-up)**; enquanto pendente, whitelist + limiar + sem `n` + anti-complemento são os controles determinísticos |
+| Cache segregado; só respostas já safe; mesmo contrato | **Obrigatório se houver cache** |
+| Logs sem cardinalidade sensível | **Obrigatório** |
+| Testes de consultas repetidas e limites de banda | **Obrigatório (D02-A)** |
+| Consistência cartões/gráficos/API | **Obrigatório** |
+| Rate limit / DP avançado | **Pendente (follow-up)** |
 
 **Proibido:** transferir a primeira implantação desses controles para depois da UI.
 
 ---
 
-## 8. Contrato de dados (**proposta técnica**)
+## 8. Contrato de dados
 
-### 8.1 Entrada
+### 8.1 Fonte canônica única
 
-```ts
-/** Proposta — não vinculante como API final */
-type AggregateQuery = {
-  indicatorId: string;
-  period: { start: string; end: string };
-  /** Proibido no piloto de indicadores sem unidade histórica */
-  unitIds?: never;
-  filters?: Record<string, string | number | boolean>; // allowlisted
-};
-```
+O contrato cliente D02 é definido **somente** em:
 
-`organizationId` do payload **não** é autoridade.
+`SUP_D02_GATE_D02_0_DECISIONS.md` § **5.5.1** (`D02AggregateClientResult`).
 
-### 8.2 Saída (cliente D02 — sem `n`)
+Esta SPEC **não** mantém interface concorrente. Tipos D01 `SafeAggregateResult` (com `n`) **não** podem ser reutilizados inalterados no cliente D02.
 
-```ts
-type AggregateResponse =
-  | {
-      status: 'ok';
-      indicatorId: string;
-      value: number;
-      scope: { scopeType: 'organization'; unitId: null; unitApplicability: 'all_units' };
-    }
-  | {
-      status: 'empty';
-      indicatorId: string;
-      scope: { scopeType: 'organization'; unitId: null; unitApplicability: 'all_units' };
-    }
-  | {
-      status: 'suppressed';
-      indicatorId: string;
-      reason: 'BELOW_MIN_GROUP' | 'ANTI_DIFFERENTIAL';
-      minGroup: 10;
-      scope: { scopeType: 'organization'; unitId: null; unitApplicability: 'all_units' };
-    };
-```
+### 8.2 Entrada do piloto (resumo)
 
-Nota: o tipo D01 `SafeAggregateResult` permanece preparação histórica com `n`; o **contrato de resposta ao cliente do D02** **restringe** e **não** expõe `n`. Alinhamento de tipos na D02-B.
+Somente: `indicatorId` ∈ {P01…P04} + `month` `YYYY-MM`. Organização/papel pelo servidor. `unitId`/`unitIds`/filtros livres → erro seguro.
 
-### 8.3 Exemplos (não vinculantes)
+### 8.3 Exemplos (alinhados ao Gate; sem cardinalidade)
 
-- Amostra insuficiente → `{ status: 'suppressed', reason: 'BELOW_MIN_GROUP', minGroup: 10, … }` sem `value` e sem `n`.
-- Sem dados → `{ status: 'empty', … }`.
-- Liberado → `{ status: 'ok', value: 7, … }` sem `n`.
+- `support_n = 0` → `suppressed` / `privacy_protection` (sem `support_n`/`n`/`minGroup`).
+- `support_n = 1–9` → **exatamente o mesmo** `suppressed`.
+- `support_n = 10` e bruto 10 → `ok` / `band: '10_19'`.
+- `support_n = 11` e bruto 11 → `ok` / mesma banda `10_19`.
+- bruto &lt; 10 → mesmo `suppressed`.
+- falha / P05 → `error` / `aggregate_unavailable`.
 
----
+**Proibido:** exemplos com valor numérico exato ou estado público `empty`.
 
 ## 9. Arquitetura de segurança e modelo de privilégio
 
@@ -310,7 +289,7 @@ Nota: o tipo D01 `SafeAggregateResult` permanece preparação histórica com `n`
 | Auth / membership | Identidade e vínculo ativo |
 | Execução SQL | **Proposta canônica Gate:** RPC `SECURITY DEFINER` endurecida (`D02-0.1`) — **não** ratificar INVOKER; proposta **não** autoriza SQL ainda |
 | RLS / grants | Sem ampliar SELECT bruto; redesenho de `risk_results` (`D02-0.2`) |
-| Repository | Traduz erros; sem fallback mock; contrato cliente **sem** `n` |
+| Repository | Traduz erros; sem fallback mock; contrato canônico Gate (bandas; sem `n`) |
 | UI | Só após D02-A/B; feature flag server-side se construída cedo |
 | Auditoria mínima | Parte do D02 antes da exposição; **fail-closed** (`D02-0.8`) |
 
@@ -344,7 +323,7 @@ Portanto:
 | **C. Mecanismo equivalente** | **Rejeitada** como escolha atual (sem desenho) |
 | `SECURITY INVOKER` + ampliar SELECT | **Rejeitada** |
 
-Requisitos obrigatórios da DEFINER: owner sem login de cliente; `search_path` seguro; objetos qualificados; sem SQL dinâmico; `REVOKE` PUBLIC/anon; `GRANT EXECUTE` mínimo; authz no banco (não só JWT); tenant servidor; whitelist; retorno só contrato D02 sem linhas/`n`; auditoria + **fail-closed** antes da resposta. Detalhe normativo no documento do Gate.
+Requisitos obrigatórios da DEFINER: owner sem login de cliente; `search_path` seguro; objetos qualificados; sem SQL dinâmico; `REVOKE` PUBLIC/anon; `GRANT EXECUTE` mínimo; authz no banco (não só JWT); tenant servidor; whitelist; retorno só contrato Gate (bandas; sem linhas/`n`/`support_n`); auditoria + **fail-closed** antes da resposta. DEFINER **não** é automaticamente protegido por RLS — inventariar owner/`BYPASSRLS` remoto. Detalhe: documento do Gate.
 
 **Estado:** proposta documental — **não** autoriza D02-A nem migration; INVOKER **não** ratificado; ampliação de leitura bruta **proibida**.
 
@@ -381,13 +360,13 @@ Auditoria de consultas agregadas é **controle obrigatório do D02 antes da expo
 
 ### 12.2 Campos permitidos
 
-Incluir: usuário, organização, papel, indicador, fingerprint, dimensões/período canônicos, canal, estado (`ok`/`empty`/`suppressed`/`error`/`denied`), `policyVersion`, timestamp, correlação, resultado da autorização.
+Incluir: usuário, organização, papel, indicador, fingerprint, dimensões/período canônicos, canal, estado (`ok`/`suppressed`/`error`/`denied`), `policyVersion`, timestamp, correlação, resultado da autorização.
 
-**Não** incluir: linhas clínicas; IDs de pacientes; valores individuais; contagens suprimidas; denominadores; payload agregado completo; qualquer dado que facilite reidentificação.
+**Não** incluir: linhas clínicas; IDs de pacientes; valores individuais; `n`; `support_n`; valor bruto; contagens/bandas desnecessárias; denominadores; payload agregado completo.
 
 ### 12.3 Falha de persistência — **fail-closed** (`D02-0.8`)
 
-Se a auditoria obrigatória **não** puder ser persistida de modo durável **antes** da resposta que exporia agregado protegido: **não** devolver resultado; `error` genérico `AUDIT_FAILURE` sem revelar existência de dados; cache **não** contorna; **proibido** best-effort silencioso. Telemetria operacional segura permitida. Detalhe: Gate `D02-0.8`.
+Se a auditoria obrigatória **não** puder ser persistida de modo durável **antes** da resposta que exporia agregado protegido: **não** devolver resultado; `error` genérico sem revelar existência de dados; cache **não** contorna; **proibido** best-effort silencioso. Telemetria operacional segura permitida. Detalhe: Gate `D02-0.8`.
 
 ---
 
@@ -397,13 +376,13 @@ Nenhuma fatia iniciada ou autorizada. Ordem normativa futura: Gate `D02-0.9`.
 
 ### Gate D02-0 — antes de qualquer implementação
 
-Documento canônico: `SUP_D02_GATE_D02_0_DECISIONS.md` (**PROPOSTO**). Decisões propostas: privilégio DEFINER; deny `risk_results` bruto gerencial; catálogo `IND-D02-P01`…`P05`; escopo só `organization`; contrato sem `n`; anti-diff; auditoria; **fail-closed**; critérios de saída.
+Documento canônico: `SUP_D02_GATE_D02_0_DECISIONS.md` (**PROPOSTO**; 1ª auditoria reprovou; correções B1–B6/O1 neste PR; **pendente de reauditoria**).
 
-O Gate **não** está ratificado até auditoria independente + merge + critérios 12–14 de `D02-0.10`. **Merge documental futuro não autoriza D02-A.**
+O Gate **não** está ratificado até reauditoria + merge + critérios 12–14 de `D02-0.10`. **Merge documental futuro não autoriza D02-A.**
 
 ### D02-A — fundação segura (inseparável)
 
-Agregação server-side DEFINER; limiar 10; `suppressed` sem bruto; anti-diferencial; whitelists; grain mês UTC; sem nominal; sem `n` exato; auditoria mínima + **fail-closed**; testes negativos/abuso; modelo de privilégio **já** aprovado por ordem humana; piloto **organization** (sem vocabulário `organization_only`) para fontes sem unit histórica.
+Agregação server-side DEFINER; `support_n` ≥ 10; bandas; `suppressed` unificado (inclui zero); anti-diferencial; grain mês UTC; sem nominal; sem `n`/`empty`; auditoria + **fail-closed**; P01–P04 apenas; P05 diferido; piloto **organization**.
 
 ### D02-B — tipos e repository
 
@@ -425,7 +404,7 @@ Regressão; testes de inferência; isolamento; logs/cache; auditoria independent
 
 ## 14. Estratégia de testes (planejada)
 
-Limiar 9/10/11; empty; sem `n` no JSON; anti-diff e consultas repetidas; isolamento org; papéis negados; adulteração de org/units; ausência de colunas nominais; grants/privileges do modelo escolhido; repository; UI suppressed≠0; regressão D01; rollback.
+Limiar 9/10; bandas 19/20…499/500; `suppressed` idêntico para 0 e 1–9; sem `n`/`value` numérico; anti-diff; isolamento org; unitId rejeitado; P05 indisponível; grants do modelo escolhido; fail-closed; regressão D01; rollback.
 
 ---
 
@@ -438,15 +417,15 @@ Previsão `0019_…`; objetos conforme modelo de privilégio aprovado; UI demo a
 ## 16. Critérios de aceite globais
 
 1. Sem identificadores pessoais/clínicos na resposta.
-2. Limiar 10 no servidor; cliente não contorna; limiar **não suficiente** sozinho — anti-diff presente.
-3. `suppressed` sem valor/`n`; `empty` distinto; `ok` sem `n`/denominador.
+2. `support_n` ≥ 10 e bruto ≥ 10 no servidor; cliente não contorna; limiar **não suficiente** sozinho.
+3. `suppressed` unificado (inclui zero); `ok` só com **banda**; sem `empty`/`n`/valor numérico.
 4. Isolamento cross-org.
-5. Modelo de privilégio aprovado; sem SELECT bruto ampliado indevido; `risk_results` reavaliado.
-6. Piloto de pessoas só `organization`; `unit` rejeitado sem fonte histórica.
-7. Anti-diferencial e auditoria mínima **antes** da exposição.
+5. Modelo de privilégio aprovado por ordem humana; sem SELECT bruto ampliado; `risk_results` reavaliado; P05 diferido até então.
+6. Piloto só `organization`; `unitId`/`unitIds` rejeitados.
+7. Anti-diferencial e auditoria mínima **antes** da exposição; fail-closed.
 8. Sem fallback Supabase→mock.
 9. Regressão D01; rollback testado.
-10. Docs alinhados; auditoria independente por fatia.
+10. Docs alinhados; reauditoria independente.
 11. UI não trata demo como real na superfície liberada.
 12. Fase D não marcada concluída prematuramente.
 
@@ -456,21 +435,18 @@ Previsão `0019_…`; objetos conforme modelo de privilégio aprovado; UI demo a
 
 | Tema | Evidência | Decisão | Status | Bloqueia? |
 |---|---|---|---|---|
-| Limiar = 10 | Architecture/D01/types | Fixo server-side | **Ratificado** | Não |
-| Sem `n` exato ao cliente | Gate `D02-0.5` | Contrato D02 exclusivo | **Proposto no Gate** | Impl. sim |
-| Anti-diff antes da UI | Gate `D02-0.6` | Controles em D02-A | **Proposto no Gate** | Impl. sim |
-| Piloto só `organization` | Gate `D02-0.4` | Rejeitar `unitId`/`unitIds` com erro | **Proposto no Gate** | Unit-scoped |
-| INVOKER como solução D02 | Policies + Gate | **Não** ratificar | **Rejeitado** | — |
-| Modelo privilégio | Gate `D02-0.1` | DEFINER endurecida | **Proposto canônico** | Até auditoria+auth humana |
-| Catálogo piloto | Gate `D02-0.3` | `IND-D02-P01`…`P05` | **Proposto** | P05 precisa allowlist `level` |
-| Deny `risk_results` | Gate `D02-0.2` | Remover SELECT gerencial bruto | **Proposto** (SQL futuro) | D02-A |
-| Auditoria mínima + fail-closed | Gate `D02-0.7`/`0.8` | Antes da exposição; fail-closed | **Proposto** | D02-A |
-| Granularidade temporal | Gate `D02-0.6` | Mês civil **UTC** | **Proposto** | — |
-| `selectedUnitId` | Sempre null | Não necessário ao piloto org | Mantido | Não p/ piloto |
-| Unit histórica | Sem coluna no fato | Modelo futuro | Bloqueante p/ unit | Unit-scoped |
-| Rate limit / buckets DP | Gate | Orçamento 30/h; DP diferido | Parcial | — |
+| Limiar interno = 10 | Architecture/D01 | `support_n` / bruto | **Ratificado** (limiar) | Não |
+| Bandas; sem contagem exata; sem `empty` | Gate pós-auditoria | Contrato canônico | **Proposto** | Impl. sim |
+| Anti-diff antes da UI | Gate `D02-0.6` | Controles em D02-A | **Proposto** | Impl. sim |
+| Piloto só `organization` | Gate `D02-0.4` | Rejeitar unitIds | **Proposto** | Unit-scoped |
+| INVOKER como solução D02 | Policies + Gate | **Não** | **Rejeitado** | — |
+| Modelo privilégio | Gate `D02-0.1` | DEFINER endurecida | **Proposto** | Até reauditoria+auth humana |
+| Catálogo | Gate `D02-0.3` | P01–P04; **P05 diferido** | **Proposto** | P05 |
+| Deny `risk_results` | Gate `D02-0.2` | Remover SELECT gerencial | **Proposto** (SQL futuro) | D02-A |
+| Auditoria + fail-closed | Gate `D02-0.7`/`0.8` | Antes da exposição | **Proposto** | D02-A |
+| Granularidade | Gate | Mês civil UTC (proposta) | **Proposto** | — |
 | Exportação | Gate | **Proibida** no piloto | **Proposto** | — |
-| Auditoria independente do Gate + merge + ordem D02-A | Governança | Obrigatórias | **Pendente** | **D02-A** |
+| Reauditoria + merge + ordem D02-A | Governança | Obrigatórias | **Pendente** | **D02-A** |
 
 ---
 
@@ -494,9 +470,9 @@ Previsão `0019_…`; objetos conforme modelo de privilégio aprovado; UI demo a
 | Etapa | Estado |
 |---|---|
 | Inventário / planejamento / SPEC | Integrados via PR #27 (`547c60c…`) |
-| Gate D02-0 (decisões) | **PROPOSTO** em `SUP_D02_GATE_D02_0_DECISIONS.md` — draft / auditoria pendente |
-| Auditoria independente do Gate + merge | **Pendente** |
+| Gate D02-0 (decisões) | **PROPOSTO** — 1ª auditoria reprovou; correções B1–B6/O1 neste PR; **pendente de reauditoria** |
+| Reauditoria independente do Gate + merge | **Pendente** |
 | Autorização humana separada para D02-A | **Pendente** — **proibida** até lá |
 | D02-A…D / SUP-D03 / Fase E / #25 | Não iniciados / fora |
 
-> **Próximo ato:** auditoria independente exclusivamente documental do PR do Gate D02-0. **D02-A permanece proibido** até aprovação da auditoria, integração em `main` e autorização humana separada.
+> **Próximo ato:** nova auditoria independente documental do PR #28 (HEAD corretivo). **D02-A permanece proibido.**

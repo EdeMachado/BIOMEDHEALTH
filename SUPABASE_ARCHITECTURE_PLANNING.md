@@ -509,3 +509,13 @@ Registro **aditivo** (nao reescreve decisoes historicas de 2026-07-29/31).
 
 **Estado corrente:** consultar `PROJECT_MASTER_HANDOFF.md` e o documento do Gate.
 
+---
+
+## Adendo corretivo (2026-08-02) — Gate D02-0 pos-auditoria
+
+Aditivo: a 1a auditoria independente do PR #28 **reprovou** o pacote (B1–B6/O1). Correcoes documentais no mesmo PR **substituem** a decisao anterior que publicava contagens exatas como `value`, mantinha estado publico `empty` e rejeitava banding no piloto.
+
+**Politica selecionada como proposta (nao ratificada):** bandas obrigatorias P01–P04; `support_n` interno; `suppressed` unificado para zero e baixa cardinalidade; contrato canônico unico em `SUP_D02_GATE_D02_0_DECISIONS.md` §5.5.1; `IND-D02-P05` bloqueado/diferido; mes civil UTC; fail-closed preservado.
+
+**Nao autoriza** D02-A nem implementacao. Reauditoria independente obrigatoria.
+

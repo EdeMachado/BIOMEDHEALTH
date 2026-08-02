@@ -755,8 +755,8 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
    - Ciclo tecnico **D01-A/B/C/D**: **CONCLUIDO E INTEGRADO EM `main`**.
    - **D01-A (contratos/tipos)**: **CONCLUIDO** — `apps/web/src/domains/collective/` + `tests/unit/collectiveContracts.test.ts` (PR #20, `36c6d2…`).
    - **D01-B (schema/migration/RLS)**: **CONCLUIDO EM MAIN** — PR #21 merge `0591ee73d1504ee76095a432ed2237a429ff749d`; migration `0017` + rollback + validacao SQL; B1 corrigido (REVOKE helpers internos).
-   - **D01-C (repositories + UI gestao)**: **CONCLUIDO E MERGEADO EM MAIN** — PR #22 (2026-08-01), merge commit `907f3ed0d0a53484553debb917cfebdf2566ccb8`, HEAD incorporado `407928778d34c3d7662b0b5f009b403fcfabbb89`; consolidacao documental pos-merge **PR #23** (`b32aa121292fe68a28b4d1fb918bb077ad84d749` — baseline de partida do PR #24); module `apps/web/src/services/repositories/collective/` (mock + supabase + factory/flags); UI campanhas/planos; no D01-C as escritas multi-tabela retornavam `ATOMICITY_REQUIRED` (limitacao historica, superada pelo D01-D); sem fallback runtime Supabase→mock; overview/indicadores demo (**SUP-D02 nao iniciado**); `selectedUnitId` de sessao nao implementado.
-   - **D01-D (mutacoes atomicas)**: **CONCLUIDO E INTEGRADO EM MAIN** — PR #24 (2026-08-01), HEAD auditado `ebfd700cf3d55c74011dc2ef869845e3a0e8da26`, merge commit `00b7b3f727b5eaba2432640af4c5751db52d1f05`; baseline de partida historico `b32aa12…` (PR #23); migration `0018` + rollback + validacao SQL; RPCs SECURITY INVOKER: `collective_create_campaign_atomic`, `collective_update_campaign_atomic`, `collective_delete_campaign_atomic`, `collective_create_action_plan_atomic`, `collective_update_action_plan_atomic`, `collective_delete_action_plan_atomic`; capacidades: `selected_units` + audiencia singular na mesma transacao; UNIQUE `campaign_audiences_one_per_campaign`; transicoes de escopo (limpeza/reescrita de aplicabilidades); concorrencia `expected_version` + `FOR UPDATE`; RLS autoridade final; repository/UI persistem via RPC; codigo `ATOMICITY_REQUIRED` permanece disponivel para ops futuras nao implementadas. **SUP-D02 nao iniciado / nao autorizado**.
+   - **D01-C (repositories + UI gestao)**: **CONCLUIDO E MERGEADO EM MAIN** — PR #22 (2026-08-01), merge commit `907f3ed0d0a53484553debb917cfebdf2566ccb8`, HEAD incorporado `407928778d34c3d7662b0b5f009b403fcfabbb89`; consolidacao documental pos-merge **PR #23** (`b32aa121292fe68a28b4d1fb918bb077ad84d749` — baseline de partida do PR #24); module `apps/web/src/services/repositories/collective/` (mock + supabase + factory/flags); UI campanhas/planos; no D01-C as escritas multi-tabela retornavam `ATOMICITY_REQUIRED` (limitacao historica, superada pelo D01-D); sem fallback runtime Supabase→mock; overview/indicadores demo (**registro historico D01-C:** a epoca, implementacao SUP-D02 ainda inexistente); `selectedUnitId` de sessao nao implementado.
+   - **D01-D (mutacoes atomicas)**: **CONCLUIDO E INTEGRADO EM MAIN** — PR #24 (2026-08-01), HEAD auditado `ebfd700cf3d55c74011dc2ef869845e3a0e8da26`, merge commit `00b7b3f727b5eaba2432640af4c5751db52d1f05`; baseline de partida historico `b32aa12…` (PR #23); migration `0018` + rollback + validacao SQL; RPCs SECURITY INVOKER (padrao D01; **nao** transportar automaticamente como solucao do D02): `collective_create_campaign_atomic`, `collective_update_campaign_atomic`, `collective_delete_campaign_atomic`, `collective_create_action_plan_atomic`, `collective_update_action_plan_atomic`, `collective_delete_action_plan_atomic`; capacidades: `selected_units` + audiencia singular na mesma transacao; UNIQUE `campaign_audiences_one_per_campaign`; transicoes de escopo; concorrencia `expected_version` + `FOR UPDATE`; RLS autoridade final; repository/UI persistem via RPC; codigo `ATOMICITY_REQUIRED` permanece disponivel para ops futuras nao implementadas. **Registro historico do merge D01-D:** implementacao SUP-D02 ainda nao existia.
    - **Auditoria independente do PR #24 (HEAD `ebfd700…`):** veredito **B**; nenhum P1/P2; nenhum achado bloqueante; prova concorrente aprovada; rollback/reaplicacao `0018` aprovados; SQL D01-D aprovado.
    - **Dividas P3 de teste (D01-C) — ENCERRADAS pelos testes do D01-D:** (1) suite de integracao `ManagementActionPlanPage`; (2) assert negativo de ausencia de mensagem de sucesso apos falha de create; (3) cobertura Vitest `NO_ACTIVE_MEMBERSHIP` no repository coletivo.
    - **P3 residual distinto (nao bloqueante):** issue **#25** — mensagem de sucesso residual apos falha de close/delete na UI coletiva; **aberta**; follow-up isolado; **nao** confundir com as tres dividas P3 do D01-C.
@@ -771,7 +771,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 6. **Fora do escopo**:
    - envio real de notificacoes;
    - integracao externa de BI;
-   - indicadores/agregacoes/limiar completo (SUP-D02 — **nao iniciado**);
+   - indicadores/agregacoes/limiar completo (SUP-D02 — **implementacao nao iniciada** / nao autorizada; ver SPEC);
    - gap C01 agenda; SUP-B04; SUP-C04.2b;
    - correcao catch→mock (ticket proprio);
    - tornar prontuario pessoal propriedade da organizacao.
@@ -791,45 +791,35 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
    - campos indiretos permitindo inferencia individual;
    - absorcao indevida de dado pessoal pelo vinculo institucional.
 14. **Estimativa**: media
-15. **Ordem recomendada**: 13 — ciclo **D01-A/B/C/D** em main (PRs #20–#22; docs #23 `b32aa12…`; **#24** `00b7b3f…` / HEAD `ebfd700…`). Proximo candidato: planejamento tecnico controlado do **SUP-D02** (**nao iniciado** / **nao autorizado**). Issue **#25** = follow-up P3 isolado.
+15. **Ordem recomendada**: 13 — ciclo D01 em main. Proximo: **nova auditoria** do PR #27 (SPEC D02 corrigida); so entao Gate D02-0 / D02-A. Issue **#25** isolada.
 
 ### SUP-D02
 
 1. **Identificador**: `SUP-D02`
 2. **Titulo**: Camada de indicadores agregados e politicas anti-drilldown
 3. **Finalidade**: garantir leitura coletiva segura em BioMed Gestao.
-4. **Status**: **NAO INICIADO** — **nao** implementado e **nao** autorizado.
-   - Dependencia tecnica: integracao do D01-D em `main` — **SATISFEITA** (PR #24, merge `00b7b3f…`).
-   - Planejamento tecnico e autorizacao especifica — **ainda pendentes**.
-   - Esta entrada **nao** autoriza especificar nem implementar o SUP-D02.
-5. **Escopo incluido**:
-   - views/funcoes para agregacao por periodo/unidade/programa;
-   - regra de limite minimo de grupo = 10 individuos;
-   - resposta sem identificadores pessoais.
-6. **Fora do escopo**:
-   - analytics preditiva;
-   - dashboards externos.
-7. **Dependencias**: `SUP-D01` (limiar minimo de 10 ja aprovado).
-8. **Entidades/tabelas**:
-   - dados de `assessments`, `user_journeys`, `campaigns`, `action_plans` via agregacoes.
-9. **Perfis/permissoes afetados**: perfis gerenciais e auditoria de leitura.
-10. **RLS necessaria**:
-   - acesso somente a agregacoes autorizadas;
-   - bloquear consulta raw em tabelas individuais por perfis gerenciais.
-11. **Criterios de aceite**:
-   - pagina de gestao nao exibe usuario individual;
-   - filtros alteram apenas agregados permitidos;
-   - consultas com grupo <10 suprimidas automaticamente;
-   - combinacao de filtros nao permite reidentificacao.
-12. **Testes obrigatorios**:
-   - testes de anti-drilldown;
-   - negacao de consulta individual para gestao;
-   - E2E em BioMed Gestao sem dado nominal.
-13. **Riscos de seguranca/LGPD**:
-   - vazamento por combinacao de filtros;
-   - inferencia de individuo em grupos pequenos.
+4. **Status**:
+   - Dependencia tecnica D01: **SATISFEITA**.
+   - Planejamento / SPEC: produzidos em `SUP_D02_TECHNICAL_SPECIFICATION.md` (PR #27 draft); **correcao documental** dos P2/P3 da 1a auditoria; **nova auditoria independente obrigatoria** antes de aprovar.
+   - **Implementacao**: **NAO INICIADA** e **NAO AUTORIZADA**.
+   - **Bloqueantes para D02-A:** aprovacao formal da SPEC; nova auditoria; catalogo piloto; modelo de privilegio (INVOKER do D01 **nao** ratificado para D02; ampliar SELECT bruto **proibido**); deny/leitura de fontes (incl. `risk_results`); anti-diff + politica sem `n` exato; auditoria minima do D02 (nao adiavel integralmente a E01); timezone/granularidade; piloto `organization` para fontes sem unit historica.
+5. **Escopo incluido** (detalhe na SPEC D02 corrigida):
+   - agregacao server-side; limiar 10 (necessario, nao suficiente);
+   - `ok` / `empty` / `suppressed` **sem** `n`/denominador exato ao cliente;
+   - anti-diferencial **desde D02-A** (antes de qualquer exposicao);
+   - auditoria minima de consultas no D02;
+   - piloto organizacional para `assessments`/`user_journeys`/`risk_results` (sem `unit_id` no fato);
+   - faseamento Gate D02-0 → A → B → C → D.
+6. **Fora do escopo**: analytics preditiva; dashboards externos; nominal; D03; usar membership atual como unit historica; issue #25; implementacao neste PR.
+7. **Dependencias**: SUP-D01; limiar 10 ratificado; Gate D02-0.
+8. **Entidades/tabelas**: fontes candidatas sem unit historica comprovada — agregar so em escopo `organization` no piloto.
+9. **Perfis**: gerenciais/auditor leitura agregada; sem nominal.
+10. **RLS / privilegio**: decisao pendente bloqueante (DEFINER endurecida / pre-agregacao / equivalente); sem ampliar SELECT bruto para “fazer INVOKER funcionar”.
+11. **Criterios de aceite**: SPEC D02 §16.
+12. **Testes**: SPEC D02 §14 (planejados).
+13. **Riscos**: reidentificacao por diferenca/`n`; leitura bruta (`risk_results`); unit falsa via membership.
 14. **Estimativa**: grande
-15. **Ordem recomendada**: 14
+15. **Ordem**: apos nova auditoria do PR #27 + Gate D02-0 → D02-A…; **nao** iniciar D02-A antes.
 
 ### SUP-D03
 
@@ -997,8 +987,8 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 | 10 | SUP-C02 | C | C01 + aprovacao clinica | CONCLUIDA (PR #9) |
 | 11 | SUP-C03 | C | C02 | CONCLUIDA (PR #10; harden #11/#12) |
 | 12 | SUP-C04 | C | C01, C02, C03 | PARCIAL: C04.1+#13, C04.2a+#14, 42501+#15; C04.2b ENCERRADA SEM IMPLEMENTACAO |
-| 13 | SUP-D01 | D | SUP-A01 + decisao coletiva ratificada | Ciclo A/B/C/D em main (PRs #20–#24; merge D01-D `00b7b3f…`); D02 nao iniciado |
-| 14 | SUP-D02 | D | D01 (incl. D01-D) + limiar minimo 10 | Indicadores agregados sem nominal; dependencia D01-D satisfeita; planejamento/autorizacao pendentes |
+| 13 | SUP-D01 | D | SUP-A01 + decisao coletiva ratificada | Ciclo A/B/C/D em main (PRs #20–#24; docs #26 `89de7ab…`) |
+| 14 | SUP-D02 | D | D01 + limiar 10 | SPEC em correcao (PR #27); **implementacao nao iniciada**; Gate D02-0 bloqueante |
 | 15 | SUP-D03 | D | D01, D02 | Gestao em dados reais agregados |
 | 16 | SUP-E01 | E | A02, A03 + B/C/D | Auditoria append-only ativa |
 | 17 | SUP-E02 | E | A03, C04 residual, D03, E01 | Suite de seguranca completa |
@@ -1008,18 +998,17 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 
 ## Caminho critico recomendado
 
-`SUP-A01 -> … -> [aprovacao formal SPEC #19] -> [D01-A #20] -> [D01-B #21 merged] -> [D01-C #22 merged `907f3ed…`] -> [docs #23 `b32aa12…`] -> [D01-D #24 merged `00b7b3f…` / HEAD `ebfd700…`] -> [docs pos-merge D01-D] -> [planejamento controlado SUP-D02 — nao iniciado] -> …`
+`SUP-A01 -> … -> [D01 #20–#24] -> [docs #23/#26] -> [SPEC D02 PR #27 + correcao auditoria] -> [nova auditoria independente] -> [Gate D02-0] -> [D02-A… — nao autorizada ainda] -> SUP-D03 -> …`
 
 Notas de caminho:
 
-- SUP-C04.2b **nao** faz parte do caminho critico (encerrada sem implementacao).
-- SUP-B04 permanece aberta como alternativa posterior, apos revisao de fallback; **nao iniciar** agora.
-- Gap residual `unit_id` clinico (C01) e trilha **paralela**; nao bloqueia o D01 coletivo.
-- A aprovacao formal da SPEC **nao** autoriza automaticamente cada bloco; cada bloco exige ordem especifica.
-- Campanhas/planos conectados via D01-C; mutacoes atomicas (`selected_units`/audiencia/transicoes) no D01-D **integradas em `main`** (PR #24).
-- Overview/indicadores agregados permanecem demonstrativos ate autorizacao do **SUP-D02** (**nao iniciado** / **nao autorizado**; dependencia D01-D satisfeita; planejamento pendente).
-- Codigo `ATOMICITY_REQUIRED` permanece disponivel para operacoes futuras ainda nao implementadas; **nao** e mais limitacao permanente de `selected_units`/audiencia cobertos pelo D01-D.
-- Issue **#25** (P3 UI) e follow-up isolado; **nao** bloqueia o caminho critico.
+- SUP-C04.2b fora do caminho critico.
+- Overview/indicadores **demo** ate liberacao D02.
+- INVOKER do D01 **nao** e solucao ratificada do D02.
+- Anti-diff e auditoria minima **antes** da UI.
+- Piloto de pessoas: escopo `organization` sem unit historica.
+- Issue **#25** isolada.
+- Fonte: `SUP_D02_TECHNICAL_SPECIFICATION.md`.
 
 Justificativa:
 

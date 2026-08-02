@@ -481,3 +481,15 @@ Ordem planejada:
 - sem regressao visual das telas aprovadas;
 - sem uso de dados reais.
 
+---
+
+## Adendo de continuidade (2026-08-01) — SUP-D02
+
+Este documento permanece o registro **historico** das decisoes de 2026-07-29/31 (incluindo limiar >= 10 e gestao apenas agregada).
+
+**Estado corrente do projeto:** consultar `PROJECT_MASTER_HANDOFF.md` e `SUPABASE_IMPLEMENTATION_BACKLOG.md`.
+
+**SUP-D01:** ciclo A/B/C/D implementado em `main` (nao reler o item 11 de 2026-07-31 como bloqueio atual de implementacao do D01).
+
+**SUP-D02:** especificacao tecnica em `SUP_D02_TECHNICAL_SPECIFICATION.md` (planejamento autorizado). **Implementacao do D02 nao iniciada e nao autorizada** por este adendo.
+

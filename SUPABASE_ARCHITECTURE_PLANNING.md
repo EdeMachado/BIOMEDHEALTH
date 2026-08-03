@@ -495,27 +495,18 @@ Este documento permanece o registro **historico** das decisoes de 2026-07-29/31 
 
 ---
 
-## Adendo de continuidade (2026-08-02) — Gate D02-0
+## Adendo de continuidade (2026-08-03) — Gate D02-0 pos-merge e pos-reauditoria
 
-Registro **aditivo** (nao reescreve decisoes historicas de 2026-07-29/31).
+Registro **aditivo** (nao reescreve decisoes historicas de 2026-07-29/31 nem o adendo corretivo de 2026-08-02).
 
-**Documento canônico das decisoes propostas:** `SUP_D02_GATE_D02_0_DECISIONS.md` (status **PROPOSTO — PENDENTE DE AUDITORIA INDEPENDENTE E MERGE**).
+**Documento canonico:** `SUP_D02_GATE_D02_0_DECISIONS.md` — **Gate D02-0 documentalmente reauditatado e aprovado com P3**; desenho **proposto / especificado**; **Gate de implementacao nao liberado**; **D02-A nao autorizado**.
 
-**Baseline:** `origin/main` = `547c60c992c64b9f9038db1029734c3b9c9ec93e` (PR #27 mergeado).
+**Baseline de partida desta consolidacao:** `origin/main` = `b04b4b9e7d0302d2670ed6513c0587bb473ce1d1` (merge do PR #28). `547c60c…` permanece somente como base historica do PR #28 (merge do PR #27).
 
-**Propostas do Gate (nao sao implementacao):** RPC `SECURITY DEFINER` endurecida; deny de SELECT bruto gerencial em `risk_results`; catalogo piloto fechado; escopo `organization` apenas; contrato cliente sem `n`; anti-diferencial; auditoria minima; **fail-closed** se a auditoria nao persistir; ordem futura D02-0.9.
+**Historico:** 1a auditoria do PR #28 **reprovou** (B1–B6/O1); correcoes no HEAD `f9a4ca5…`; reauditoria SUP-D02-G0-RA **aprovada com P3** (2026-08-03); nenhum review formal no GitHub no momento auditado.
 
-**Explicitamente nao autorizado por este adendo:** D02-A, SQL/migration/policy, UI, SUP-D03, Fase E, acesso ao Supabase remoto.
+**Propostas do Gate (nao sao implementacao):** RPC `SECURITY DEFINER` endurecida; deny de SELECT bruto gerencial em `risk_results`; catalogo piloto fechado; escopo `organization` apenas; contrato cliente sem `n`; anti-diferencial (incl. A1–A3 como aceite futuro); auditoria minima; **fail-closed**; ordem futura D02-0.9.
+
+**Explicitamente nao autorizado por este adendo:** D02-A, SQL/migration `0019`/policy, UI, SUP-D03, Fase E. Criterio 14 permanece falso.
 
 **Estado corrente:** consultar `PROJECT_MASTER_HANDOFF.md` e o documento do Gate.
-
----
-
-## Adendo corretivo (2026-08-02) — Gate D02-0 pos-auditoria
-
-Aditivo: a 1a auditoria independente do PR #28 **reprovou** o pacote (B1–B6/O1). Correcoes documentais no mesmo PR **substituem** a decisao anterior que publicava contagens exatas como `value`, mantinha estado publico `empty` e rejeitava banding no piloto.
-
-**Politica selecionada como proposta (nao ratificada):** bandas obrigatorias P01–P04; `support_n` interno; `suppressed` unificado para zero e baixa cardinalidade; contrato canônico unico em `SUP_D02_GATE_D02_0_DECISIONS.md` §5.5.1; `IND-D02-P05` bloqueado/diferido; mes civil UTC; fail-closed preservado.
-
-**Nao autoriza** D02-A nem implementacao. Reauditoria independente obrigatoria.
-

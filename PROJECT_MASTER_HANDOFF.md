@@ -15,15 +15,16 @@ Este documento é a **fonte oficial de continuidade e governança** do projeto B
 |---|---|
 | Repositório | `EdeMachado/BIOMEDHEALTH` |
 | Branch de referência | `main` |
-| Baseline de `origin/main` | `547c60c992c64b9f9038db1029734c3b9c9ec93e` (merge commit do PR #27) |
-| Último merge documental integrado | **PR #27** — SPEC SUP-D02; HEAD `7258208d76d49c12bff56543a60d65a86bf0ee7d`; merge `547c60c…` (pais `89de7ab…` + `7258208…`) |
-| Merge documental anterior | PR #26 — consolidação pós-merge SUP-D01-D; merge `89de7ab…` |
+| Baseline de `origin/main` | `b04b4b9e7d0302d2670ed6513c0587bb473ce1d1` (merge commit do PR #28) |
+| Último merge documental integrado | **PR #28** — Gate D02-0; HEAD `f9a4ca5…`; merge `b04b4b9…` (pais `547c60c…` + `f9a4ca5…`) |
+| Base histórica do PR #28 | `547c60c992c64b9f9038db1029734c3b9c9ec93e` (merge do PR #27 — SPEC SUP-D02) |
+| Merge documental anterior | PR #27 — SPEC SUP-D02; HEAD `7258208…`; merge `547c60c…` |
 | Último merge funcional integrado | PR #24 — SUP-D01-D; HEAD auditado `ebfd700…`; merge `00b7b3f…` |
-| Change set em curso (não mergeado) | **PR #28** (draft) — Gate D02-0: 1ª auditoria independente **reprovou**; correções **B1–B6 e O1** neste PR; **pendente de reauditoria**; Gate **não** ratificado; D02-A **proibido** |
-| Data desta atualização do handoff | 2026-08-02 |
+| Change set de consolidação | Branch `docs/sup-d02-g0-post-merge` — consolidação pós-merge e pós-reauditoria (G1/O1-R/A1–A3); **não** autoriza D02-A |
+| Data desta atualização do handoff | 2026-08-03 |
 | Ratificação org×unit (coletivo) | PR #17 — decisão documental |
 | SPEC SUP-D01 | Aprovada; ciclo **A/B/C/D** em `main` (PRs #20–#24; docs #23/#26) |
-| SPEC SUP-D02 | Em `main` (PR #27). Gate: `SUP_D02_GATE_D02_0_DECISIONS.md` (**PROPOSTO**; correção pós-auditoria). Implementação **não** iniciada / **não** autorizada |
+| SPEC SUP-D02 / Gate | SPEC em `main` (PR #27). Gate: **documentalmente reauditatado e aprovado com P3**; desenho proposto / especificado; **Gate de implementação não liberado**; D02-A **não** autorizado |
 
 ## 3. Propósito do BIOMED HEALTH e módulos
 
@@ -47,7 +48,7 @@ Carteira por vínculo ativo, agenda, leitura de jornada vinculada, ficha clínic
 
 ### BioMed Gestão (institucional / coletivo)
 
-Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limiar interno 10 (**necessário, não suficiente**). D01 em `main`. Overview/indicadores **demo** até liberação autorizada do D02. Fontes: SPEC D02 + `SUP_D02_GATE_D02_0_DECISIONS.md` (**PROPOSTO** — não ratificado; 1ª auditoria reprovou; correções B1–B6/O1 em andamento no PR #28). Piloto: `organization`; bandas; sem `empty`/contagem exata; P05 diferido; rejeitar `unitId`/`unitIds`. Anti-diff, auditoria e **fail-closed** antes da exposição. Privilégio proposto: DEFINER endurecida. Implementação D02 **não** iniciada. Issue **#25** isolada.
+Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limiar interno 10 (**necessário, não suficiente**). D01 em `main`. Overview/indicadores **demo** até liberação autorizada do D02. Fontes: SPEC D02 + `SUP_D02_GATE_D02_0_DECISIONS.md` (**Gate D02-0 documentalmente reauditatado e aprovado com P3**; desenho proposto / especificado; Gate de implementação não liberado). Piloto: `organization`; bandas; sem `empty`/contagem exata; P05 diferido; rejeitar `unitId`/`unitIds`. Anti-diff, auditoria e **fail-closed** antes da exposição. Privilégio proposto: DEFINER endurecida. Implementação D02 **não** iniciada. Issue **#25** isolada.
 
 ## 4. Documentos canônicos
 
@@ -58,7 +59,7 @@ Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limia
 | `SUPABASE_ARCHITECTURE_PLANNING.md` | Decisões arquitetônicas Supabase (histórico + adendo de continuidade) |
 | `SUP_D01_TECHNICAL_SPECIFICATION.md` | SPEC gestão coletiva / escopo (D01) |
 | `SUP_D02_TECHNICAL_SPECIFICATION.md` | SPEC indicadores agregados / limiar / anti-drilldown (planejamento; impl. não autorizada) |
-| `SUP_D02_GATE_D02_0_DECISIONS.md` | Decisões canônicas propostas do Gate D02-0 (**PROPOSTO**; não autoriza D02-A) |
+| `SUP_D02_GATE_D02_0_DECISIONS.md` | Decisões canônicas do Gate D02-0 (**documentalmente reauditatado e aprovado com P3**; não autoriza D02-A) |
 | `IMPLEMENTATION_PLAN.md` | Plano MVP Demo 1 (legado complementar) |
 | `ARCHITECTURE.md` / `DATA_MODEL.md` | Fundação demo e modelo |
 | `PERMISSIONS_MATRIX.md` / `SECURITY_CHECKLIST.md` | Permissões e checklist |
@@ -104,7 +105,9 @@ Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limia
 
 **SUP-D01:** SPEC aprovada (PR #19). Ciclo técnico **D01-A/B/C/D concluído e integrado em `main`**. **D01-A** (PR #20). **D01-B** (PR #21) — migration `0017` + RLS/constraints; B1 corrigido. **D01-C** (PR #22, merge `907f3ed…`, HEAD `4079287…`) — repositories + UI campanhas/planos; consolidação documental pós-merge **PR #23** (`b32aa12…`, baseline de partida do PR #24). **D01-D** (PR #24, merge `00b7b3f…`, HEAD auditado `ebfd700…`) — migration `0018` + seis RPCs atômicas; consolidação documental **PR #26** (`89de7ab…`). Sem fallback Supabase→mock; AuthContext/guards/rotas/`selectedUnitId` intactos; C01/B04 fora; C04.2b encerrada.
 
-**SUP-D02:** SPEC integrada via PR #27 (`547c60c…`). Gate D02-0 (`SUP_D02_GATE_D02_0_DECISIONS.md`): **PROPOSTO**; 1ª auditoria independente **reprovou**; correções documentais **B1–B6 e O1** no PR #28 (mesmo draft); **pendente de reauditoria**; **não** ratificado. Contrato canônico: bandas; `support_n` interno; sem `empty`/contagem exata; P05 diferido. **Implementação não iniciada / não autorizada.** D02-A **proibido** até reauditoria + merge + ordem humana separada.
+**SUP-D02:** SPEC integrada via PR #27 (`547c60c…` — base histórica do PR #28). Gate D02-0: PR #28 **mergeado** (`b04b4b9…`); HEAD corretivo `f9a4ca5…` (B1–B6/P05); 1ª auditoria histórica **reprovou**; reauditoria SUP-D02-G0-RA **aprovada com P3** (2026-08-03); nenhum review formal no GitHub no momento auditado. Status: **Gate D02-0 documentalmente reauditatado e aprovado com P3**; desenho **proposto / especificado**; **Gate de implementação não liberado**; **D02-A não autorizado** (critério 14). Contrato canônico: bandas; `support_n` interno; sem `empty`/contagem exata; P05 diferido. **Implementação não iniciada / não autorizada.**
+
+**Ambiente HML (PROJECT-HML) — metadados sanitizados:** SUP-ENV-04 bootstrap e vínculo controlados; SUP-ENV-05 histórico inicialmente vazio e dry-run validado; SUP-ENV-06 migrations `0001`–`0018` aplicadas; histórico local/remoto sincronizado; seed **não** executado; migration `0019` **inexistente**; artefatos de bootstrap local (`config.toml` / pinagem CLI) **ainda não integrados** ao repositório. A aplicação de `0001`–`0018` **não** autoriza D02-A.
 
 **Auditoria independente do PR #24 (HEAD `ebfd700…`):** veredito **B**; nenhum P1/P2; nenhum achado bloqueante; prova concorrente (duas sessões) aprovada; rollback e reaplicação da `0018` aprovados; validação SQL D01-D aprovada. **Único P3 residual** (não bloqueante): mensagem de sucesso residual após falha de close/delete na UI coletiva — rastreado na issue **#25** (aberta; follow-up isolado).
 
@@ -119,7 +122,7 @@ Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limia
 | A — Acesso/tenant | Entregue na prática (A01–A04 via PRs de auth/access) | Detalhe fino no backlog |
 | B — Preventivo | Parcial | B01–B03 (+ filhas) entregues; **B04 aberto** (não iniciado) |
 | C — Clínico | Parcial | C01.1/C01.2, C02, C03 entregues; C01 parent com gap `unit_id`; C04 parcial (ver §8) |
-| D — Gestão agregada | Parcial | D01 em main; SPEC D02 em correção (PR #27); impl. D02 não iniciada; privilégio/anti-diff/Gate D02-0 pendentes; D03 não iniciado |
+| D — Gestão agregada | Parcial | D01 em main; SPEC D02 + Gate em main (PR #27/#28); Gate reauditatado com P3; impl. D02 não iniciada; critério 14 impede D02-A; D03 não iniciado |
 | E — Auditoria/hardening | Aberta | Após B/C/D maduros |
 
 ## 8. Tickets e fatias C04 — status consolidado
@@ -176,7 +179,7 @@ Inelegível a qualquer fallback de dados.
 | SUP-B04 | Aberto — revisar linguagem/mecanismos de fallback inseguro antes de executar |
 | SUP-C01 `unit_id` | Gap residual clínico **paralelo** (não bloqueia D01) |
 | SUP-D01 | Ciclo **A/B/C/D** concluído em `main` (PRs #20–#24; docs #23/#26 `89de7ab…`); P3 residual UI issue **#25** (aberta) |
-| SUP-D02…D03 | **D02:** SPEC corrigida no PR #27 (aguardando **nova** auditoria); impl. **não** iniciada / **não** autorizada; bloqueantes: privilégio, catálogo, deny raw, auditoria mínima, timezone. **D03:** não iniciado |
+| SUP-D02…D03 | **D02:** Gate documentalmente reauditatado e aprovado com P3; desenho proposto / especificado; Gate de implementação não liberado; D02-A **não** autorizado (critério 14); inventário remoto pendente; A1–A3 como aceite futuro. **D03:** não iniciado |
 | SUP-E01…E03 | Abertos (Fase E) |
 | Decisões humanas (jurídico/clínico/retention/rollout) | Pendentes (seção backlog) |
 
@@ -205,16 +208,16 @@ Inelegível a qualquer fallback de dados.
 
 ## 11. Decisões humanas pendentes
 
-Granularidade coletiva org×unit (**ratificada**). D01 concluído. PR #27 integrado. Gate D02-0 **PROPOSTO** no PR #28: 1ª auditoria **reprovou**; correções B1–B6/O1 (UTF-8, bandas, `suppressed` unificado, contrato canônico, mês UTC, governança, P05 diferido) **em elaboração/concluídas neste PR** — exigem **reauditoria**. Pendentes: reauditoria + merge + autorização humana para D02-A; inventário remoto. Issue **#25** isolada. SUP-D03 / Fase E não iniciados.
+Granularidade coletiva org×unit (**ratificada**). D01 concluído. PR #27/#28 integrados. Gate D02-0 **documentalmente reauditatado e aprovado com P3**; desenho proposto / especificado; **Gate de implementação não liberado**. Critério 14 **Não** → **D02-A não autorizado**. Pendentes: inventário remoto (owner/grants/`BYPASSRLS`); invalidação de cache para dados tardios; autorização humana separada. Issue **#25** isolada. SUP-D03 / Fase E não iniciados.
 
 ## 12. Sequência recomendada de retomada
 
 1. **Consolidação documental** — PR #16.
 2. **Ratificação org×unit** — PR #17.
 3. **SPEC SUP-D01** — PRs #18/#19; implementação A/B/C/D — PRs #20–#24; docs #23/#26.
-4. **SPEC SUP-D02** — PR #27 mergeado (`547c60c…`).
-5. **Gate D02-0** — PR #28 draft; 1ª auditoria reprovou; correções B1–B6/O1; **reauditoria** + merge; **D02-A proibido** até ordem humana separada.
-6. **Após Gate satisfeito + ordem humana:** D02-A → D02-B → D02-C → D02-D.
+4. **SPEC SUP-D02** — PR #27 mergeado (`547c60c…` — histórico).
+5. **Gate D02-0** — PR #28 mergeado (`b04b4b9…`); reauditoria aprovada com P3; consolidação pós-merge nesta branch.
+6. **Somente após critério 14 (ordem humana) + inventário remoto:** D02-A → D02-B → D02-C → D02-D (com A1–A3 no aceite).
 7. **Issue #25** — follow-up P3 isolado.
 8. **SUP-D03** — após D02 liberado; não iniciar agora.
 9. **SUP-B04** / gap C01 / **C04.2b** — governança vigente; C04.2b não iniciar.

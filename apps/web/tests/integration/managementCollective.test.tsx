@@ -417,6 +417,31 @@ describe('ManagementCampaignsPage SUP-D01-D', () => {
     await waitFor(() => expect(createCampaignMock).toHaveBeenCalledTimes(1));
   });
 
+
+  it('limpa sucesso anterior quando exclusao de campanha falha (issue #25)', async () => {
+    const user = userEvent.setup();
+    renderCampaigns();
+    await waitFor(() => expect(screen.getByText('Semana do Sono')).toBeInTheDocument());
+    await user.click(screen.getAllByRole('button', { name: 'Encerrar' })[0]);
+    await waitFor(() => {
+      expect(screen.getByText(/Campanha "Semana do Sono" encerrada/i)).toBeInTheDocument();
+    });
+    deleteCampaignMock.mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: false,
+        error: {
+          code: 'TECHNICAL_ERROR',
+          kind: 'technical',
+          transient: true,
+          message: 'delete failed',
+        },
+      })
+    );
+    await user.click(screen.getAllByRole('button', { name: 'Excluir' })[0]);
+    await waitFor(() => expect(screen.getByText(/Falha tecnica/i)).toBeInTheDocument());
+    expect(screen.queryByText(/Campanha "Semana do Sono" encerrada/i)).not.toBeInTheDocument();
+  });
+
   it('bloqueia escrita para auditor (leitura apenas)', async () => {
     setSession('auditor');
     renderCampaigns();
@@ -608,6 +633,31 @@ describe('ManagementActionPlanPage SUP-D01-D (P3 debt)', () => {
       data: { ...actionPlans[0], id: 'plan-dup', actionText: 'Acao dupla' },
     });
     await waitFor(() => expect(createActionPlanMock).toHaveBeenCalledTimes(1));
+  });
+
+
+  it('limpa sucesso anterior quando exclusao de plano falha (issue #25)', async () => {
+    const user = userEvent.setup();
+    renderActionPlans();
+    await waitFor(() => expect(screen.getByText('Reforcar comunicacao')).toBeInTheDocument());
+    await user.click(screen.getAllByRole('button', { name: 'Atualizar status' })[0]);
+    await waitFor(() => {
+      expect(screen.getByText(/Status atualizado para Concluido/i)).toBeInTheDocument();
+    });
+    deleteActionPlanMock.mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: false,
+        error: {
+          code: 'TECHNICAL_ERROR',
+          kind: 'technical',
+          transient: true,
+          message: 'delete failed',
+        },
+      })
+    );
+    await user.click(screen.getAllByRole('button', { name: 'Excluir' })[0]);
+    await waitFor(() => expect(screen.getByText(/Falha tecnica/i)).toBeInTheDocument());
+    expect(screen.queryByText(/Status atualizado para Concluido/i)).not.toBeInTheDocument();
   });
 
   it('bloqueia escrita para auditor', async () => {

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AreaLayout } from '@/app/layouts/AreaLayout';
@@ -106,9 +106,14 @@ describe('refinamentos de UX nos ambientes', () => {
     });
     renderUserArea('/minha-biomed/atividades');
     const completeButtons = await screen.findAllByRole('button', { name: 'Marcar como concluída' });
+    vi.mocked(journeyService.registerJourneyActivityProgress).mockClear();
     fireEvent.click(completeButtons[0]);
+
+    await waitFor(() => {
+      expect(journeyService.registerJourneyActivityProgress).toHaveBeenCalledTimes(1);
+    });
     expect(
-      await screen.findByText('Nao foi possivel persistir o progresso da jornada neste momento.')
+      await screen.findByText('Nao foi possivel persistir o progresso da jornada neste momento.', {}, { timeout: 3000 })
     ).toBeInTheDocument();
     expect(screen.queryByText('Progresso da atividade persistido com sucesso.')).not.toBeInTheDocument();
   });

@@ -454,6 +454,7 @@ export function ManagementCampaignsPage() {
     if (!bootstrap.ok || !context || submittingRef.current || !canWrite) return;
     submittingRef.current = true;
     setSubmitting(true);
+    setMessage('');
     setError(null);
     try {
       const result = await bootstrap.repository.updateCampaign(context, {
@@ -477,6 +478,7 @@ export function ManagementCampaignsPage() {
     if (!bootstrap.ok || !context || submittingRef.current || !canWrite) return;
     submittingRef.current = true;
     setSubmitting(true);
+    setMessage('');
     setError(null);
     try {
       const result = await bootstrap.repository.deleteCampaign(context, campaign.id);
@@ -902,6 +904,7 @@ export function ManagementActionPlanPage() {
           : plan.actionStatus;
     submittingRef.current = true;
     setSubmitting(true);
+    setMessage('');
     setError(null);
     try {
       const result = await bootstrap.repository.updateActionPlan(context, {
@@ -925,6 +928,7 @@ export function ManagementActionPlanPage() {
     if (!bootstrap.ok || !context || submittingRef.current || !canWrite) return;
     submittingRef.current = true;
     setSubmitting(true);
+    setMessage('');
     setError(null);
     try {
       const result = await bootstrap.repository.deleteActionPlan(context, plan.id);

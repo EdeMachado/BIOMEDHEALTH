@@ -2,17 +2,18 @@
 
 | Item | Valor |
 |---|---|
-| Status | **PROPOSTO — PENDENTE DE REAUDITORIA INDEPENDENTE E MERGE** |
-| Baseline | `origin/main` = `547c60c992c64b9f9038db1029734c3b9c9ec93e` (merge commit do PR #27) |
-| HEAD integrado do PR #27 | `7258208d76d49c12bff56543a60d65a86bf0ee7d` |
-| Branch deste registro | `docs/sup-d02-gate-d02-0` |
-| Data | 2026-08-02 |
+| Status | **Gate D02-0 documentalmente reauditatado e aprovado com P3** — desenho proposto / especificado; **Gate de implementação não liberado**; **D02-A não autorizado** |
+| Baseline de partida desta consolidação | `origin/main` = `b04b4b9e7d0302d2670ed6513c0587bb473ce1d1` (merge do PR #28) |
+| Base histórica do PR #28 | `547c60c992c64b9f9038db1029734c3b9c9ec93e` (merge do PR #27) |
+| HEAD corretivo do PR #28 | `f9a4ca5d85603178ab6e0ef51f7876e72fbd71dc` (B1–B6 e P05 corrigidos) |
+| Reauditoria SUP-D02-G0-RA | Aprovada com P3 em 2026-08-03 (sem P0/P1/P2); nenhum review formal registrado no GitHub no momento auditado |
+| Data | 2026-08-03 |
 | SPEC | `SUP_D02_TECHNICAL_SPECIFICATION.md` |
 | Implementação SUP-D02 / D02-A | **NÃO INICIADA** e **NÃO AUTORIZADA** por este documento |
 
 > **Nenhum conteúdo deste documento autoriza D02-A**, criação de SQL, migration, policy, RPC, UI ou acesso ao Supabase remoto.
-> Decisões abaixo são **propostas selecionadas** até reauditoria independente, merge em `main` e **autorização humana separada** para implementação.
-> Afirmações de schema/policies referem-se a **migrations e código no repositório**; o **estado remoto de produção não foi verificado**.
+> O Gate está **documentalmente reauditatado e aprovado com P3**; o desenho permanece **proposto / especificado**. **Gate de implementação não liberado** enquanto o critério 14 (autorização humana separada) for falso.
+> Afirmações de schema/policies referem-se a **migrations e código no repositório**; o **estado remoto de grants/owners/`BYPASSRLS` ainda não foi inventariado** (pendência pré-D02-A).
 > Este documento é a **fonte canônica única** do contrato cliente D02 e da política de cardinalidade do piloto.
 
 ---
@@ -351,13 +352,15 @@ Mesmo contrato em API, UI, gráfico e canal futuro. Cache hit e miss devolvem o 
 |---|---|
 | Limiar `k` / `support_n` | 10 (necessário ≠ suficiente) |
 | Whitelist | Só P01–P04 + mês `YYYY-MM` |
-| Grain | **Mês civil UTC** — decisão **selecionada como proposta** no Gate; vigência depende de reauditoria + merge + autorização D02-A |
+| Grain | **Mês civil UTC** — desenho proposto / especificado; **D02-A não autorizado** até critério 14 |
 | Normalização | Mês → `YYYY-MM`; indicador canônico; escopo org |
-| Fingerprint | `policyVersion\|actorId\|orgId\|role\|indicatorId\|month\|channel` |
+| Fingerprint | `policyVersion\|actorId\|orgId\|role\|indicatorId\|month\|channel` — `channel` é atributo de **auditoria**; **não** pode particionar nem reiniciar a cota (**A1**) |
 | Quase idênticas | Mesmo fingerprint em 15 min → mesma resposta safe + auditoria |
 | Complementares | Cliente não solicita; se surgirem vias internas, aplicar supressão complementar |
-| Séries / orçamento | Máx. 30 consultas / ator / org / hora |
-| Cache | Isolado por tenant, ator, papel, indicador, policyVersion, fingerprint; só respostas safe; **não** dispensa auditoria |
+| Séries / orçamento individual | Máx. 30 consultas / ator / org / hora (não substitui o orçamento organizacional) |
+| Orçamento organizacional (**A1**/**A3**) | Limite compartilhado e atômico por **organização + indicador + mês**, independente de ator, papel, sessão e canal; adicional ao limite individual; isolamento de autorização/cache por tenant/ator/papel **preservado** |
+| Indistinguibilidade 0 vs 1–9 (**A2**) | Mesmo status, schema, campos e **tamanho serializado**; D02-A deve definir e testar mitigação mensurável de diferenças temporais (sem prometer constant-time absoluto sem especificação técnica) |
+| Cache | Isolado por tenant, ator, papel, indicador, policyVersion, fingerprint; só respostas safe; **não** dispensa auditoria; invalidação para dados tardios em meses históricos = **pendência** pré-D02-A |
 | Logs | Sem `n`/`support_n`/valores brutos/bandas sensíveis além do necessário operacional sem cardinalidade |
 | Canais | Mesmo contrato; séries mensais e comparação de indicadores **não** podem refinar bandas nem distinguir zero de baixa cardinalidade |
 
@@ -424,12 +427,12 @@ Storage final (`audit_events` vs estrutura D02) **bloqueado** até inventário r
 | 8 | fail-closed definido | Selecionado como proposta |
 | 9 | Testes adversariais especificados | Selecionado como proposta |
 | 10 | Ordem de implementação definida | Selecionado como proposta |
-| 11 | Sem contradição documental (pós correção) | A validar na reauditoria |
-| 12 | Reauditoria independente **aprovada** | **Não** |
-| 13 | Documentos integrados em `main` | **Não** |
-| 14 | Autorização humana **separada** para D02-A | **Não** |
+| 11 | Sem contradição documental (pós correção) | **Sim** — coerência substantiva confirmada; O1-R corrigido |
+| 12 | Reauditoria independente **aprovada** | **Sim** — reauditoria aprovada com P3 em 2026-08-03 |
+| 13 | Documentos integrados em `main` | **Sim** — PR #28 integrado em `main` pelo merge `b04b4b9…` |
+| 14 | Autorização humana **separada** para D02-A | **Não** — inexiste autorização humana separada para D02-A |
 
-Enquanto 12–14 forem falsos: **Gate não libera D02-A**. Merge documental futuro **não** autoriza D02-A. Este PR permanece **não ratificado** enquanto draft.
+**O critério 14 impede D02-A**, mesmo com 11–13 satisfeitos. A autorização para aplicar migrations `0001`–`0018` no PROJECT-HML **não** constitui autorização para D02-A. **Gate de implementação não liberado.**
 
 ---
 
@@ -437,42 +440,42 @@ Enquanto 12–14 forem falsos: **Gate não libera D02-A**. Merge documental futu
 
 | # | Vetor | Controle | Resultado esperado | Camada | Teste futuro | Situação |
 |---|---|---|---|---|---|---|
-| 1 | Gestor SELECT bruto assessments/journeys | RLS + não ampliar | Sem linhas / deny | RLS | SQL | Decidido |
-| 2 | Execução direta RPC | Authz + revoke | Deny ou agregado safe | DEFINER | SQL/API | Decidido |
-| 3 | Adulterar organization_id | Tenant servidor | error genérico | DEFINER | API | Decidido |
-| 4 | Vínculo outra org | Membership | Deny | DEFINER | SQL | Decidido |
-| 5 | unitId | D02-0.4 | error seguro | RPC | API | Decidido |
-| 6 | unitIds | D02-0.4 | error seguro | RPC | API | Decidido |
-| 7 | support_n = 0 | Unificação | `suppressed` idêntico | Agg | Unidade | Decidido |
-| 8 | support_n = 1–9 | Unificação | Mesmo payload `suppressed` | Agg | Unidade | Decidido |
-| 9 | support_n = 10 / bruto 10 | Bandas | `ok` + `band: '10_19'` (nunca valor exato) | Agg | Unidade | Decidido |
-| 10 | support_n = 11 / bruto 11 | Bandas | `ok` + mesma banda `10_19` | Agg | Unidade | Decidido |
-| 11 | Quase idênticas | Fingerprint | Mesma resposta + audit | Anti-diff | Integração | Decidido |
-| 12 | Complementares | Proibição + suppress | Sem refinamento de banda | Anti-diff | Unidade | Decidido |
-| 13 | Período ≠ mês único | Grain | error | RPC | API | Decidido |
-| 14 | Subgrupos / filtros livres | Whitelist | error | RPC | API | Decidido |
-| 15 | Mudança de unidade no tempo | Sem unit no fato | Sem reclassificação | Escopo | Doc+SQL | Decidido |
-| 16 | Cartão ≠ gráfico ≠ API | Contrato único | Identidade | App | E2E | Decidido |
-| 17 | Cache cross-tenant | Isolamento | Miss / deny | Cache | Integração | Decidido |
-| 18 | Cache hit | Audit obrigatória | Mesmo contrato + audit | Audit | Integração | Decidido |
-| 19 | Falha persistência audit | fail-closed | error; sem dados | Audit | Chaos | Decidido |
-| 20 | Papel adulterado | Authz DB | Deny | DEFINER | SQL | Decidido |
-| 21 | Claim JWT desatualizado | Membership viva | Deny se inválido | DEFINER | SQL | Decidido |
-| 22 | Indicador fora do catálogo / P05 | Whitelist | `aggregate_unavailable` | RPC | API | Decidido |
-| 23 | Filtro fora da whitelist | Whitelist | error | RPC | API | Decidido |
-| 24 | Erro com metadados internos | Erros seguros | Sem detalhe interno | RPC | API | Decidido |
-| 25 | Exportação | Proibida piloto | Deny | API | API | Decidido |
-| 26 | Pedido de n / support_n / value numérico | Contrato | Campo ausente; sem canal | Contrato | Contrato | Decidido |
-| 27 | Corrida consulta×vínculo | Authz no instante | Deny ou escopo sem unit histórica | DEFINER | Concorrência | Decidido |
-| 28 | anon EXECUTE | Revoke | Deny | Grants | SQL | Decidido |
-| 29 | service_role indevido | Governança ops | Fora do app cliente | Ops | Checklist | Decidido |
-| 30 | Resposta antes do commit audit | fail-closed | Impossível por contrato | Audit | Integração | Decidido |
-| 31 | Limite bruto 9 / 10 | Bandas + support | 9→suppressed; 10→`10_19` | Agg | Unidade | Decidido |
-| 32 | Limite 19 / 20 | Bandas | `10_19` / `20_49` | Agg | Unidade | Decidido |
-| 33 | Limite 49 / 50 | Bandas | `20_49` / `50_99` | Agg | Unidade | Decidido |
-| 34 | Limite 99 / 100 | Bandas | `50_99` / `100_249` | Agg | Unidade | Decidido |
-| 35 | Limite 249 / 250 | Bandas | `100_249` / `250_499` | Agg | Unidade | Decidido |
-| 36 | Limite 499 / 500 | Bandas | `250_499` / `500_plus` | Agg | Unidade | Decidido |
+| 1 | Gestor SELECT bruto assessments/journeys | RLS + não ampliar | Sem linhas / deny | RLS | SQL | Proposto / especificado |
+| 2 | Execução direta RPC | Authz + revoke | Deny ou agregado safe | DEFINER | SQL/API | Proposto / especificado |
+| 3 | Adulterar organization_id | Tenant servidor | error genérico | DEFINER | API | Proposto / especificado |
+| 4 | Vínculo outra org | Membership | Deny | DEFINER | SQL | Proposto / especificado |
+| 5 | unitId | D02-0.4 | error seguro | RPC | API | Proposto / especificado |
+| 6 | unitIds | D02-0.4 | error seguro | RPC | API | Proposto / especificado |
+| 7 | support_n = 0 | Unificação | `suppressed` idêntico | Agg | Unidade | Proposto / especificado |
+| 8 | support_n = 1–9 | Unificação | Mesmo payload `suppressed` | Agg | Unidade | Proposto / especificado |
+| 9 | support_n = 10 / bruto 10 | Bandas | `ok` + `band: '10_19'` (nunca valor exato) | Agg | Unidade | Proposto / especificado |
+| 10 | support_n = 11 / bruto 11 | Bandas | `ok` + mesma banda `10_19` | Agg | Unidade | Proposto / especificado |
+| 11 | Quase idênticas | Fingerprint | Mesma resposta + audit | Anti-diff | Integração | Proposto / especificado |
+| 12 | Complementares | Proibição + suppress | Sem refinamento de banda | Anti-diff | Unidade | Proposto / especificado |
+| 13 | Período ≠ mês único | Grain | error | RPC | API | Proposto / especificado |
+| 14 | Subgrupos / filtros livres | Whitelist | error | RPC | API | Proposto / especificado |
+| 15 | Mudança de unidade no tempo | Sem unit no fato | Sem reclassificação | Escopo | Doc+SQL | Proposto / especificado |
+| 16 | Cartão ≠ gráfico ≠ API | Contrato único | Identidade | App | E2E | Proposto / especificado |
+| 17 | Cache cross-tenant | Isolamento | Miss / deny | Cache | Integração | Proposto / especificado |
+| 18 | Cache hit | Audit obrigatória | Mesmo contrato + audit | Audit | Integração | Proposto / especificado |
+| 19 | Falha persistência audit | fail-closed | error; sem dados | Audit | Chaos | Proposto / especificado |
+| 20 | Papel adulterado | Authz DB | Deny | DEFINER | SQL | Proposto / especificado |
+| 21 | Claim JWT desatualizado | Membership viva | Deny se inválido | DEFINER | SQL | Proposto / especificado |
+| 22 | Indicador fora do catálogo / P05 | Whitelist | `aggregate_unavailable` | RPC | API | Proposto / especificado |
+| 23 | Filtro fora da whitelist | Whitelist | error | RPC | API | Proposto / especificado |
+| 24 | Erro com metadados internos | Erros seguros | Sem detalhe interno | RPC | API | Proposto / especificado |
+| 25 | Exportação | Proibida piloto | Deny | API | API | Proposto / especificado |
+| 26 | Pedido de n / support_n / value numérico | Contrato | Campo ausente; sem canal | Contrato | Contrato | Proposto / especificado |
+| 27 | Corrida consulta×vínculo | Authz no instante | Deny ou escopo sem unit histórica | DEFINER | Concorrência | Proposto / especificado |
+| 28 | anon EXECUTE | Revoke | Deny | Grants | SQL | Proposto / especificado |
+| 29 | service_role indevido | Governança ops | Fora do app cliente | Ops | Checklist | Proposto / especificado |
+| 30 | Resposta antes do commit audit | fail-closed | Impossível por contrato | Audit | Integração | Proposto / especificado |
+| 31 | Limite bruto 9 / 10 | Bandas + support | 9→suppressed; 10→`10_19` | Agg | Unidade | Proposto / especificado |
+| 32 | Limite 19 / 20 | Bandas | `10_19` / `20_49` | Agg | Unidade | Proposto / especificado |
+| 33 | Limite 49 / 50 | Bandas | `20_49` / `50_99` | Agg | Unidade | Proposto / especificado |
+| 34 | Limite 99 / 100 | Bandas | `50_99` / `100_249` | Agg | Unidade | Proposto / especificado |
+| 35 | Limite 249 / 250 | Bandas | `100_249` / `250_499` | Agg | Unidade | Proposto / especificado |
+| 36 | Limite 499 / 500 | Bandas | `250_499` / `500_plus` | Agg | Unidade | Proposto / especificado |
 
 Séries mensais, repetição, cache e canais diferentes **não** podem refinar bandas nem distinguir zero de baixa cardinalidade.
 
@@ -480,7 +483,8 @@ Séries mensais, repetição, cache e canais diferentes **não** podem refinar b
 
 ## 7. Declarações uniformes
 
-- Gate **não ratificado** enquanto o PR estiver draft / sem reauditoria + merge.
+- **Gate D02-0 documentalmente reauditatado e aprovado com P3**; desenho **proposto / especificado**; **Gate de implementação não liberado**; **D02-A não autorizado**.
+- PR #28 **mergeado** em `main` (`b04b4b9…`); 1ª auditoria histórica **reprovou**; B1–B6 e P05 corrigidos no HEAD `f9a4ca5…`; reauditoria pós-merge **aprovada com P3**; nenhum review formal no GitHub no momento auditado.
 - D02-A **não** iniciado; implementação **não** autorizada.
 - `SECURITY INVOKER` **não** justifica ampliação de SELECT bruto.
 - Gestor **não** deve possuir leitura bruta de fatos pessoais.
@@ -496,17 +500,18 @@ Séries mensais, repetição, cache e canais diferentes **não** podem refinar b
 
 ## 8. Bloqueios remanescentes
 
-1. Reauditoria independente + merge deste pacote.
-2. Autorização humana separada para D02-A.
-3. Inventário remoto (policies/grants/`BYPASSRLS`/owner).
-4. Redesign SQL do acesso bruto a `risk_results`.
-5. Storage final da auditoria.
-6. `IND-D02-P05` e contrato multicélula.
-7. Pré-agregação, percentuais, elegibilidade, unit histórica, exportação — diferidos.
-8. SUP-D03 e Fase E — não iniciados.
+1. Autorização humana separada para D02-A (**critério 14**).
+2. Inventário remoto (policies/grants/`BYPASSRLS`/owner) — verificação remota obrigatória antes do D02-A.
+3. Aceite futuro D02-A deve incorporar **A1** (cota organizacional independente de canal), **A2** (indistinguibilidade serializada + mitigação temporal mensurável) e **A3** (orçamento anti-diferencial organizacional compartilhado/atômico, com testes de concorrência).
+4. Invalidação de cache para dados tardios em meses históricos.
+5. Redesign SQL do acesso bruto a `risk_results`.
+6. Storage final da auditoria.
+7. `IND-D02-P05` e contrato multicélula.
+8. Pré-agregação, percentuais, elegibilidade, unit histórica, exportação — diferidos.
+9. SUP-D03 e Fase E — não iniciados.
 
 ---
 
 ## 9. Próximo ato (não executar aqui)
 
-Submeter o HEAD do PR #28 a **nova auditoria independente documental**. D02-A permanece **proibido** até: aprovação da reauditoria, integração em `main`, e autorização humana separada.
+Obter **autorização humana separada** para D02-A (critério 14), precedida do inventário remoto de owner/grants/`BYPASSRLS`. A aprovação documental e a aplicação de `0001`–`0018` no PROJECT-HML **não** autorizam D02-A nem a migration `0019`.

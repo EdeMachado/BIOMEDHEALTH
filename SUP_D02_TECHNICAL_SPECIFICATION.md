@@ -4,15 +4,16 @@
 |---|---|
 | Ticket | `SUP-D02` |
 | Título | Camada de indicadores agregados e políticas anti-drilldown |
-| Status deste documento | **PLANEJAMENTO / ESPECIFICAÇÃO** — Gate D02-0 **PROPOSTO** (`SUP_D02_GATE_D02_0_DECISIONS.md`); 1ª auditoria **reprovou**; correções B1–B6/O1 neste PR; **pendente de reauditoria**; **não** ratificado enquanto draft |
-| Baseline corrente | `origin/main` = `547c60c992c64b9f9038db1029734c3b9c9ec93e` (merge PR #27) |
-| Gate D02-0 (canônico) | `SUP_D02_GATE_D02_0_DECISIONS.md` — **PROPOSTO**; contrato cliente canônico único; bandas; `support_n` interno; sem `empty`; P05 diferido; DEFINER; fail-closed |
+| Status deste documento | **PLANEJAMENTO / ESPECIFICAÇÃO** — Gate D02-0 **documentalmente reauditatado e aprovado com P3**; desenho **proposto / especificado**; **Gate de implementação não liberado**; **D02-A não autorizado** |
+| Baseline corrente | `origin/main` = `b04b4b9e7d0302d2670ed6513c0587bb473ce1d1` (merge PR #28; consolidação documental pós-reauditoria) |
+| Base histórica do PR #28 | `547c60c992c64b9f9038db1029734c3b9c9ec93e` (merge PR #27) |
+| Gate D02-0 (canônico) | `SUP_D02_GATE_D02_0_DECISIONS.md` — reauditatado com P3; contrato cliente canônico único; bandas; `support_n` interno; sem `empty`; P05 diferido; DEFINER (proposta); fail-closed |
 | Dependência D01 | **Satisfeita** — ciclo SUP-D01-A/B/C/D em `main` (PRs #20–#24; docs #23/#26/#27) |
-| Implementação | **NÃO INICIADA** e **NÃO AUTORIZADA** por este documento nem pelo Gate proposto |
+| Implementação | **NÃO INICIADA** e **NÃO AUTORIZADA** por este documento nem pelo Gate |
 | Documento mestre | `PROJECT_MASTER_HANDOFF.md` |
 | Backlog | `SUPABASE_IMPLEMENTATION_BACKLOG.md` (SUP-D02) |
 | SPEC relacionada | `SUP_D01_TECHNICAL_SPECIFICATION.md` (contratos de escopo + `SafeAggregateResult` preparado no D01 — **não** reutilizar `n` no cliente D02) |
-| Data | 2026-08-02 |
+| Data | 2026-08-03 |
 
 > **Natureza:** especificação técnica para implementação **futura** em fatias controladas.
 > **Esta SPEC não implementa o SUP-D02.** Não cria SQL, RPCs, repositories, UI nem testes.
@@ -46,8 +47,9 @@
 
 ### 1.2 Estado canônico
 
-- Planejamento e especificação: **autorizados** (documento); PR #27 **integrado** em `main` (`547c60c…`).
-- Gate D02-0: **PROPOSTO** em `SUP_D02_GATE_D02_0_DECISIONS.md` — 1ª auditoria independente **reprovou**; correções documentais B1–B6/O1 neste PR; **pendente de reauditoria** + merge; **não ratificado** enquanto draft.
+- Planejamento e especificação: **autorizados** (documento); PR #27 **integrado** em `main` (`547c60c…` — base histórica do PR #28).
+- Gate D02-0: **documentalmente reauditatado e aprovado com P3** (SUP-D02-G0-RA, 2026-08-03); PR #28 **mergeado** (`b04b4b9…`); 1ª auditoria histórica **reprovou**; B1–B6/P05 corrigidos no HEAD `f9a4ca5…`; desenho **proposto / especificado**; **Gate de implementação não liberado**.
+- Critérios `D02-0.10`: 11–13 **Sim**; 14 **Não** — o critério 14 **impede D02-A**.
 - Implementação: **não iniciada** / **não autorizada**.
 - Fatias D02-A…D: **não iniciadas** / **não autorizadas**.
 - SUP-D03 / Fase E: **não iniciados**.
@@ -240,7 +242,7 @@ Detalhe normativo: `SUP_D02_GATE_D02_0_DECISIONS.md` §§5.3 e 5.5.
 |---|---|
 | Whitelist fechada de indicadores (P01–P04) | **Obrigatório antes da exposição** (D02-A) |
 | Whitelist de dimensões/filtros; rejeitar combos não autorizados | **Obrigatório (D02-A)** |
-| Granularidade temporal | **Decisão selecionada como proposta no Gate D02-0: mês civil UTC.** Vigência depende de reauditoria independente aprovada, merge documental e autorização posterior para D02-A. Um mês `YYYY-MM` por consulta; sem intervalos/dias/semanas/janelas móveis |
+| Granularidade temporal | **Desenho proposto / especificado no Gate D02-0: mês civil UTC.** Vigência de implementação depende de autorização humana (critério 14) e inventário remoto. Um mês `YYYY-MM` por consulta; sem intervalos/dias/semanas/janelas móveis |
 | Categorias raras / células | **Obrigatório (D02-A)**; P05 diferido |
 | Bloqueio de complemento previsível | **Obrigatório (D02-A)** |
 | Sem `n`/contagem exata; bandas obrigatórias | **Obrigatório (D02-A)** — Gate |
@@ -376,13 +378,20 @@ Nenhuma fatia iniciada ou autorizada. Ordem normativa futura: Gate `D02-0.9`.
 
 ### Gate D02-0 — antes de qualquer implementação
 
-Documento canônico: `SUP_D02_GATE_D02_0_DECISIONS.md` (**PROPOSTO**; 1ª auditoria reprovou; correções B1–B6/O1 neste PR; **pendente de reauditoria**).
+Documento canônico: `SUP_D02_GATE_D02_0_DECISIONS.md` (**Gate D02-0 documentalmente reauditatado e aprovado com P3**; desenho proposto / especificado).
 
-O Gate **não** está ratificado até reauditoria + merge + critérios 12–14 de `D02-0.10`. **Merge documental futuro não autoriza D02-A.**
+**Gate de implementação não liberado** enquanto o critério 14 for falso. Critérios 11–13 satisfeitos; **D02-A não autorizado**. A aplicação de `0001`–`0018` no PROJECT-HML **não** autoriza D02-A.
 
 ### D02-A — fundação segura (inseparável)
 
 Agregação server-side DEFINER; `support_n` ≥ 10; bandas; `suppressed` unificado (inclui zero); anti-diferencial; grain mês UTC; sem nominal; sem `n`/`empty`; auditoria + **fail-closed**; P01–P04 apenas; P05 diferido; piloto **organization**.
+
+**Requisitos normativos de aceite futuro (P3 A1–A3 — sem alegar implementação):**
+- **A1 — canais:** `channel` permanece atributo de auditoria; **não** pode particionar/reiniciar a cota. Deve existir limite organizacional por organização + indicador + mês, independente de ator, papel, sessão e canal, **adicional** ao limite individual.
+- **A2 — indistinguibilidade:** zero e `1–9` com mesmo status, schema, campos e tamanho serializado; D02-A deve definir/testar mitigação mensurável de diferenças temporais (sem prometer constant-time absoluto sem especificação).
+- **A3 — múltiplos atores:** orçamento anti-diferencial organizacional compartilhado e atômico entre gestores, papéis, sessões e canais, com testes de concorrência e consultas coordenadas.
+
+Isolamento de autorização/cache por tenant/ator/papel permanece; a cota organizacional é **adicional**, não substituta. Pendências pré-D02-A: inventário owner/grants/`BYPASSRLS`; invalidação de cache para dados tardios em meses históricos.
 
 ### D02-B — tipos e repository
 
@@ -425,7 +434,7 @@ Previsão `0019_…`; objetos conforme modelo de privilégio aprovado; UI demo a
 7. Anti-diferencial e auditoria mínima **antes** da exposição; fail-closed.
 8. Sem fallback Supabase→mock.
 9. Regressão D01; rollback testado.
-10. Docs alinhados; reauditoria independente.
+10. Docs alinhados; Gate documentalmente reauditatado; critério 14 e inventário remoto antes de D02-A.
 11. UI não trata demo como real na superfície liberada.
 12. Fase D não marcada concluída prematuramente.
 
@@ -440,13 +449,15 @@ Previsão `0019_…`; objetos conforme modelo de privilégio aprovado; UI demo a
 | Anti-diff antes da UI | Gate `D02-0.6` | Controles em D02-A | **Proposto** | Impl. sim |
 | Piloto só `organization` | Gate `D02-0.4` | Rejeitar unitIds | **Proposto** | Unit-scoped |
 | INVOKER como solução D02 | Policies + Gate | **Não** | **Rejeitado** | — |
-| Modelo privilégio | Gate `D02-0.1` | DEFINER endurecida | **Proposto** | Até reauditoria+auth humana |
-| Catálogo | Gate `D02-0.3` | P01–P04; **P05 diferido** | **Proposto** | P05 |
-| Deny `risk_results` | Gate `D02-0.2` | Remover SELECT gerencial | **Proposto** (SQL futuro) | D02-A |
-| Auditoria + fail-closed | Gate `D02-0.7`/`0.8` | Antes da exposição | **Proposto** | D02-A |
-| Granularidade | Gate | Mês civil UTC (proposta) | **Proposto** | — |
-| Exportação | Gate | **Proibida** no piloto | **Proposto** | — |
-| Reauditoria + merge + ordem D02-A | Governança | Obrigatórias | **Pendente** | **D02-A** |
+| Modelo privilégio | Gate `D02-0.1` | DEFINER endurecida | **Proposto / especificado** | Até auth humana (critério 14) |
+| Catálogo | Gate `D02-0.3` | P01–P04; **P05 diferido** | **Proposto / especificado** | P05 |
+| Deny `risk_results` | Gate `D02-0.2` | Remover SELECT gerencial | **Proposto / especificado** (SQL futuro) | D02-A |
+| Auditoria + fail-closed | Gate `D02-0.7`/`0.8` | Antes da exposição | **Proposto / especificado** | D02-A |
+| Granularidade | Gate | Mês civil UTC | **Proposto / especificado** | — |
+| Exportação | Gate | **Proibida** no piloto | **Proposto / especificado** | — |
+| Critérios 11–13 | Governança | Reauditoria + merge | **Sim** | Não (doc) |
+| Critério 14 / ordem D02-A | Governança | Autorização humana separada | **Não** — **impede D02-A** | **D02-A** |
+| A1–A3 (cota org / indistinguibilidade / multi-ator) | Reauditoria P3 | Aceite futuro D02-A | **Normativo futuro** | Impl. sim |
 
 ---
 
@@ -469,10 +480,10 @@ Previsão `0019_…`; objetos conforme modelo de privilégio aprovado; UI demo a
 
 | Etapa | Estado |
 |---|---|
-| Inventário / planejamento / SPEC | Integrados via PR #27 (`547c60c…`) |
-| Gate D02-0 (decisões) | **PROPOSTO** — 1ª auditoria reprovou; correções B1–B6/O1 neste PR; **pendente de reauditoria** |
-| Reauditoria independente do Gate + merge | **Pendente** |
-| Autorização humana separada para D02-A | **Pendente** — **proibida** até lá |
+| Inventário / planejamento / SPEC | Integrados via PR #27 (`547c60c…` — histórico) |
+| Gate D02-0 (decisões) | PR #28 mergeado (`b04b4b9…`); HEAD corretivo `f9a4ca5…`; **documentalmente reauditatado e aprovado com P3** |
+| Critérios 11–13 | **Sim** |
+| Critério 14 / Autorização humana D02-A | **Não** — **D02-A não autorizado**; Gate de implementação não liberado |
 | D02-A…D / SUP-D03 / Fase E / #25 | Não iniciados / fora |
 
-> **Próximo ato:** nova auditoria independente documental do PR #28 (HEAD corretivo). **D02-A permanece proibido.**
+> **Próximo ato:** autorização humana separada para D02-A (após inventário remoto). **D02-A permanece proibido.**

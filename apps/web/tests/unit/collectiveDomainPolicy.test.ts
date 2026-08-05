@@ -22,7 +22,7 @@ describe('collective domain policy', () => {
   it('nao expoe detalhes internos em erros de isolamento', () => {
     const message = sanitizeCollectiveMessage(
       collectiveError('CROSS_TENANT_DATA', {
-        cause: { source: 'postgres', code: '42501', message: 'private table name' },
+        cause: { source: 'repository', code: '42501', message: 'private table name' },
       })
     );
 

@@ -106,6 +106,7 @@ describe('refinamentos de UX nos ambientes', () => {
     });
     renderUserArea('/minha-biomed/atividades');
     const completeButtons = await screen.findAllByRole('button', { name: 'Marcar como concluída' });
+    vi.mocked(journeyService.registerJourneyActivityProgress).mockClear();
     fireEvent.click(completeButtons[0]);
 
     await waitFor(() => {

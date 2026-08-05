@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router';
+import { NavLink, Outlet, type NavLinkRenderProps } from 'react-router';
 import { LayoutDashboard, CalendarDays, ClipboardList, UserRound, Activity, ShieldCheck, Menu, X, LogOut, type LucideIcon } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/services/auth/AuthContext';
@@ -87,7 +87,7 @@ export function AreaLayout({ area, title }: AreaLayoutProps) {
                   key={item.to}
                   to={item.to}
                   onClick={() => setMobileOpen(false)}
-                  className={({ isActive }) =>
+                  className={({ isActive }: NavLinkRenderProps) =>
                     `focus-ring flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${
                       isActive
                         ? 'bg-[var(--primary)] text-[var(--primary-foreground)]'

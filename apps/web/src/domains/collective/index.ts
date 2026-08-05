@@ -24,3 +24,10 @@ export type {
   CreateCampaignStructuralFailure,
   CreateCampaignStructuralResult,
 } from './guards';
+
+export {
+  canWriteCollective,
+  formatCollectivePeriod,
+  formatCollectiveScopeLabel,
+  sanitizeCollectiveMessage,
+} from './policy';

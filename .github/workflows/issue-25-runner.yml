@@ -1,0 +1,205 @@
+name: Issue 25 isolated runner
+
+on:
+  push:
+    branches:
+      - feat/demo-visual-functional-refinement
+    paths:
+      - .github/workflows/issue-25-runner.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-test-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/management-clear-stale-success-message
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.0
+          cache: npm
+
+      - name: Apply scoped UI and integration test fix
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          page_path = Path('apps/web/src/features/biomed-gestao/ManagementPages.tsx')
+          page = page_path.read_text(encoding='utf-8')
+
+          replacements = {
+          """  async function closeCampaign(campaign: CampaignRecord) {
+              if (!bootstrap.ok || !context || submittingRef.current || !canWrite) return;
+              submittingRef.current = true;
+              setSubmitting(true);
+              setError(null);
+          """: """  async function closeCampaign(campaign: CampaignRecord) {
+              if (!bootstrap.ok || !context || submittingRef.current || !canWrite) return;
+              submittingRef.current = true;
+              setSubmitting(true);
+              setMessage('');
+              setError(null);
+          """,
+          """  async function removeCampaign(campaign: CampaignRecord) {
+              if (!bootstrap.ok || !context || submittingRef.current || !canWrite) return;
+              submittingRef.current = true;
+              setSubmitting(true);
+              setError(null);
+          """: """  async function removeCampaign(campaign: CampaignRecord) {
+              if (!bootstrap.ok || !context || submittingRef.current || !canWrite) return;
+              submittingRef.current = true;
+              setSubmitting(true);
+              setMessage('');
+              setError(null);
+          """,
+          """  async function advanceStatus(plan: ActionPlanRecord) {
+              if (!bootstrap.ok || !context || submittingRef.current || !canWrite) return;
+              const nextStatus =
+                plan.actionStatus === 'Planejado'
+                  ? 'Em andamento'
+                  : plan.actionStatus === 'Em andamento'
+                    ? 'Concluido'
+                    : plan.actionStatus;
+              submittingRef.current = true;
+              setSubmitting(true);
+              setError(null);
+          """: """  async function advanceStatus(plan: ActionPlanRecord) {
+              if (!bootstrap.ok || !context || submittingRef.current || !canWrite) return;
+              const nextStatus =
+                plan.actionStatus === 'Planejado'
+                  ? 'Em andamento'
+                  : plan.actionStatus === 'Em andamento'
+                    ? 'Concluido'
+                    : plan.actionStatus;
+              submittingRef.current = true;
+              setSubmitting(true);
+              setMessage('');
+              setError(null);
+          """,
+          """  async function removePlan(plan: ActionPlanRecord) {
+              if (!bootstrap.ok || !context || submittingRef.current || !canWrite) return;
+              submittingRef.current = true;
+              setSubmitting(true);
+              setError(null);
+          """: """  async function removePlan(plan: ActionPlanRecord) {
+              if (!bootstrap.ok || !context || submittingRef.current || !canWrite) return;
+              submittingRef.current = true;
+              setSubmitting(true);
+              setMessage('');
+              setError(null);
+          """,
+          }
+
+          for old, new in replacements.items():
+              if page.count(old) != 1:
+                  raise SystemExit(f'Expected exactly one source match, found {page.count(old)}')
+              page = page.replace(old, new)
+          page_path.write_text(page, encoding='utf-8')
+
+          test_path = Path('apps/web/tests/integration/managementCollective.test.tsx')
+          tests = test_path.read_text(encoding='utf-8')
+
+          campaign_test = r'''
+
+            it('limpa sucesso anterior quando exclusao de campanha falha (issue #25)', async () => {
+              const user = userEvent.setup();
+              renderCampaigns();
+              await waitFor(() => expect(screen.getByText('Semana do Sono')).toBeInTheDocument());
+
+              await user.click(screen.getAllByRole('button', { name: 'Encerrar' })[0]);
+              await waitFor(() => {
+                expect(screen.getByText(/Campanha "Semana do Sono" encerrada/i)).toBeInTheDocument();
+              });
+
+              deleteCampaignMock.mockImplementationOnce(() =>
+                Promise.resolve({
+                  ok: false,
+                  error: {
+                    code: 'TECHNICAL_ERROR',
+                    kind: 'technical',
+                    transient: true,
+                    message: 'delete failed',
+                  },
+                })
+              );
+              await user.click(screen.getAllByRole('button', { name: 'Excluir' })[0]);
+
+              await waitFor(() => expect(screen.getByText(/Falha tecnica/i)).toBeInTheDocument());
+              expect(screen.queryByText(/Campanha "Semana do Sono" encerrada/i)).not.toBeInTheDocument();
+            });
+          '''
+
+          action_plan_test = r'''
+
+            it('limpa sucesso anterior quando exclusao de plano falha (issue #25)', async () => {
+              const user = userEvent.setup();
+              renderActionPlans();
+              await waitFor(() => expect(screen.getByText('Reforcar comunicacao')).toBeInTheDocument());
+
+              await user.click(screen.getAllByRole('button', { name: 'Atualizar status' })[0]);
+              await waitFor(() => {
+                expect(screen.getByText(/Status atualizado para Concluido/i)).toBeInTheDocument();
+              });
+
+              deleteActionPlanMock.mockImplementationOnce(() =>
+                Promise.resolve({
+                  ok: false,
+                  error: {
+                    code: 'TECHNICAL_ERROR',
+                    kind: 'technical',
+                    transient: true,
+                    message: 'delete failed',
+                  },
+                })
+              );
+              await user.click(screen.getAllByRole('button', { name: 'Excluir' })[0]);
+
+              await waitFor(() => expect(screen.getByText(/Falha tecnica/i)).toBeInTheDocument());
+              expect(screen.queryByText(/Status atualizado para Concluido/i)).not.toBeInTheDocument();
+            });
+          '''
+
+          campaign_marker = "\n  it('bloqueia escrita para auditor (leitura apenas)', async () => {"
+          action_marker = "\n  it('bloqueia escrita para auditor', async () => {"
+          if tests.count(campaign_marker) != 1 or tests.count(action_marker) != 1:
+              raise SystemExit('Expected integration test insertion markers were not found exactly once')
+          tests = tests.replace(campaign_marker, campaign_test + campaign_marker)
+          tests = tests.replace(action_marker, action_plan_test + action_marker)
+          test_path.write_text(tests, encoding='utf-8')
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run targeted integration suite
+        run: npm run test --workspace web -- tests/integration/managementCollective.test.tsx
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Commit verified fix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/src/features/biomed-gestao/ManagementPages.tsx apps/web/tests/integration/managementCollective.test.tsx
+          git commit -m "fix(web): clear stale collective success messages"
+          git push origin HEAD:fix/management-clear-stale-success-message
+
+      - name: Remove temporary runner from legacy default branch
+        shell: bash
+        run: |
+          git fetch origin feat/demo-visual-functional-refinement
+          git checkout -B feat/demo-visual-functional-refinement origin/feat/demo-visual-functional-refinement
+          git rm .github/workflows/issue-25-runner.yml
+          git commit -m "chore: remove temporary issue 25 runner"
+          git push origin HEAD:feat/demo-visual-functional-refinement

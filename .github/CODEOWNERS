@@ -1,0 +1,14 @@
+# Responsável padrão por revisão e governança do repositório
+* @EdeMachado
+
+# Governança, CI e templates
+/.github/ @EdeMachado
+/CONTRIBUTING.md @EdeMachado
+/ENGINEERING_REVIEW_AND_MERGE_POLICY.md @EdeMachado
+/DEPENDENCY_MANAGEMENT.md @EdeMachado
+
+# Banco, migrations e segurança Supabase
+/supabase/ @EdeMachado
+
+# Aplicação web e testes
+/apps/web/ @EdeMachado

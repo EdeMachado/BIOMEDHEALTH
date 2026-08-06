@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented on branch `feat/wp-03-2-operational-reliability-hardening` (base `d337596` / PR #47).
+**DONE** — merged via [PR #48](https://github.com/EdeMachado/BIOMEDHEALTH/pull/48) (`cc560ac…`, 2026-08-06). Migration **0020** aplicada e validada no HML no WP-04.0.
 
 ## Delivered
 
@@ -14,27 +14,22 @@ Implemented on branch `feat/wp-03-2-operational-reliability-hardening` (base `d3
 2. **Silent mock fallbacks removed** for assessment + consent; collective bootstrap reused in Gestão
 3. **Unified audit adapter** (mock only when mode=mock; supabase via RPC)
 4. **Seed + config.toml** aligned (`seeds/seed_demo.sql`, roles expanded, scope documented)
-5. **ADRs** under `docs/adr/`
+5. **ADRs operacionais** `ADR-010`…`012` (renumerados no WP-04.0; oficiais de arquitetura são `ADR-001`…`008`)
 6. **Handoff/backlog** updated; D02-A not started
 
-## Verification (local)
+## Verification
 
-- typecheck / lint / unit+integration (373) / build: PASS
-- `supabase db reset` applies `0001`–`0020` + seed: PASS
-- `WP_02` + `WP_03_2` validation SQL: PASS
-- Database Gate script: `npm run supabase:verify`
+- CI Quality + Database gates: SUCCESS (run `31100226215`)
+- Local: typecheck / lint / 373 tests / build PASS
+- HML: backup → dry-run → push → list → estrutural + comportamental PASS (ver `docs/WP-04-0_HML_0020_EVIDENCE.md`)
 
-## Remaining risks
+## Remaining risks (handoff to WP-04.1)
 
-- JWT-era policies still on `assessments` / `professional_assignments` (documented debt)
-- HML still needs `0020` push after merge
+- JWT-era policies still on `assessments` / `professional_assignments`
 - SUP-E01 not fully closed (consent/clinical audit sinks)
+- Helpers 0017 `search_path = public`
 - Seed does not provision Auth users (intentional)
 
-## Project maturity (estimate)
+## Recommended next
 
-~78% of MVP reliability/security foundation for pre-indicator phase (was ~72% post-0019/PR47). Not a product-completion percentage.
-
-## Recommended next WP
-
-**WP-03.3** — apply `0020` to HML + close JWT leftover policies on assessments/assignments **or** UX stub cleanup (agenda usuário / indicadores demo) — still **without** D02-A unless separately authorized.
+**WP-04.1** — Platform Readiness (dívida segurança / prep Intelligence). **Não** iniciar D02-A.

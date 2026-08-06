@@ -1,4 +1,4 @@
-# ADR-003 — Residual 0001 RLS hardening (WP-03.2)
+# ADR-012 — Residual 0001 RLS hardening (WP-03.2)
 
 ## Status
 

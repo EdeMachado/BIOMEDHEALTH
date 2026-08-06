@@ -10,21 +10,24 @@ Atualizado: **2026-08-06**
 | WP-04.0 | Architecture Baseline v1.0 · fim Foundation | **DONE** | PR #49 · `6aa954b…` |
 | WP-04.1 | Platform Readiness (JWT→app_auth, search_path, E01 sinks) | **DONE** | PR #50 · `cb61981…` · HML **0021** |
 | WP-04.2 / E01.x | Trust & Audit Layer | **DONE** | PR #52 · `cc62520…` · HML **0022** · closeout #53 `a21a184…` |
-| **WP-04.3 / E01 residual** | E01 Residual Closure | **IN REVIEW** | branch `feat/wp-04-3-e01-residual-closure` · base `a21a184…` · sem migration · sem HML apply |
+| **WP-04.3 / E01 residual** | E01 Residual Closure | **DONE** | PR #54 · merge `ee0eff6…` · base `a21a184…` · **sem** migration · **sem** HML apply |
 | D02-A | Analytics agregados | **BLOCKED** | Gate impl. não liberado — **não iniciar** |
 
-## Registro WP-04.3 (em revisão)
+## Registro WP-04.3 (encerrado)
 
 | Item | Valor |
 |---|---|
-| Baseline | `a21a184174bb901de3199a1051705bd59dd1b9da` |
+| PR #54 | **MERGED** |
+| SHA `main` | `ee0eff64d5ccec04314dd52f1b795fe55e8aaa3c` |
+| Baseline anterior | `a21a184174bb901de3199a1051705bd59dd1b9da` |
 | Migration | **Nenhuma** (0022 suficiente; provenance em metadata) |
+| HML | **inalterado** (0001–0022) — sem apply |
 | Inventário | `docs/WP-04-3_E01_FINAL_INVENTORY.md` |
 | Relatório | `docs/WP-04-3_TECHNICAL_REPORT.md` |
 | Validação SQL | `supabase/policies/WP_04_3_E01_RESIDUAL_VALIDATION.sql` |
+| Quality / Database Gate | **PASS** (CI run pós-PR) |
 | E01 | **não** 100% — limites documentados |
 | D02-A | **BLOCKED** |
-| HML | **não** alterar até merge + autorização humana |
 
 ## Registro PR #52 / WP-04.2 (encerrado)
 
@@ -66,4 +69,5 @@ Atualizado: **2026-08-06**
 
 ## Próxima decisão humana (não automática)
 
-Após merge WP-04.3: A. gap clínico `unit_id` · B. B04 · C. issue #25 · D. gate humano D02-A · E. outro residual estrutural — **não** auto-iniciar D02-A.
+**Recomendação vigente:** gap clínico `unit_id` (último residual estrutural antes do pivot para entrega funcional).  
+Alternativas: B. B04 · C. issue #25 · D. gate humano D02-A · E. outro residual com causa concreta — **não** auto-iniciar D02-A.

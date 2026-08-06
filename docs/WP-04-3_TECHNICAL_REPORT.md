@@ -2,13 +2,17 @@
 
 | Campo | Valor |
 |---|---|
-| Status | **READY FOR REVIEW** (PR; sem merge; sem HML apply) |
+| Status | **DONE** (PR #54 MERGED; E01 **não** 100%; sem HML apply) |
+| PR | **#54 MERGED** |
+| SHA `main` | `ee0eff64d5ccec04314dd52f1b795fe55e8aaa3c` |
 | Baseline início | `a21a184174bb901de3199a1051705bd59dd1b9da` |
-| Branch | `feat/wp-04-3-e01-residual-closure` |
+| Branch | `feat/wp-04-3-e01-residual-closure` (histórica) |
 | Migration | **Nenhuma** — justificativa abaixo |
-| HML | permanece **0001–0022**; **não** aplicar até merge + autorização |
+| HML | permanece **0001–0022**; **nenhum** apply neste WP |
+| Quality / Database Gate | **PASS** |
 | D02-A | **BLOCKED** — não iniciado |
 | Inventário | `docs/WP-04-3_E01_FINAL_INVENTORY.md` |
+| Próximo residual estrutural recomendado | gap clínico `unit_id` |
 
 ## Objetivo
 

@@ -12,6 +12,7 @@ const patients: ClinicalPortfolioPatient[] = [
   {
     patientId: 'usr-1',
     organizationId: 'org-1',
+    unitId: 'unit-org-1',
     displayName: 'Ana Demo',
     assignmentStatus: 'ativo',
     assignmentReason: 'acompanhamento',

@@ -61,7 +61,8 @@ function patient(
 ): ClinicalPortfolioPatient {
   return {
     organizationId: 'org-1',
-    assignmentStatus: 'ativo',
+    unitId: 'unit-org-1',
+      assignmentStatus: 'ativo',
     assignmentReason: 'acompanhamento',
     ...overrides,
   };

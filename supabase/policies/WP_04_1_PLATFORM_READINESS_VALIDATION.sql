@@ -92,6 +92,7 @@ do $$
 declare
   org1 uuid := 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa31';
   org2 uuid := 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa32';
+  unit1 uuid := 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa39';
   owner_id uuid := 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb31';
   peer_id uuid := 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb32';
   pro_id uuid := 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb33';
@@ -118,10 +119,14 @@ begin
   delete from public.user_roles where user_organization_id in (uo_owner, uo_peer, uo_pro, uo_unlinked, uo_admin, uo_cross);
   delete from public.user_organizations where id in (uo_owner, uo_peer, uo_pro, uo_unlinked, uo_admin, uo_cross);
   delete from public.assessments where id = assessment1;
+  delete from public.organization_units where id = unit1;
   delete from public.organizations where id in (org1, org2);
 
   insert into public.organizations (id, name, status)
   values (org1, 'TMP Org1 0021', 'ativo'), (org2, 'TMP Org2 0021', 'ativo');
+
+  insert into public.organization_units (id, organization_id, name, status)
+  values (unit1, org1, 'TMP Unit 0021', 'ativo');
 
   insert into public.roles (code, description, status)
   values
@@ -154,9 +159,9 @@ begin
   values (assessment1, org1, owner_id, 'ativo');
 
   insert into public.professional_assignments (
-    id, organization_id, professional_id, user_id, assignment_reason, status
+    id, organization_id, unit_id, professional_id, user_id, assignment_reason, status
   )
-  values (assignment1, org1, pro_id, owner_id, 'wp041 validation', 'ativo');
+  values (assignment1, org1, unit1, pro_id, owner_id, 'wp041 validation', 'ativo');
 
   -- A) owner sees own assessment
   perform set_config('request.jwt.claim.sub', owner_id::text, true);
@@ -300,6 +305,7 @@ begin
   delete from public.user_roles where user_organization_id in (uo_owner, uo_peer, uo_pro, uo_unlinked, uo_admin, uo_cross);
   delete from public.user_organizations where id in (uo_owner, uo_peer, uo_pro, uo_unlinked, uo_admin, uo_cross);
   delete from public.assessments where id = assessment1;
+  delete from public.organization_units where id = unit1;
   delete from public.organizations where id in (org1, org2);
 
   if exists (select 1 from public.organizations where id in (org1, org2))

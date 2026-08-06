@@ -1000,6 +1000,7 @@ function useCarePlan(patientId: string | null) {
         sessionUserId: user.id,
         professionalUserId: user.id,
         organizationId: user.organizationId,
+      unitId: user.selectedUnitId!,
       }
     : null;
 
@@ -1334,6 +1335,7 @@ function useClinicalRecord(patientId: string | null) {
         sessionUserId: user.id,
         professionalUserId: user.id,
         organizationId: user.organizationId,
+      unitId: user.selectedUnitId!,
       }
     : null;
 
@@ -1531,6 +1533,7 @@ function useClinicalPortfolio() {
       sessionUserId: user.id,
       professionalUserId: user.id,
       organizationId: user.organizationId,
+      unitId: user.selectedUnitId!,
     }).then((result) => {
       if (disposed || currentRequest !== requestIdRef.current) return;
       setLoading(false);
@@ -1593,6 +1596,7 @@ function useClinicalAgenda() {
         sessionUserId: user.id,
         professionalUserId: user.id,
         organizationId: user.organizationId,
+      unitId: user.selectedUnitId!,
       }
     : null;
 

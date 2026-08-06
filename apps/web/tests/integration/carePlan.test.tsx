@@ -11,6 +11,7 @@ const patients: ClinicalPortfolioPatient[] = [
   {
     patientId: 'usr-1',
     organizationId: 'org-1',
+    unitId: 'unit-org-1',
     displayName: 'Ana Demo',
     assignmentStatus: 'ativo',
     assignmentReason: 'acompanhamento',
@@ -31,6 +32,7 @@ const createCarePlanMock = vi.fn(() => {
       plan: {
         id: 'cp-1',
         organizationId: 'org-1',
+        unitId: 'unit-org-1',
         patientId: 'usr-1',
         professionalId: 'pro-1',
         title: 'Plano sono',

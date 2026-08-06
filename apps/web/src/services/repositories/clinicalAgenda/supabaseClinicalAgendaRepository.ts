@@ -59,6 +59,7 @@ export interface SupabaseClinicalAgendaClient {
 type AppointmentRow = {
   id: string;
   organization_id: string;
+  unit_id: string;
   user_id: string;
   professional_id: string;
   starts_at: string;
@@ -119,6 +120,7 @@ function mapRow(row: AppointmentRow): ClinicalAppointment | null {
   return {
     id: row.id,
     organizationId: row.organization_id,
+    unitId: row.unit_id,
     patientId: row.user_id,
     professionalId: row.professional_id,
     startsAt: row.starts_at,
@@ -176,9 +178,10 @@ export function createSupabaseClinicalAgendaRepository(input: {
         response = await client
           .from('appointments')
           .select(
-            'id, organization_id, user_id, professional_id, starts_at, ends_at, appointment_status, appointment_type, status'
+            'id, organization_id, unit_id, user_id, professional_id, starts_at, ends_at, appointment_status, appointment_type, status'
           )
           .eq('organization_id', context.organizationId)
+          .eq('unit_id', context.unitId)
           .eq('professional_id', context.professionalUserId)
           .eq('status', 'ativo')
           .order('starts_at', { ascending: true });
@@ -194,6 +197,7 @@ export function createSupabaseClinicalAgendaRepository(input: {
         .filter(
           (item) =>
             item.organizationId === context.organizationId &&
+            item.unitId === context.unitId &&
             item.professionalId === context.professionalUserId
         );
 
@@ -222,6 +226,7 @@ export function createSupabaseClinicalAgendaRepository(input: {
           .from('appointments')
           .insert({
             organization_id: context.organizationId,
+            unit_id: context.unitId,
             user_id: appointment.patientId,
             professional_id: context.professionalUserId,
             starts_at: appointment.startsAt,
@@ -232,7 +237,7 @@ export function createSupabaseClinicalAgendaRepository(input: {
             version: 1,
           })
           .select(
-            'id, organization_id, user_id, professional_id, starts_at, ends_at, appointment_status, appointment_type, status'
+            'id, organization_id, unit_id, user_id, professional_id, starts_at, ends_at, appointment_status, appointment_type, status'
           )
           .maybeSingle();
       } catch (error: unknown) {

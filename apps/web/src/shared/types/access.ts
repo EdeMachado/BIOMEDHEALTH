@@ -18,6 +18,8 @@ export type SessionUser = {
   role: Role;
   roles: Role[];
   organizationId: string;
+  /** Clinical operational unit when uniquely resolvable; null/undefined = fail-closed for clinical writes. */
+  selectedUnitId?: string | null;
 };
 
 export type Organization = {

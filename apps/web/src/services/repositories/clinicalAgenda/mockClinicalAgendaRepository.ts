@@ -37,6 +37,7 @@ function validateContext(context: ClinicalAgendaContext): ClinicalAgendaResult<t
   if (!context.sessionUserId || !context.professionalUserId) return fail('NO_SESSION');
   if (context.sessionUserId !== context.professionalUserId) return fail('IDENTITY_MISMATCH');
   if (!context.organizationId) return fail('NO_ACTIVE_MEMBERSHIP');
+  if (!context.unitId) return fail('CLINICAL_ACCESS_DENIED');
   return ok(true);
 }
 
@@ -90,6 +91,7 @@ function defaultAppointments(): MockAppointment[] {
     {
       id: 'appt-demo-1',
       organizationId: 'org-1',
+      unitId: 'unit-org-1',
       patientId: 'usr-1',
       professionalId: 'pro-1',
       startsAt: slot1.startsAt,
@@ -101,6 +103,7 @@ function defaultAppointments(): MockAppointment[] {
     {
       id: 'appt-demo-2',
       organizationId: 'org-1',
+      unitId: 'unit-org-1',
       patientId: 'usr-3',
       professionalId: 'pro-1',
       startsAt: slot2.startsAt,
@@ -112,6 +115,7 @@ function defaultAppointments(): MockAppointment[] {
     {
       id: 'appt-demo-3',
       organizationId: 'org-1',
+      unitId: 'unit-org-1',
       patientId: 'usr-4',
       professionalId: 'pro-1',
       startsAt: slot3.startsAt,
@@ -179,6 +183,7 @@ export function createMockClinicalAgendaRepository(
       const created: MockAppointment = {
         id: createId(),
         organizationId: context.organizationId,
+        unitId: context.unitId,
         patientId: appointment.patientId,
         professionalId: context.professionalUserId,
         startsAt: appointment.startsAt,

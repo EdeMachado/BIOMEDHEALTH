@@ -221,6 +221,7 @@ function buildDefaultMemberships(): MembershipRecord[] {
 }
 
 function buildDefaultRoleBindings(memberships: MembershipRecord[]): RoleBindingRecord[] {
+  const clinicalRoles = new Set(['medico', 'profissional_saude', 'gestor_clinico']);
   const roleBindings: RoleBindingRecord[] = [];
   for (const user of demoUsers) {
     const membership = memberships.find((item) => item.userId === user.id && item.organizationId === user.organizationId);
@@ -231,7 +232,8 @@ function buildDefaultRoleBindings(memberships: MembershipRecord[]): RoleBindingR
       roleBindings.push({
         membershipId: membership.id,
         role,
-        unitId: null,
+        // Mock: clinical roles bind to a deterministic demo unit (fail-closed requires a unit).
+        unitId: clinicalRoles.has(role) ? `unit-${user.organizationId}` : null,
         status: 'active',
       });
     }

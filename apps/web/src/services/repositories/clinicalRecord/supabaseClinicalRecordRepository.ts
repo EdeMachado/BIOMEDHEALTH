@@ -352,6 +352,7 @@ export function createSupabaseClinicalRecordRepository(input: {
           .from('clinical_records')
           .insert({
             organization_id: context.organizationId,
+            unit_id: context.unitId,
             user_id: draft.patientId,
             professional_id: context.professionalUserId,
             summary,

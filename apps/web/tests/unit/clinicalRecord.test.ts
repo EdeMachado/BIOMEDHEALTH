@@ -19,6 +19,7 @@ function context(overrides: Partial<ClinicalRecordContext> = {}): ClinicalRecord
     sessionUserId: 'pro-1',
     professionalUserId: 'pro-1',
     organizationId: 'org-1',
+    unitId: 'unit-org-1',
     ...overrides,
   };
 }

@@ -23,7 +23,7 @@ Este documento é a **fonte oficial de continuidade e governança** do projeto B
 | Baseline Trust & Audit funcional | `cc6252059ce7746b0369f892c445c74860bf1481` (merge **PR #52** WP-04.2) |
 | Último merge integrado | **PR #55** — docs WP-04.3 DONE |
 | HML Supabase | `biomedhealth-hml` sincronizado até **0022** (0001–0022) — WP-04.3 **sem** migration / **sem** apply |
-| Change set em curso | **Nenhum** — aguardando ordem do gap clínico `unit_id`; **D02-A BLOCKED** |
+| Change set em curso | **WP-04.4** Clinical Unit Scope (`feat/wp-04-4-clinical-unit-scope`); **D02-A BLOCKED**; sem HML apply |
 | Data desta atualização do handoff | 2026-08-06 |
 | Ratificação org×unit (coletivo) | PR #17 — decisão documental |
 | SPEC SUP-D01 | Aprovada; ciclo **A/B/C/D** em `main` (PRs #20–#24; docs #23/#26) |

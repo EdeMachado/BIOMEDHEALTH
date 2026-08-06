@@ -31,3 +31,15 @@ export {
   formatCollectiveScopeLabel,
   sanitizeCollectiveMessage,
 } from './policy';
+
+export {
+  buildCollectiveContext,
+  buildCollectiveScope,
+  parseExplicitCollectiveUnitIds,
+} from './contextScope';
+export type {
+  CollectiveContext,
+  CollectiveIdentity,
+  CollectiveScopeBuildResult,
+  CollectiveScopeFormInput,
+} from './contextScope';

@@ -1,8 +1,8 @@
 # BIOMED HEALTH — Roadmap (pós-Foundation)
 
-Atualizado: **2026-08-06** · SHA `main` `cc62520…` (PR #52) · WP-04.2 **DONE** · HML **0001–0022**
+Atualizado: **2026-08-06** · baseline `a21a184…` · WP-04.3 **IN REVIEW** · HML **0001–0022**
 
-## Fase I — Foundation (ENCERRADA)
+## Fase I — Foundation (ENCERRADA na prática; residual E01 em revisão)
 
 | Marco | Estado |
 |---|---|
@@ -14,14 +14,16 @@ Atualizado: **2026-08-06** · SHA `main` `cc62520…` (PR #52) · WP-04.2 **DONE
 | Fail-closed + audit adapter | WP-03.2 / PR #48 |
 | Architecture Baseline v1.0 | WP-04.0 |
 | Platform Readiness | WP-04.1 / PR #50 |
-| Trust & Audit Layer | WP-04.2 / PR #52 · HML 0022 |
+| Trust & Audit Layer | WP-04.2 / PR #52 · HML 0022 · docs #53 |
+| E01 Residual Closure | **WP-04.3 IN REVIEW** (sem migration; sem HML apply) |
 
 ## Fase II — Platform Intelligence (prep)
 
 | WP | Objetivo | Autorização |
 |---|---|---|
-| WP-04.2 / E01.x | Trust & Audit (sinks coletivos; sanitizer; append-only 0022; inventários) | **DONE** (residuais E01 documentados; E01 **não** 100%) |
-| Residual E01 / B04 / #25 / unit_id | Opções humanas paralelas | **Pendente decisão** |
+| WP-04.2 / E01.x | Trust & Audit | **DONE** |
+| WP-04.3 | Fechar residuais E01 tratáveis + inventário final | **IN REVIEW** |
+| unit_id / B04 / #25 | Opções humanas | **Pendente decisão** |
 | D02-A | Analytics agregados reais | **BLOCKED** — não iniciar automaticamente |
 | Motores IA / AI Gateway | Fora do escopo imediato | Bloqueado |
 | Nova UX ampla | Fora do escopo imediato | Bloqueado |
@@ -32,3 +34,4 @@ Atualizado: **2026-08-06** · SHA `main` `cc62520…` (PR #52) · WP-04.2 **DONE
 - Auto-diagnóstico clínico
 - Produção (corte) sem HML + gates
 - Ativação de `enableTransientFallback` / `enableMockDataFallback`
+- Apply de migration nova no HML sem merge + autorização

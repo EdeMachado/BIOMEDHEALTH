@@ -1,19 +1,26 @@
 import type { AuditEvent } from '@/domains/audit/types';
-import type { AuditEventInput, AuditSource } from '@/domains/audit/auditContract';
-import { toDbResult } from '@/domains/audit/auditContract';
+import type { AuditEventInput, AuditProvenance, AuditSource } from '@/domains/audit/auditContract';
+import { AUDIT_PROVENANCE_VALUES, toDbResult } from '@/domains/audit/auditContract';
 
 const ALLOWED_CODES = new Set([
   'login',
   'logout',
   'access_denied',
+  'login_failure_pre_auth',
   'consent_accepted',
   'consent_revoked',
   'clinical_record_draft_saved',
   'clinical_record_concluded',
   'clinical_record_reopened',
   'care_plan_created',
+  'care_plan_updated',
   'care_plan_closed',
+  'care_plan_suspended',
   'care_plan_note_added',
+  'care_plan_reassessment_added',
+  'care_plan_action_created',
+  'care_plan_action_updated',
+  'care_plan_action_status_changed',
   'clinical_appointment_created',
   'clinical_appointment_updated',
   'campaign_created',
@@ -24,6 +31,7 @@ const ALLOWED_CODES = new Set([
   'action_plan_updated',
   'action_plan_status_advanced',
   'action_plan_deleted',
+  'lgpd_capability_unavailable',
   'repository_error',
   'context_denied',
   'permission_denied',
@@ -40,6 +48,8 @@ const ALLOWED_SOURCES = new Set<AuditSource>([
   'application',
 ]);
 
+const ALLOWED_PROVENANCE = new Set<string>(AUDIT_PROVENANCE_VALUES);
+
 const ALLOWED_METADATA_KEYS = new Set([
   'error_code',
   'scope_type',
@@ -48,6 +58,10 @@ const ALLOWED_METADATA_KEYS = new Set([
   'repository_mode',
   'previous_status',
   'next_status',
+  'provenance',
+  'request_kind',
+  'field_category',
+  'email_fp',
 ]);
 
 const BLOCKED_REASON_PATTERN =
@@ -73,6 +87,7 @@ export function sanitizeAuditMetadata(input: {
   correlationId?: string | null;
   result: AuditEvent['result'];
   source?: AuditSource;
+  provenance?: AuditProvenance | null;
   rawReason?: string | null;
   metadata?: Record<string, unknown> | null;
 }): SanitizedAuditPayload {
@@ -96,7 +111,15 @@ export function sanitizeAuditMetadata(input: {
     throw new Error('audit metadata: correlationId obrigatorio');
   }
 
-  const metaPairs = sanitizeMetadataRecord(input.metadata);
+  const metadata: Record<string, unknown> = { ...(input.metadata ?? {}) };
+  if (input.provenance) {
+    if (!ALLOWED_PROVENANCE.has(input.provenance)) {
+      throw new Error('audit metadata: provenance invalida');
+    }
+    metadata['provenance'] = input.provenance;
+  }
+
+  const metaPairs = sanitizeMetadataRecord(metadata);
   const reasonParts = [`code=${code}`, `src=${source}`, `corr=${correlationId}`, ...metaPairs];
 
   return {
@@ -123,6 +146,7 @@ export function sanitizeAuditEventInput(input: AuditEventInput): SanitizedAuditP
     correlationId: input.correlationId,
     result: toDbResult(input.result),
     source: input.source,
+    provenance: input.provenance,
     metadata: input.metadata,
   });
   return {

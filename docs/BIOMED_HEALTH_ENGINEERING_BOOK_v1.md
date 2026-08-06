@@ -4,9 +4,10 @@
 |---|---|
 | Versão | 1.0 |
 | Data | 2026-08-06 |
-| Baseline `main` (WP-04.2 closeout) | `cc6252059ce7746b0369f892c445c74860bf1481` (merge PR #52) |
-| Baseline início WP-04.2 | `9533563b0f19e6cf4b16a5dc1b4e3181a07a4dd6` (merge PR #51) |
-| HML | **0001–0022** (`docs/WP-04-2_HML_0022_EVIDENCE.md`) |
+| Baseline `main` | `a21a184174bb901de3199a1051705bd59dd1b9da` (merge PR #53) |
+| Baseline WP-04.2 funcional | `cc6252059ce7746b0369f892c445c74860bf1481` (merge PR #52) |
+| WP-04.3 | E01 residual closure **IN REVIEW** — `docs/WP-04-3_TECHNICAL_REPORT.md` |
+| HML | **0001–0022** (`docs/WP-04-2_HML_0022_EVIDENCE.md`); sem 0023 |
 | Escopo | Documento de entrada para desenvolvedores e auditores |
 
 Este livro **não substitui** Architecture Baseline, ADRs, handoff, backlog ou relatórios técnicos. Serve como índice + princípios consolidados.
@@ -46,9 +47,9 @@ Policies modernas via `app_auth.*`. Policies JWT-era removidas em 0021. Collecti
 
 ## 6. Estratégia de auditoria
 
-Contrato canônico: `AuditEventInput` (`success|error|denied`, `source` fechada, `correlationId` obrigatório). Sanitizer allowlist (`sanitizeAuditMetadata`). Persistência: RPC `register_audit_event` (actor=`auth.uid()`, org validada, timestamp servidor). Mutações sensíveis coletivas: wrappers `audited*` com fail-closed (`AUDIT_REQUIRED_FAILED`).
+Contrato canônico: `AuditEventInput` (`success|error|denied`, `source` fechada, `correlationId` obrigatório, `provenance` fechada). Sanitizer allowlist (`sanitizeAuditMetadata`). Persistência: RPC `register_audit_event` (actor=`auth.uid()`, org validada, timestamp servidor). Mutações sensíveis coletivas: wrappers `audited*` com fail-closed. Auth pós-resolução via `authAudit`; LGPD via `lgpdRequestService` (sem falso sucesso). Care-plan: actions granulares sem PHI.
 
-**Limite:** negação pura por RLS na mesma transação abortada **não** é afirmada como evento persistido. Cobertura atual: negação na aplicação + erro retornado pelo repository/RPC.
+**Limite:** falha pré-auth em modo Supabase **não** persiste via RPC (exige `auth.uid`). Negação pura por RLS na mesma transação abortada **não** é afirmada como evento `confirmed`. Cobertura: negação na aplicação + erro retornado pelo repository/RPC (`*_inferred`).
 
 ## 7. Estratégia de mocks
 
@@ -72,7 +73,7 @@ Scripts em `supabase/rollbacks/`. Declarar riscos reabertos. Preferir não delet
 
 ## 12. Definition of Done (plataforma)
 
-Typecheck, lint, testes, build, `supabase db reset`, `db lint`, validações WP-02 / WP-03.2 / WP-04.1 / WP-04.2, fixtures residuais = 0, docs sincronizados, gates verdes, D02-A não iniciado sem gate humano.
+Typecheck, lint, testes, build, `supabase db reset`, `db lint`, validações WP-02 / WP-03.2 / WP-04.1 / WP-04.2 / WP-04.3, fixtures residuais = 0, docs sincronizados, gates verdes, D02-A não iniciado sem gate humano.
 
 ## 13. Convenções Domain / Application / Repository
 
@@ -92,10 +93,10 @@ D02-A / Analytics Engine / AI Gateway **bloqueados** até gate humano. Engineeri
 
 | Risco | Estado |
 |---|---|
-| Auth pré-login / falha sem `auth.uid` | residual E01 |
-| LGPD export/correção demo | sem audit persistente |
-| Care-plan update fino / ações | cobertura parcial |
-| Negação RLS atômica na mesma txn | residual (não improvisar) |
+| Auth pré-login / falha sem `auth.uid` | **limite técnico controlado** (WP-04.3); Edge futuro |
+| LGPD export/correção | **indisponível honesto** (WP-04.3); jurídico/arquitetura |
+| Care-plan fine-grained | **melhorado** (WP-04.3); ops inexistentes = N/A |
+| Negação RLS atômica na mesma txn | **controlado** (`*_inferred`; outbox futuro) |
 | Gap clínico `unit_id` | documentado; fora deste WP |
 | Issue #25 | isolada |
 | D02-A | bloqueado |
@@ -109,7 +110,9 @@ D02-A / Analytics Engine / AI Gateway **bloqueados** até gate humano. Engineeri
 | `PROJECT_MASTER_HANDOFF.md` | Continuidade operacional |
 | `SUPABASE_IMPLEMENTATION_BACKLOG.md` | Backlog técnico |
 | `docs/ROADMAP.md` / `WP_STATUS.md` / `PLATFORM_METRICS.md` | Planejamento e maturidade |
-| `docs/WP-04-2_E01_EVENT_INVENTORY.md` | Inventário E01 |
+| `docs/WP-04-2_E01_EVENT_INVENTORY.md` | Inventário E01 (WP-04.2) |
+| `docs/WP-04-3_E01_FINAL_INVENTORY.md` | Inventário final E01 (WP-04.3) |
+| `docs/WP-04-3_TECHNICAL_REPORT.md` | Relatório WP-04.3 |
 | `docs/WP-04-2_HML_REMOTE_INVENTORY.md` | Inventário remoto HML (**real** pós-0022) |
 | `docs/WP-04-2_HML_0022_EVIDENCE.md` | Evidência apply HML 0022 |
 | `docs/WP-04-1_HML_0021_EVIDENCE.md` | Evidência HML 0021 |

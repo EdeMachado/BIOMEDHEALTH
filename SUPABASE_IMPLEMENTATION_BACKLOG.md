@@ -872,7 +872,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 1. **Identificador**: `SUP-E01`
 2. **Titulo**: Implementacao de auditoria persistente append-only
 3. **Finalidade**: garantir trilha imutavel de eventos sensiveis.
-4. **Status parcial (WP-03.2 + WP-04.0 + WP-04.1 + WP-04.2 DONE com residual)**:
+4. **Status parcial (WP-03.2 + WP-04.0 + WP-04.1 + WP-04.2 DONE + WP-04.3 residual closure IN REVIEW)**:
    - adapter unico `bootstrapAuditTrail` (mock intencional vs supabase fail-closed);
    - RPC `public.register_audit_event` + policy `audit_events_select_auditor` via `app_auth`;
    - migration **0020** em `main` e **aplicada no HML**;
@@ -880,8 +880,9 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
    - sinks **consentimento** + **escritas clinicas sensiveis** com metadata sanitizada (IDs/codigos);
    - UI de gestao lista via `listAuditEventsAsync`;
    - Architecture Baseline v1.0 + ADRs 001–008 (+013); Engineering Book v1;
-   - **WP-04.2 DONE** (PR #52 `cc62520…` + HML **0022**): append-only / RPC endurecida / `correlation_id`; mutacoes coletivas auditadas; sanitizer allowlist; inventarios E01 + remoto **real** (`docs/WP-04-2_HML_0022_EVIDENCE.md`, `docs/WP-04-2_HML_REMOTE_INVENTORY.md`);
-   - **residual E01 ainda aberto** (E01 **nao** 100%): falha login pre-auth; export demo LGPD; RLS-deny same-txn; care-plan fine-grained. **D02-A permanece BLOCKED.**
+   - **WP-04.2 DONE** (PR #52 `cc62520…` + HML **0022** + closeout #53 `a21a184…`): append-only / RPC endurecida / `correlation_id`; mutacoes coletivas; sanitizer; inventarios (`docs/WP-04-2_*`);
+   - **WP-04.3 IN REVIEW** (`feat/wp-04-3-e01-residual-closure`): pre-auth documentado (Supabase nao persiste sem `auth.uid`); LGPD sem falso sucesso; RLS deny classificado (`*_inferred`, nunca auto-`confirmed`); care-plan actions granulares sem PHI; inventário final `docs/WP-04-3_E01_FINAL_INVENTORY.md`; **sem** migration 0023;
+   - **E01 nao 100%** — limites controlados: pre-auth Edge futuro; RLS same-txn outbox futuro; LGPD juridica. **D02-A permanece BLOCKED.**
 5. **Escopo incluido** (restante):
    - padrao de payload minimo completo;
    - bloqueio de update/delete para app user;
@@ -1004,7 +1005,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 | 13 | SUP-D01 | D | SUP-A01 + decisao coletiva ratificada | Ciclo A/B/C/D em main (PRs #20–#24; docs #26 `89de7ab…`) |
 | 14 | SUP-D02 | D | D01 + limiar 10 | SPEC em main (PR #27); Gate PR #28 mergeado (`b04b4b9…`); reauditoria aprovada com P3; **implementacao nao iniciada**; D02-A bloqueado (criterio 14) |
 | 15 | SUP-D03 | D | D01, D02 | Gestao em dados reais agregados |
-| 16 | SUP-E01 | E | A02, A03 + B/C/D | PARCIAL — WP-04.2 DONE + HML 0022; residual E01 documentado (nao 100%) |
+| 16 | SUP-E01 | E | A02, A03 + B/C/D | PARCIAL — WP-04.2 DONE + WP-04.3 residual closure IN REVIEW (nao 100%) |
 | 17 | SUP-E02 | E | A03, C04 residual, D03, E01 | Suite de seguranca completa |
 | 18 | SUP-E03 | E | Todas anteriores | Hardening e plano de cutover final |
 
@@ -1012,7 +1013,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 
 ## Caminho critico recomendado
 
-`SUP-A01 -> … -> [D01] -> [Gate D02-0 documental] -> [WP-03.2/PR#48 + 0020 HML] -> [WP-04.0 Architecture Baseline v1.0] -> [WP-04.1/PR#50 + 0021 HML] -> [PR#51] -> [WP-04.2/PR#52 + 0022 HML DONE / residual E01] -> [decisao humana] -> [D02-A… — BLOCKED] -> SUP-D03 -> …`
+`SUP-A01 -> … -> [D01] -> [Gate D02-0 documental] -> [WP-03.2/PR#48 + 0020 HML] -> [WP-04.0] -> [WP-04.1/PR#50 + 0021 HML] -> [PR#51] -> [WP-04.2/PR#52 + 0022 HML] -> [PR#53 closeout] -> [WP-04.3 residual E01 IN REVIEW] -> [decisao humana] -> [D02-A… — BLOCKED] -> SUP-D03 -> …`
 
 Notas de caminho:
 

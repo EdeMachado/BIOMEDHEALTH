@@ -86,7 +86,7 @@ describe('guards de autorizacao e roteamento protegido', () => {
     expect(await screen.findByRole('heading', { name: 'Acesso negado' })).toBeInTheDocument();
 
     const events = listAuditEvents();
-    expect(events[0]?.action).toBe('rota_negada');
+    expect(events[0]?.action).toBe('access_denied');
     expect(events[0]?.result).toBe('negado');
   });
 

@@ -16,6 +16,7 @@ import type {
   UpdateActionPlanInput,
 } from '@/services/repositories/collective/types';
 import { newCorrelationId } from '@/domains/audit/auditContract';
+import { classifyPrivilegeDenial } from '@/domains/audit/classifyPrivilegeDenial';
 
 export type AuditedCollectiveDeps = {
   repository: CollectiveRepository;
@@ -42,6 +43,7 @@ async function deny(
       entity,
       result: 'denied',
       correlationId,
+      metadata: { provenance: 'application_precheck_denied' },
     });
   }
   return fail(code === 'permission_denied' ? 'AUTHORIZATION_DENIED' : 'NO_SESSION');
@@ -58,11 +60,25 @@ async function afterMutation<T extends { id: string }>(
   }
 ): Promise<CollectiveResult<T>> {
   const sink = sinkOf(deps);
-  const auditResult = input.result.ok ? 'success' : 'error';
+  const classified = !input.result.ok
+    ? classifyPrivilegeDenial({
+        errorCode: input.result.error.code,
+        message: input.result.error.message,
+      })
+    : null;
+  const auditResult = input.result.ok
+    ? 'success'
+    : classified?.auditResult === 'denied'
+      ? 'denied'
+      : 'error';
   const entityId = input.result.ok ? input.result.data.id : undefined;
-  const errorCode = !input.result.ok ? input.result.error.code : undefined;
+  const errorCode = classified?.sanitizedCode;
   const persisted = await sink.registerFinal({
-    code: input.result.ok ? input.code : 'repository_error',
+    code: input.result.ok
+      ? input.code
+      : classified?.provenance === 'application_precheck_denied'
+        ? 'permission_denied'
+        : 'repository_error',
     entity: input.entity,
     entityId,
     result: auditResult,
@@ -70,6 +86,7 @@ async function afterMutation<T extends { id: string }>(
     metadata: {
       ...input.metadata,
       ...(errorCode ? { error_code: errorCode } : {}),
+      ...(classified ? { provenance: classified.provenance } : { provenance: 'application' }),
     },
   });
 

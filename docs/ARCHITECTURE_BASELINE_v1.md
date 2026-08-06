@@ -5,13 +5,13 @@
 | Versão | **1.0** |
 | Status | **Oficial** — encerra FASE I (Foundation) |
 | Data | 2026-08-06 |
-| Baseline `main` | `cc6252059ce7746b0369f892c445c74860bf1481` (PR #52 WP-04.2; docs #51 `9533563…`; funcional WP-04.1 `cb61981…` / PR #50) |
+| Baseline `main` | `a21a184174bb901de3199a1051705bd59dd1b9da` (PR #53 closeout; WP-04.2 `cc62520…` / #52; funcional WP-04.1 `cb61981…` / #50) |
 | PR consolidado | [#48](https://github.com/EdeMachado/BIOMEDHEALTH/pull/48)–[#52](https://github.com/EdeMachado/BIOMEDHEALTH/pull/52) |
 | HML | `biomedhealth-hml` — migrations **0001–0022** |
-| Em curso | Sem WP funcional novo; **D02-A BLOCKED**; opções humanas (residual E01 / unit_id / B04 / #25 / gate D02-A) |
+| Em curso | **WP-04.3** E01 residual closure (IN REVIEW); **D02-A BLOCKED**; pós-merge: unit_id / B04 / #25 / gate D02-A |
 | Engineering Book | `docs/BIOMED_HEALTH_ENGINEERING_BOOK_v1.md` |
 
-Complemento WP-04.1 (mergeado + HML): policies JWT-era residual → `app_auth`; search_path 0017 endurecido; sinks E01 consent/clínico. Complemento WP-04.2 (**DONE** + HML **0022**): contrato de auditoria endurecido (sanitizer allowlist, sinks coletivos, append-only/`correlation_id`). **Não altera** os princípios nem o fluxo oficial deste baseline. E01 **não** declarado 100%.
+Complemento WP-04.1 (mergeado + HML): policies JWT-era residual → `app_auth`; search_path 0017 endurecido; sinks E01 consent/clínico. Complemento WP-04.2 (**DONE** + HML **0022**): sanitizer, sinks coletivos, append-only/`correlation_id`. Complemento WP-04.3 (**IN REVIEW**, sem migration): pré-auth limite honesto; LGPD sem falso sucesso; provenance RLS; care-plan fine-grained; inventário final. **Não altera** os princípios deste baseline. E01 **não** declarado 100%.
 
 Este documento é a **fonte canônica da arquitetura vigente** após a consolidação WP-04.0. Não inicia motores de IA, analytics reais nem D02-A.
 
@@ -143,4 +143,4 @@ Produção
 | Audit adapter | Unificado; RPC `register_audit_event` append-only + correlação (0022) |
 
 **FASE I (Foundation) — ENCERRADA oficialmente por este baseline.**  
-WP-04.1 **concluído** (HML **0021**). WP-04.2 **DONE** (HML **0022**; residuais E01 documentados). **D02-A BLOCKED.** Ver Engineering Book e `docs/WP-04-2_TECHNICAL_REPORT.md`.
+WP-04.1 **concluído** (HML **0021**). WP-04.2 **DONE** (HML **0022**). WP-04.3 **IN REVIEW** (`docs/WP-04-3_TECHNICAL_REPORT.md`, inventário final). **D02-A BLOCKED.**

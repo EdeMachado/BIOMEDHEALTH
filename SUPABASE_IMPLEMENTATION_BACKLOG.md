@@ -876,11 +876,11 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
    - adapter unico `bootstrapAuditTrail` (mock intencional vs supabase fail-closed);
    - RPC `public.register_audit_event` + policy `audit_events_select_auditor` via `app_auth`;
    - migration **0020** em `main` e **aplicada no HML**;
-   - migration **0021** (JWT→app_auth + search_path 0017) em PR WP-04.1 — **HML pendente autorizacao**;
+   - migration **0021** (JWT→app_auth + search_path 0017) em `main` (PR #50) e **aplicada no HML** (validacao A–L; evidência `docs/WP-04-1_HML_0021_EVIDENCE.md`);
    - sinks **consentimento** + **escritas clinicas sensiveis** com metadata sanitizada (IDs/codigos);
    - UI de gestao lista via `listAuditEventsAsync`;
    - Architecture Baseline v1.0 + ADRs 001–008 (+013);
-   - **ainda pendente**: sinks coletivos/negacoes repository amplas, deny update/delete explicito E2E, suite E01 completa.
+   - **ainda pendente (WP-04.2 / E01.x)**: sinks coletivos, auditoria de negacoes update/delete, append-only real, correlacao, inventario remoto formal, fechamento documental E01.
 5. **Escopo incluido** (restante):
    - padrao de payload minimo completo;
    - bloqueio de update/delete para app user;
@@ -1011,7 +1011,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 
 ## Caminho critico recomendado
 
-`SUP-A01 -> … -> [D01] -> [Gate D02-0 documental] -> [WP-03.2/PR#48 + 0020 HML] -> [WP-04.0 Architecture Baseline v1.0 — Foundation ENCERRADA] -> [WP-04.1 Readiness] -> [criterio 14 + inventario remoto] -> [D02-A… — nao autorizada ainda] -> SUP-D03 -> …`
+`SUP-A01 -> … -> [D01] -> [Gate D02-0 documental] -> [WP-03.2/PR#48 + 0020 HML] -> [WP-04.0 Architecture Baseline v1.0] -> [WP-04.1/PR#50 + 0021 HML] -> [WP-04.2 / E01.x] -> [criterio 14 + inventario remoto] -> [D02-A… — nao autorizada ainda] -> SUP-D03 -> …`
 
 Notas de caminho:
 

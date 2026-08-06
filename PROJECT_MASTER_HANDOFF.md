@@ -16,11 +16,12 @@ Este documento é a **fonte oficial de continuidade e governança** do projeto B
 | Repositório | `EdeMachado/BIOMEDHEALTH` |
 | Branch de referência | `main` |
 | **Architecture Baseline** | **v1.0** — `docs/ARCHITECTURE_BASELINE_v1.md` (**FASE I Foundation ENCERRADA**) |
-| Baseline oficial `origin/main` | `6aa954b4d3e951d1015d01f54de99ad48628dc2e` (merge **PR #49** docs WP-04.0; funcional WP-03.2 `cc560ac…` / PR #48) |
+| Baseline oficial `origin/main` | `cb61981ccf30c6f765431fab536dbeb17e3bf114` (merge **PR #50** WP-04.1) |
+| Baseline anterior (docs WP-04.0) | `6aa954b4d3e951d1015d01f54de99ad48628dc2e` (PR #49); funcional WP-03.2 `cc560ac…` / PR #48 |
 | Baseline anterior (pré WP-03.2) | `d3375963544cdf381f318dd23b602dc11b4014ad` (merge PR #47) |
-| Último merge funcional integrado | **PR #48** — WP-03.2; docs baseline **PR #49** |
-| HML Supabase | `biomedhealth-hml` até **0020**; **0021 pendente** (após merge WP-04.1 + autorização humana) |
-| Change set em curso | **WP-04.1** Platform Readiness (`feat/wp-04-1-platform-readiness`) — JWT→app_auth, search_path 0017, E01 sinks; **não** inicia D02-A; **sem** db push HML |
+| Último merge funcional integrado | **PR #50** — WP-04.1 Platform Readiness (0021, JWT→app_auth, E01 sinks) |
+| HML Supabase | `biomedhealth-hml` sincronizado até **0021_platform_readiness** (aplicada e validada A–L em 2026-08-06; evidência `docs/WP-04-1_HML_0021_EVIDENCE.md`) |
+| Change set em curso | **WP-04.2 / E01.x** (próximo) — auditoria residual coletiva/append-only; **não** inicia D02-A |
 | Data desta atualização do handoff | 2026-08-06 |
 | Ratificação org×unit (coletivo) | PR #17 — decisão documental |
 | SPEC SUP-D01 | Aprovada; ciclo **A/B/C/D** em `main` (PRs #20–#24; docs #23/#26) |
@@ -28,7 +29,8 @@ Este documento é a **fonte oficial de continuidade e governança** do projeto B
 | WP-03.1 | Domínio coletivo + bootstrap application (PRs #45–#47) — **DONE** |
 | WP-03.2 | Endurecimento operacional — **DONE** (PR #48 + HML 0020) |
 | WP-04.0 | Architecture Baseline v1.0 — **DONE** (PR #49) |
-| WP-04.1 | Platform Readiness — **IN PR** (aguardar gates + autorização humana; sem merge automático) |
+| WP-04.1 | Platform Readiness — **DONE** (PR #50 + HML 0021) |
+| WP-04.2 | E01 residual (coletivo / append-only / inventário remoto) — **NEXT** |
 | ADRs oficiais | `docs/adr/ADR-001`…`008`; operacionais `010`…`013` |
 | Roadmap / WP Status / Métricas | `docs/ROADMAP.md`, `docs/WP_STATUS.md`, `docs/PLATFORM_METRICS.md` |
 
@@ -222,13 +224,12 @@ Granularidade coletiva org×unit (**ratificada**). D01 concluído. **PR #48** me
 
 ## 12. Sequência recomendada de retomada
 
-1. **WP-04.1** — aguardar Quality+Database gates, autorização humana para merge, depois **0021 no HML** (backup→dry-run→push→validação).
-2. Completar residual **SUP-E01** coletivo / deny update-delete / E2E.
-3. **Não iniciar D02-A** sem critério humano + inventário remoto + Gate de implementação.
-4. Issue #25 — follow-up P3 isolado.
-5. SUP-D03 — após D02 liberado.
-6. SUP-B04 / gap C01 / C04.2b — governança vigente; C04.2b não iniciar.
-7. Produção — somente após HML estável + autorização explícita.
+1. **WP-04.2 / E01.x** — sinks coletivos, auditoria de negações update/delete, append-only real, correlação, inventário remoto formal, fechamento documental E01.
+2. **Não iniciar D02-A** sem critério humano + inventário remoto + Gate de implementação.
+3. Issue #25 — follow-up P3 isolado.
+4. SUP-D03 — após D02 liberado.
+5. SUP-B04 / gap C01 / C04.2b — governança vigente; C04.2b não iniciar.
+6. Produção — somente após HML estável + autorização explícita.
 
 ## 13. Instruções para retomada segura
 

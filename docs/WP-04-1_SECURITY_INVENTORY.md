@@ -5,7 +5,7 @@
 | Data | 2026-08-06 |
 | Branch | `feat/wp-04-1-platform-readiness` |
 | Base SHA | `6aa954b4d3e951d1015d01f54de99ad48628dc2e` |
-| HML | `biomedhealth-hml` (`nwsqhbdusdxcwquayase`) — migrations **0001–0020** (pré-0021) |
+| HML | `biomedhealth-hml` (`nwsqhbdusdxcwquayase`) — inventário pré-0021: **0001–0020**; **pós-aplicação:** HML alinhado a **0021** (ver `docs/WP-04-1_HML_0021_EVIDENCE.md`) |
 
 Inventário somente leitura. **Sem** `db push` neste documento.
 
@@ -119,4 +119,4 @@ Uso restante relevante: policies 0002 residuais. Display name em `0011` lê `raw
 1. Migration **0021** — policies JWT → `app_auth`; search_path 0017; grants reassert.
 2. App — consent + clinical audit sinks; sanitização metadata; adapter com `entityId`.
 3. Validação SQL WP-04.1 A–L; rollback documentado.
-4. **Não** aplicar HML até merge + autorização humana.
+4. **HML:** `0021` aplicada e validada A–L após PR #50 (`docs/WP-04-1_HML_0021_EVIDENCE.md`).

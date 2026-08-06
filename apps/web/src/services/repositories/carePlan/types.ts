@@ -43,11 +43,13 @@ export type CarePlanContext = {
   sessionUserId: string;
   professionalUserId: string;
   organizationId: string;
+  unitId: string;
 };
 
 export type CarePlan = {
   id: string;
   organizationId: string;
+  unitId: string;
   patientId: string;
   professionalId: string;
   title: string;

@@ -48,7 +48,7 @@ export interface SupabaseCarePlanClient {
 }
 
 const PLAN_SELECT =
-  'id, organization_id, user_id, professional_id, title, status, version, plan_status, general_objective, starts_on, target_date, reassessment_due_on, last_reassessed_at, clinical_notes, schema_version, clinical_record_id, created_by, updated_by, closed_at, closed_by, suspension_reason, created_at, updated_at';
+  'id, organization_id, unit_id, user_id, professional_id, title, status, version, plan_status, general_objective, starts_on, target_date, reassessment_due_on, last_reassessed_at, clinical_notes, schema_version, clinical_record_id, created_by, updated_by, closed_at, closed_by, suspension_reason, created_at, updated_at';
 
 const ACTION_SELECT =
   'id, care_plan_id, organization_id, user_id, professional_id, action_text, due_date, status, version, specific_objective, frequency, action_status, display_order, notes, created_by, updated_by, completed_at, created_at, updated_at';
@@ -127,6 +127,7 @@ function mapPlan(row: Record<string, unknown>): CarePlan | null {
   return {
     id: asText(row['id']),
     organizationId: asText(row['organization_id']),
+    unitId: asText(row['unit_id']),
     patientId: asText(row['user_id']),
     professionalId: asText(row['professional_id']),
     title: asText(row['title']),
@@ -390,6 +391,7 @@ export function createSupabaseCarePlanRepository(input: {
           .from('care_plans')
           .insert({
             organization_id: context.organizationId,
+            unit_id: context.unitId,
             user_id: plan.patientId,
             professional_id: context.professionalUserId,
             title: plan.title.trim(),
@@ -478,6 +480,7 @@ export function createSupabaseCarePlanRepository(input: {
           .from('care_plan_actions')
           .insert({
             organization_id: plan.organizationId,
+            unit_id: plan.unitId,
             care_plan_id: plan.id,
             user_id: plan.patientId,
             professional_id: plan.professionalId,

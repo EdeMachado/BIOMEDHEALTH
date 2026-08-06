@@ -29,12 +29,14 @@ export type ClinicalPortfolioContext = {
   sessionUserId: string;
   professionalUserId: string;
   organizationId: string;
+  unitId: string;
 };
 
 export type ClinicalPortfolioPatient = {
   patientId: string;
   displayName: string;
   organizationId: string;
+  unitId: string;
   assignmentStatus: 'ativo' | 'inativo';
   assignmentReason: string | null;
 };

@@ -113,6 +113,7 @@ describe('WP-04.3 E01 residual', () => {
       sessionUserId: 'pro-1',
       professionalUserId: 'pro-1',
       organizationId: 'org-1',
+    unitId: 'unit-org-1',
     };
     const repository = {
       createCarePlan: vi.fn(() =>
@@ -347,7 +348,7 @@ describe('WP-04.3 E01 residual', () => {
     } as unknown as CarePlanRepository;
     await updateLinkedCarePlan(
       repository,
-      { sessionUserId: 'pro-1', professionalUserId: 'pro-1', organizationId: 'org-1' },
+      { sessionUserId: 'pro-1', professionalUserId: 'pro-1', organizationId: 'org-1', unitId: 'unit-org-1' },
       { planId: 'plan-1', expectedVersion: 1, title: 'x' },
       sink
     );

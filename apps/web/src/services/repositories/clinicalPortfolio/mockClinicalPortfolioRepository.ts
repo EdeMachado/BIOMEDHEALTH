@@ -12,6 +12,7 @@ import type {
 
 type MockClinicalAssignment = {
   organizationId: string;
+  unitId: string;
   professionalId: string;
   userId: string;
   status: 'ativo' | 'inativo';
@@ -26,6 +27,7 @@ function defaultAssignments(): MockClinicalAssignment[] {
   return Object.entries(assignedPatientsByProfessional).flatMap(([professionalId, userIds]) =>
     userIds.map((userId) => ({
       organizationId: 'org-1',
+      unitId: 'unit-org-1',
       professionalId,
       userId,
       status: 'ativo' as const,
@@ -83,6 +85,7 @@ export function createMockClinicalPortfolioRepository(
           .filter(
             (item) =>
               item.organizationId === context.organizationId &&
+              item.unitId === context.unitId &&
               item.professionalId === context.professionalUserId &&
               item.status === 'ativo'
           )
@@ -90,6 +93,7 @@ export function createMockClinicalPortfolioRepository(
             patientId: item.userId,
             displayName: displayNameFor(item.userId),
             organizationId: item.organizationId,
+            unitId: item.unitId,
             assignmentStatus: item.status,
             assignmentReason: item.assignmentReason,
           }))

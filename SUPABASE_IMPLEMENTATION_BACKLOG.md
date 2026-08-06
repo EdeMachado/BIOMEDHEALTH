@@ -468,7 +468,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 1. **Identificador**: `SUP-C01`
 2. **Titulo**: Schema de vinculo assistencial e agenda clinica
 3. **Finalidade**: estruturar base de atendimentos e vinculos reais.
-4. **Status parent**: parcialmente atendida pelas filhas SUP-C01.1 (carteira) e SUP-C01.2 (agenda); unit_id operacional permanece gap residual documentado.
+4. **Status parent**: parcialmente atendida pelas filhas SUP-C01.1/C01.2; **WP-04.4 IN REVIEW** fecha gap `unit_id` operacional (migration 0023).
 5. **Escopo incluido (parent)**:
    - consolidacao de `professional_assignments` e `appointments`;
    - indices por `organization_id`, `professional_id`, `user_id`, `starts_at`;

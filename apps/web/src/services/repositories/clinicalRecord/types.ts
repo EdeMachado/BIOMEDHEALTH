@@ -41,6 +41,7 @@ export type ClinicalRecordContext = {
   sessionUserId: string;
   professionalUserId: string;
   organizationId: string;
+  unitId: string;
 };
 
 export type ClinicalRecordChangeKind = 'create' | 'draft_save' | 'conclude' | 'reopen';

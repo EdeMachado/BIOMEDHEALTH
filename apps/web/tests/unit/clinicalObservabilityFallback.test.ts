@@ -307,6 +307,7 @@ describe('clinical factories instrumentation wiring (SUP-C04.2a)', () => {
         sessionUserId: 'usr-1',
         professionalUserId: 'usr-1',
         organizationId: 'org-1',
+      unitId: 'unit-org-1',
       },
     });
     expect(events.some((e) => e.type === 'repository_op_start')).toBe(true);
@@ -327,6 +328,7 @@ describe('clinical factories instrumentation wiring (SUP-C04.2a)', () => {
         sessionUserId: 'usr-1',
         professionalUserId: 'usr-1',
         organizationId: 'org-1',
+      unitId: 'unit-org-1',
       },
       patientId: 'patient-missing',
     });
@@ -350,6 +352,7 @@ describe('clinical factories instrumentation wiring (SUP-C04.2a)', () => {
         sessionUserId: 'usr-1',
         professionalUserId: 'usr-1',
         organizationId: 'org-1',
+      unitId: 'unit-org-1',
       },
     });
 
@@ -379,6 +382,7 @@ describe('clinical factories instrumentation wiring (SUP-C04.2a)', () => {
         sessionUserId: 'usr-1',
         professionalUserId: 'usr-1',
         organizationId: 'org-1',
+      unitId: 'unit-org-1',
       },
       patientId: 'patient-missing',
     });

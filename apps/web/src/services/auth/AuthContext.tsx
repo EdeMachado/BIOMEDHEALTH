@@ -3,6 +3,7 @@ import {
   recordPreAuthLoginFailure,
   registerAuthenticatedAuthEvent,
 } from '@/domains/audit/authAudit';
+import { resolveClinicalUnitId } from '@/domains/clinical/clinicalUnitScope';
 import { newCorrelationId } from '@/domains/audit/auditContract';
 import { getSupabaseClient, validateSupabaseConfiguration } from '@/services/api/supabaseClient';
 import { demoUsers, getRoleHomePath } from '@/services/repositories/demoData';
@@ -406,6 +407,11 @@ function buildSessionUserFromAccessContext(input: {
   nome: string;
   email: string;
 }): SessionUser {
+  const unitResolved = resolveClinicalUnitId({
+    selectedUnitId: input.context.identity.selectedUnitId,
+    roleBindings: input.context.roleBindings,
+    unitScopes: input.context.unitScopes,
+  });
   return {
     id: input.context.identity.userId as string,
     nome: input.nome,
@@ -413,6 +419,7 @@ function buildSessionUserFromAccessContext(input: {
     role: input.context.effectiveRole,
     roles: input.context.roles,
     organizationId: input.context.organization.id,
+    selectedUnitId: unitResolved.ok ? unitResolved.unitId : null,
   };
 }
 
@@ -461,6 +468,10 @@ function normalizeSessionUser(raw: unknown): SessionUser | null {
     role: candidate.role,
     roles: roles.length > 0 ? roles : [candidate.role],
     organizationId: candidate.organizationId,
+    selectedUnitId:
+      typeof candidate.selectedUnitId === 'string' && candidate.selectedUnitId.trim()
+        ? candidate.selectedUnitId
+        : null,
   };
 }
 

@@ -11,6 +11,7 @@ Atualizado: **2026-08-06**
 | WP-04.1 | Platform Readiness (JWT→app_auth, search_path, E01 sinks) | **DONE** | PR #50 · `cb61981…` · HML **0021** |
 | WP-04.2 / E01.x | Trust & Audit Layer | **DONE** | PR #52 · `cc62520…` · HML **0022** · closeout #53 `a21a184…` |
 | **WP-04.3 / E01 residual** | E01 Residual Closure | **DONE** | PR #54 · merge `ee0eff6…` · base `a21a184…` · **sem** migration · **sem** HML apply |
+| **WP-04.4 / unit_id** | Clinical Unit Scope Closure | **IN REVIEW** | branch `feat/wp-04-4-clinical-unit-scope` · base `8e8d17d…` · migration **0023** · sem HML |
 | D02-A | Analytics agregados | **BLOCKED** | Gate impl. não liberado — **não iniciar** |
 
 ## Registro WP-04.3 (encerrado)

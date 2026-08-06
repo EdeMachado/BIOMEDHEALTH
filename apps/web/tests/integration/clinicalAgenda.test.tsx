@@ -25,6 +25,7 @@ let agendaResult:
     {
       id: 'appt-demo-1',
       organizationId: 'org-1',
+      unitId: 'unit-org-1',
       patientId: 'usr-1',
       professionalId: 'pro-1',
       startsAt: slot1.startsAt,
@@ -36,6 +37,7 @@ let agendaResult:
     {
       id: 'appt-demo-2',
       organizationId: 'org-1',
+      unitId: 'unit-org-1',
       patientId: 'usr-3',
       professionalId: 'pro-1',
       startsAt: slot2.startsAt,
@@ -47,6 +49,7 @@ let agendaResult:
     {
       id: 'appt-demo-3',
       organizationId: 'org-1',
+      unitId: 'unit-org-1',
       patientId: 'usr-4',
       professionalId: 'pro-1',
       startsAt: slot3.startsAt,
@@ -95,21 +98,24 @@ vi.mock('@/services/repositories/clinicalPortfolio/factory', () => ({
           patientId: 'usr-1',
           displayName: 'Ana Demo',
           organizationId: 'org-1',
-          assignmentStatus: 'ativo',
+          unitId: 'unit-org-1',
+      assignmentStatus: 'ativo',
           assignmentReason: 'acompanhamento',
         },
         {
           patientId: 'usr-3',
           displayName: 'Carlos Exemplo',
           organizationId: 'org-1',
-          assignmentStatus: 'ativo',
+          unitId: 'unit-org-1',
+      assignmentStatus: 'ativo',
           assignmentReason: 'acompanhamento',
         },
         {
           patientId: 'usr-4',
           displayName: 'Elisa Fictícia',
           organizationId: 'org-1',
-          assignmentStatus: 'ativo',
+          unitId: 'unit-org-1',
+      assignmentStatus: 'ativo',
           assignmentReason: 'acompanhamento',
         },
       ],
@@ -169,6 +175,7 @@ describe('ClinicalAgendaPage integration', () => {
         {
           id: 'appt-demo-1',
           organizationId: 'org-1',
+          unitId: 'unit-org-1',
           patientId: 'usr-1',
           professionalId: 'pro-1',
           startsAt: slot1.startsAt,
@@ -180,6 +187,7 @@ describe('ClinicalAgendaPage integration', () => {
         {
           id: 'appt-demo-2',
           organizationId: 'org-1',
+          unitId: 'unit-org-1',
           patientId: 'usr-3',
           professionalId: 'pro-1',
           startsAt: slot2.startsAt,
@@ -191,6 +199,7 @@ describe('ClinicalAgendaPage integration', () => {
         {
           id: 'appt-demo-3',
           organizationId: 'org-1',
+          unitId: 'unit-org-1',
           patientId: 'usr-4',
           professionalId: 'pro-1',
           startsAt: slot3.startsAt,

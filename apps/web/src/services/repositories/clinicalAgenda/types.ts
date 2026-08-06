@@ -34,6 +34,7 @@ export type ClinicalAgendaContext = {
   sessionUserId: string;
   professionalUserId: string;
   organizationId: string;
+  unitId: string;
 };
 
 export type ClinicalAppointmentStatus =
@@ -48,6 +49,7 @@ export type ClinicalAppointmentType = 'preventiva' | 'reavaliacao' | 'acompanham
 export type ClinicalAppointment = {
   id: string;
   organizationId: string;
+  unitId: string;
   patientId: string;
   professionalId: string;
   startsAt: string;

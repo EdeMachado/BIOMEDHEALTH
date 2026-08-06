@@ -35,6 +35,7 @@ export interface SupabaseClinicalPortfolioClient {
 type PortfolioRow = {
   patient_user_id: string;
   organization_id: string;
+  unit_id: string;
   assignment_status: string;
   assignment_reason: string | null;
   display_name: string | null;
@@ -124,13 +125,16 @@ export function createSupabaseClinicalPortfolioRepository(input: {
             (row) =>
               typeof row.patient_user_id === 'string' &&
               typeof row.organization_id === 'string' &&
+              typeof row.unit_id === 'string' &&
               row.organization_id === context.organizationId &&
+              row.unit_id === context.unitId &&
               row.assignment_status === 'ativo'
           )
           .map((row) => ({
             patientId: row.patient_user_id,
             displayName: row.display_name?.trim() || 'Paciente',
             organizationId: row.organization_id,
+            unitId: row.unit_id,
             assignmentStatus: 'ativo' as const,
             assignmentReason: row.assignment_reason,
           }))

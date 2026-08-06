@@ -173,6 +173,7 @@ export function createMockCarePlanRepository(input: { seed?: Partial<MockState> 
       const created: CarePlan = {
         id: createId('cp'),
         organizationId: context.organizationId,
+        unitId: context.unitId,
         patientId: plan.patientId,
         professionalId: context.professionalUserId,
         title: plan.title.trim(),

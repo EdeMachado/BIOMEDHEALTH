@@ -10,6 +10,7 @@ function context(overrides: Partial<ClinicalPortfolioContext> = {}): ClinicalPor
     sessionUserId: 'pro-1',
     professionalUserId: 'pro-1',
     organizationId: 'org-1',
+    unitId: 'unit-org-1',
     ...overrides,
   };
 }
@@ -52,6 +53,7 @@ describe('carteira clinica vinculada', () => {
         clinicalAssignments: [
           {
             organizationId: 'org-1',
+            unitId: 'unit-org-1',
             professionalId: 'pro-1',
             userId: 'usr-1',
             status: 'inativo',
@@ -59,6 +61,7 @@ describe('carteira clinica vinculada', () => {
           },
           {
             organizationId: 'org-2',
+            unitId: 'unit-org-2',
             professionalId: 'pro-1',
             userId: 'usr-2',
             status: 'ativo',

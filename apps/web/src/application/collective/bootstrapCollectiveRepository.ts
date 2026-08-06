@@ -35,7 +35,9 @@ export function bootstrapCollectiveRepository(
       };
     }
 
-    const getClient = dependencies.getClient ?? (() => getSupabaseClient());
+    const getClient =
+      dependencies.getClient ??
+      (() => getSupabaseClient() as SupabaseCollectiveClient | null);
     const client = getClient();
 
     if (!client) {
@@ -51,7 +53,9 @@ export function bootstrapCollectiveRepository(
       mode,
       repository: createCollectiveRepositoryFactory({
         mode: 'supabase',
-        supabaseClient: client,
+        // Narrow the generated SupabaseClient generics to the collective port
+        // to avoid TS2589 (excessively deep type instantiation) in CI.
+        supabaseClient: client as SupabaseCollectiveClient,
       }),
     };
   } catch (error) {

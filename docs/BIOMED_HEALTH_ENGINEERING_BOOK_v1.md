@@ -4,10 +4,10 @@
 |---|---|
 | Versão | 1.0 |
 | Data | 2026-08-06 |
-| Baseline `main` | `a21a184174bb901de3199a1051705bd59dd1b9da` (merge PR #53) |
-| Baseline WP-04.2 funcional | `cc6252059ce7746b0369f892c445c74860bf1481` (merge PR #52) |
-| WP-04.3 | E01 residual closure **IN REVIEW** — `docs/WP-04-3_TECHNICAL_REPORT.md` |
-| HML | **0001–0022** (`docs/WP-04-2_HML_0022_EVIDENCE.md`); sem 0023 |
+| Baseline `main` | `ee0eff64d5ccec04314dd52f1b795fe55e8aaa3c` (merge PR #54 WP-04.3) |
+| Baseline anterior | `a21a184174bb901de3199a1051705bd59dd1b9da` (merge PR #53) |
+| WP-04.3 | E01 residual closure **DONE** — `docs/WP-04-3_TECHNICAL_REPORT.md` |
+| HML | **0001–0022**; WP-04.3 sem migration / sem apply |
 | Escopo | Documento de entrada para desenvolvedores e auditores |
 
 Este livro **não substitui** Architecture Baseline, ADRs, handoff, backlog ou relatórios técnicos. Serve como índice + princípios consolidados.

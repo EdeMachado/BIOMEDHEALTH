@@ -17,13 +17,13 @@ Este documento é a **fonte oficial de continuidade e governança** do projeto B
 | Branch de referência | `main` |
 | **Architecture Baseline** | **v1.0** — `docs/ARCHITECTURE_BASELINE_v1.md` (**FASE I Foundation ENCERRADA**) |
 | **Engineering Book** | `docs/BIOMED_HEALTH_ENGINEERING_BOOK_v1.md` (índice de entrada; não substitui este handoff) |
-| Baseline oficial `origin/main` | `a21a184174bb901de3199a1051705bd59dd1b9da` (merge **PR #53** closeout WP-04.2 HML) |
+| Baseline oficial `origin/main` | `ee0eff64d5ccec04314dd52f1b795fe55e8aaa3c` (merge **PR #54** WP-04.3) |
+| Baseline anterior (closeout WP-04.2) | `a21a184174bb901de3199a1051705bd59dd1b9da` (PR #53) |
 | Baseline Trust & Audit funcional | `cc6252059ce7746b0369f892c445c74860bf1481` (merge **PR #52** WP-04.2) |
-| Baseline anterior (docs prep #51) | `9533563b0f19e6cf4b16a5dc1b4e3181a07a4dd6` |
 | Baseline funcional WP-04.1 | `cb61981ccf30c6f765431fab536dbeb17e3bf114` (PR #50) |
-| Último merge integrado | **PR #53** — docs HML 0022 closeout |
-| HML Supabase | `biomedhealth-hml` sincronizado até **0022** (0001–0022; evidência `docs/WP-04-2_HML_0022_EVIDENCE.md`) — **sem** 0023 |
-| Change set em curso | **WP-04.3 E01 Residual Closure** — branch `feat/wp-04-3-e01-residual-closure`; **sem** migration; **D02-A BLOCKED** |
+| Último merge integrado | **PR #54** — WP-04.3 E01 Residual Closure |
+| HML Supabase | `biomedhealth-hml` sincronizado até **0022** (0001–0022) — WP-04.3 **sem** migration / **sem** apply |
+| Change set em curso | **Closeout documental WP-04.3** → próximo recomendado: gap clínico `unit_id`; **D02-A BLOCKED** |
 | Data desta atualização do handoff | 2026-08-06 |
 | Ratificação org×unit (coletivo) | PR #17 — decisão documental |
 | SPEC SUP-D01 | Aprovada; ciclo **A/B/C/D** em `main` (PRs #20–#24; docs #23/#26) |
@@ -33,7 +33,7 @@ Este documento é a **fonte oficial de continuidade e governança** do projeto B
 | WP-04.0 | Architecture Baseline v1.0 — **DONE** (PR #49) |
 | WP-04.1 | Platform Readiness — **DONE** (PR #50 + HML 0021) |
 | WP-04.2 | Trust & Audit Layer — **DONE** (PR #52 + HML 0022; closeout #53) |
-| WP-04.3 | E01 Residual Closure — **IN REVIEW** (pré-auth limite; LGPD honesto; RLS provenance; care-plan fine-grained; inventário final; E01 **não** 100%) |
+| WP-04.3 | E01 Residual Closure — **DONE** (PR #54 `ee0eff6…`; sem migration; sem HML; E01 **não** 100%) |
 | ADRs oficiais | `docs/adr/ADR-001`…`008`; operacionais `010`…`013` |
 | Roadmap / WP Status / Métricas | `docs/ROADMAP.md`, `docs/WP_STATUS.md`, `docs/PLATFORM_METRICS.md` |
 
@@ -139,7 +139,7 @@ Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limia
 | B — Preventivo | Parcial | B01–B03 (+ filhas) entregues; **B04 aberto** (não iniciado) |
 | C — Clínico | Parcial | C01.1/C01.2, C02, C03 entregues; C01 parent com gap `unit_id`; C04 parcial (ver §8) |
 | D — Gestão agregada | Parcial | D01 em main; SPEC D02 + Gate em main (PR #27/#28); Gate reauditatado com P3; impl. D02 não iniciada; critério 14 impede D02-A; D03 não iniciado |
-| E — Auditoria/hardening | Parcial | WP-04.2 DONE + WP-04.3 residual closure (IN REVIEW); E01 **não** 100% (pré-auth Supabase / RLS same-txn / LGPD jurídica); E02 aberto |
+| E — Auditoria/hardening | Parcial | WP-04.2 + WP-04.3 **DONE**; E01 **não** 100% (pré-auth Supabase / RLS same-txn / LGPD jurídica); E02 aberto |
 
 ## 8. Tickets e fatias C04 — status consolidado
 

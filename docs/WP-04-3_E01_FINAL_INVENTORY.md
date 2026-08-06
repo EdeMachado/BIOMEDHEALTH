@@ -3,10 +3,11 @@
 | Campo | Valor |
 |---|---|
 | Data | 2026-08-06 |
-| Baseline início | `a21a184174bb901de3199a1051705bd59dd1b9da` (`origin/main`) |
-| Branch | `feat/wp-04-3-e01-residual-closure` |
+| Baseline início | `a21a184174bb901de3199a1051705bd59dd1b9da` (`origin/main` pré-#54) |
+| SHA `main` (merge) | `ee0eff64d5ccec04314dd52f1b795fe55e8aaa3c` (PR #54) |
+| Branch | `feat/wp-04-3-e01-residual-closure` (histórica) |
 | Migration nova | **Não** — 0022 já cobre append-only / corr / PHI; provenance em metadata |
-| HML | **0001–0022** (sem apply novo neste WP) |
+| HML | **0001–0022** (sem apply neste WP) |
 | E01 | **Não** 100% — limites técnicos/jurídicos documentados |
 | D02-A | **BLOCKED** |
 

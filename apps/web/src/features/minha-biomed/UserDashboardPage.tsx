@@ -19,30 +19,17 @@ import { Button } from '@/shared/ui/button';
 import { Card, CardDescription, CardTitle } from '@/shared/ui/card';
 import { Badge } from '@/shared/ui/badge';
 import { useAuth } from '@/services/auth/AuthContext';
-import { getSupabaseClient } from '@/services/api/supabaseClient';
-import {
-  createAssessmentRepositoryFactory,
-  resolveAssessmentRepositoryMode,
-} from '@/services/repositories/assessment/factory';
+import { bootstrapAssessmentRepository } from '@/application/assessment';
 import type { AssessmentContext } from '@/services/repositories/assessment/types';
-import type { SupabaseAssessmentClient } from '@/services/repositories/assessment/supabaseAssessmentRepository';
 
 export function UserDashboardPage() {
   const { user } = useAuth();
   const mountedRef = useRef(true);
-  const repository = useMemo(() => {
-    try {
-      const mode = resolveAssessmentRepositoryMode(import.meta.env);
-      const supabaseClient =
-        mode === 'supabase' ? (getSupabaseClient() as unknown as SupabaseAssessmentClient | null) : null;
-      return createAssessmentRepositoryFactory({
-        mode,
-        supabaseClient,
-      });
-    } catch {
-      return createAssessmentRepositoryFactory({ mode: 'mock' });
-    }
-  }, []);
+  const bootstrap = useMemo(
+    () => bootstrapAssessmentRepository({ env: import.meta.env }),
+    []
+  );
+  const repository = bootstrap.ok ? bootstrap.repository : null;
   const [runtime, setRuntime] = useState<AssessmentRuntimeSnapshot | null>(null);
   const [state, setState] = useState<{
     loading: boolean;
@@ -83,6 +70,18 @@ export function UserDashboardPage() {
 
   useEffect(() => {
     let disposed = false;
+    if (!bootstrap.ok || !repository) {
+      setState({
+        loading: false,
+        saving: false,
+        submitting: false,
+        error: bootstrap.ok
+          ? 'Avaliacao indisponivel.'
+          : bootstrap.message,
+        statusMessage: null,
+      });
+      return;
+    }
     if (!context) {
       setState({ loading: false, saving: false, submitting: false, error: 'Sessao indisponivel.', statusMessage: null });
       return;
@@ -119,10 +118,10 @@ export function UserDashboardPage() {
     return () => {
       disposed = true;
     };
-  }, [context, repository, form]);
+  }, [bootstrap, context, repository, form]);
 
   async function persistCurrentFormDraft(nextStep: number | null = null) {
-    if (!runtime || !context || runtime.completed) return;
+    if (!repository || !runtime || !context || runtime.completed) return;
     const parsed = assessmentFormSchema.safeParse(form.getValues());
     if (!parsed.success) {
       setState((current) => ({
@@ -224,6 +223,7 @@ export function UserDashboardPage() {
             event.preventDefault();
             if (!runtime || !context) return;
             void form.handleSubmit(async (data) => {
+              if (!repository) return;
               setState((current) => ({ ...current, submitting: true, error: null, statusMessage: null }));
               const result = await completeAssessment(repository, context, runtime, data);
               if (!mountedRef.current) return;

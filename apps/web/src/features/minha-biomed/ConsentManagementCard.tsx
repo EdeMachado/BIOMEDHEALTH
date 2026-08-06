@@ -3,13 +3,8 @@ import { Alert } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
 import { CardDescription } from '@/shared/ui/card';
 import { useAuth } from '@/services/auth/AuthContext';
-import { getSupabaseClient } from '@/services/api/supabaseClient';
-import {
-  createConsentRepositoryFactory,
-  resolveConsentRepositoryMode,
-} from '@/services/repositories/consent/factory';
+import { bootstrapConsentRepository } from '@/application/consent';
 import type { ConsentContext, ConsentHistoryItem } from '@/services/repositories/consent/types';
-import type { SupabaseConsentClient } from '@/services/repositories/consent/supabaseConsentRepository';
 import {
   loadConsentOverview,
   registerConsentAcceptance,
@@ -24,19 +19,11 @@ type ConsentManagementCardProps = {
 export function ConsentManagementCard({ onMessage }: ConsentManagementCardProps) {
   const { user } = useAuth();
   const mountedRef = useRef(true);
-  const repository = useMemo(() => {
-    try {
-      const mode = resolveConsentRepositoryMode(import.meta.env);
-      const supabaseClient =
-        mode === 'supabase' ? (getSupabaseClient() as unknown as SupabaseConsentClient | null) : null;
-      return createConsentRepositoryFactory({
-        mode,
-        supabaseClient,
-      });
-    } catch {
-      return createConsentRepositoryFactory({ mode: 'mock' });
-    }
-  }, []);
+  const bootstrap = useMemo(
+    () => bootstrapConsentRepository({ env: import.meta.env }),
+    []
+  );
+  const repository = bootstrap.ok ? bootstrap.repository : null;
   const auditSink = useMemo(() => createNoopConsentAuditSink(), []);
 
   const [state, setState] = useState<{
@@ -73,6 +60,15 @@ export function ConsentManagementCard({ onMessage }: ConsentManagementCardProps)
 
   useEffect(() => {
     let disposed = false;
+    if (!bootstrap.ok || !repository) {
+      setState({
+        loading: false,
+        actionLoading: false,
+        error: bootstrap.ok ? 'Consentimentos indisponiveis.' : bootstrap.message,
+        data: null,
+      });
+      return;
+    }
     if (!context) {
       setState({ loading: false, actionLoading: false, error: 'Sessao indisponivel.', data: null });
       return;
@@ -89,10 +85,10 @@ export function ConsentManagementCard({ onMessage }: ConsentManagementCardProps)
     return () => {
       disposed = true;
     };
-  }, [context, repository]);
+  }, [bootstrap, context, repository]);
 
   async function refresh() {
-    if (!context) return;
+    if (!context || !repository) return;
     if (!mountedRef.current) return;
     setState((current) => ({ ...current, loading: true, error: null }));
     const result = await loadConsentOverview(repository, context);
@@ -114,7 +110,7 @@ export function ConsentManagementCard({ onMessage }: ConsentManagementCardProps)
   }
 
   async function acceptCurrentDocument() {
-    if (!context || !state.data) return;
+    if (!context || !repository || !state.data) return;
     const target = state.data.eligibleDocuments[0];
     if (!target) return;
     setState((current) => ({ ...current, actionLoading: true, error: null }));
@@ -143,7 +139,7 @@ export function ConsentManagementCard({ onMessage }: ConsentManagementCardProps)
   }
 
   async function revokeActiveConsent() {
-    if (!context || !state.data?.activeConsent) return;
+    if (!context || !repository || !state.data?.activeConsent) return;
     const confirmed = window.confirm(
       'Revogar o consentimento pode limitar funcionalidades preventivas. Deseja continuar?'
     );

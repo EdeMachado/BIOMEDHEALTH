@@ -8,3 +8,6 @@ test-results
 .DS_Store
 apps/web/node_modules
 apps/web/dist
+.local-backups/
+supabase/.temp/
+supabase/.branches/

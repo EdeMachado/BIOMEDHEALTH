@@ -11,7 +11,10 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { listAuditEvents } from '@/domains/audit/auditTrail';
+import {
+  getAuditBootstrapError,
+  listAuditEventsAsync,
+} from '@/domains/audit/auditTrail';
 import type { CollectiveScope } from '@/domains/collective';
 import {
   canWriteCollective,
@@ -19,52 +22,18 @@ import {
   formatScopeLabel,
   sanitizeCollectiveUiMessage,
 } from '@/features/biomed-gestao/collectiveUi';
-import { getSupabaseClient } from '@/services/api/supabaseClient';
+import { bootstrapCollectiveRepository } from '@/application/collective';
 import { useAuth } from '@/services/auth/AuthContext';
-import {
-  createCollectiveRepositoryFactory,
-  resolveCollectiveRepositoryMode,
-  type ActionPlanRecord,
-  type CampaignRecord,
-  type CollectiveContext,
-  type CollectiveRepository,
-  type SupabaseCollectiveClient,
+import type {
+  ActionPlanRecord,
+  CampaignRecord,
+  CollectiveContext,
+  CollectiveRepository,
 } from '@/services/repositories/collective';
 import { collectiveIndicators, programDistribution, riskDistribution, roleLabel, trendByMonth } from '@/services/repositories/demoData';
 import { Button } from '@/shared/ui/button';
 import { Card, CardDescription, CardTitle } from '@/shared/ui/card';
 import { Alert } from '@/shared/ui/alert';
-
-type RepositoryBootstrap =
-  | { ok: true; mode: 'mock' | 'supabase'; repository: CollectiveRepository }
-  | { ok: false; message: string };
-
-function bootstrapCollectiveRepository(): RepositoryBootstrap {
-  try {
-    const mode = resolveCollectiveRepositoryMode(import.meta.env);
-    if (mode === 'mock') {
-      return { ok: true, mode, repository: createCollectiveRepositoryFactory({ mode: 'mock' }) };
-    }
-    const client = getSupabaseClient() as unknown as SupabaseCollectiveClient | null;
-    if (!client) {
-      return {
-        ok: false,
-        message: 'Modo Supabase ativo sem cliente configurado. Gestao coletiva indisponivel (fail-closed).',
-      };
-    }
-    return {
-      ok: true,
-      mode,
-      repository: createCollectiveRepositoryFactory({ mode: 'supabase', supabaseClient: client }),
-    };
-  } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : 'Configuracao invalida do repository coletivo.';
-    return { ok: false, message };
-  }
-}
 
 function buildCollectiveContext(user: { id: string; organizationId: string } | null): CollectiveContext | null {
   if (!user?.id || !user.organizationId) return null;
@@ -249,7 +218,10 @@ export function ManagementOverviewPage() {
 
 export function ManagementCampaignsPage() {
   const { user } = useAuth();
-  const bootstrap = useMemo(() => bootstrapCollectiveRepository(), []);
+  const bootstrap = useMemo(
+    () => bootstrapCollectiveRepository({ env: import.meta.env }),
+    []
+  );
   const context = useMemo(() => buildCollectiveContext(user), [user]);
   const canWrite = canWriteCollective(user?.role);
   const submittingRef = useRef(false);
@@ -716,7 +688,10 @@ export function ManagementCampaignsPage() {
 
 export function ManagementActionPlanPage() {
   const { user } = useAuth();
-  const bootstrap = useMemo(() => bootstrapCollectiveRepository(), []);
+  const bootstrap = useMemo(
+    () => bootstrapCollectiveRepository({ env: import.meta.env }),
+    []
+  );
   const context = useMemo(() => buildCollectiveContext(user), [user]);
   const canWrite = canWriteCollective(user?.role);
   const submittingRef = useRef(false);
@@ -1165,12 +1140,39 @@ export function ManagementIndicatorsPage() {
 }
 
 export function ManagementAuditPage() {
-  const events = listAuditEvents();
+  const [events, setEvents] = useState<Awaited<ReturnType<typeof listAuditEventsAsync>>>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [result, setResult] = useState<'todos' | 'sucesso' | 'falha' | 'negado'>('todos');
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const pageSize = 8;
+
+  useEffect(() => {
+    let disposed = false;
+    setLoading(true);
+    setLoadError(null);
+    void listAuditEventsAsync()
+      .then((items) => {
+        if (disposed) return;
+        setEvents(items);
+        setLoading(false);
+      })
+      .catch((error: unknown) => {
+        if (disposed) return;
+        setLoadError(
+          error instanceof Error
+            ? error.message
+            : getAuditBootstrapError() ?? 'Falha ao carregar auditoria.'
+        );
+        setEvents([]);
+        setLoading(false);
+      });
+    return () => {
+      disposed = true;
+    };
+  }, []);
 
   const normalized = useMemo(
     () =>
@@ -1187,8 +1189,12 @@ export function ManagementAuditPage() {
     <Card className="space-y-3">
       <CardTitle>Auditoria (somente leitura)</CardTitle>
       <CardDescription>
-        Eventos de demonstração: login, logout, negação de rota e falhas de autenticação.
+        Trilha de auditoria via adapter unico (mock em demo; persistente via RPC em Supabase).
       </CardDescription>
+      {loading ? (
+        <p className="text-sm text-[var(--muted-foreground)]">Carregando eventos de auditoria...</p>
+      ) : null}
+      {loadError ? <Alert>{loadError}</Alert> : null}
       <div className="grid gap-2 sm:grid-cols-[1fr_220px]">
         <input className="focus-ring h-10 rounded-xl border px-3 text-sm" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por usuário, ação ou recurso" />
         <select className="focus-ring h-10 rounded-xl border px-3 text-sm" value={result} onChange={(e) => setResult(e.target.value as typeof result)}>

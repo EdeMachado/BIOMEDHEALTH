@@ -9,6 +9,10 @@ import type {
   ReopenClinicalRecordInput,
   SaveClinicalRecordDraftInput,
 } from '@/services/repositories/clinicalRecord/types';
+import {
+  createNoopClinicalAuditSink,
+  type ClinicalAuditSink,
+} from '@/domains/clinical/clinicalAuditSink';
 
 function validateContext(context: ClinicalRecordContext): ClinicalRecordResult<true> {
   if (!context.sessionUserId || !context.professionalUserId) return fail('NO_SESSION');
@@ -40,29 +44,53 @@ export async function loadClinicalRecordHistory(
 export async function saveLinkedClinicalRecordDraft(
   repository: ClinicalRecordRepository,
   context: ClinicalRecordContext,
-  draft: SaveClinicalRecordDraftInput
+  draft: SaveClinicalRecordDraftInput,
+  auditSink: ClinicalAuditSink = createNoopClinicalAuditSink()
 ): Promise<ClinicalRecordResult<ClinicalRecord>> {
   const validation = validateContext(context);
   if (!validation.ok) return validation;
-  return repository.saveClinicalRecordDraft({ context, draft });
+  const result = await repository.saveClinicalRecordDraft({ context, draft });
+  auditSink.registerSensitiveOperation({
+    code: 'clinical_record_draft_saved',
+    entity: 'clinical_record',
+    entityId: result.ok ? result.data.id : draft.recordId,
+    result: result.ok ? 'sucesso' : 'falha',
+  });
+  return result;
 }
 
 export async function concludeLinkedClinicalRecord(
   repository: ClinicalRecordRepository,
   context: ClinicalRecordContext,
-  conclusion: ConcludeClinicalRecordInput
+  conclusion: ConcludeClinicalRecordInput,
+  auditSink: ClinicalAuditSink = createNoopClinicalAuditSink()
 ): Promise<ClinicalRecordResult<ClinicalRecord>> {
   const validation = validateContext(context);
   if (!validation.ok) return validation;
-  return repository.concludeClinicalRecord({ context, conclusion });
+  const result = await repository.concludeClinicalRecord({ context, conclusion });
+  auditSink.registerSensitiveOperation({
+    code: 'clinical_record_concluded',
+    entity: 'clinical_record',
+    entityId: result.ok ? result.data.id : conclusion.recordId,
+    result: result.ok ? 'sucesso' : 'falha',
+  });
+  return result;
 }
 
 export async function reopenLinkedClinicalRecord(
   repository: ClinicalRecordRepository,
   context: ClinicalRecordContext,
-  reopen: ReopenClinicalRecordInput
+  reopen: ReopenClinicalRecordInput,
+  auditSink: ClinicalAuditSink = createNoopClinicalAuditSink()
 ): Promise<ClinicalRecordResult<ClinicalRecord>> {
   const validation = validateContext(context);
   if (!validation.ok) return validation;
-  return repository.reopenClinicalRecord({ context, reopen });
+  const result = await repository.reopenClinicalRecord({ context, reopen });
+  auditSink.registerSensitiveOperation({
+    code: 'clinical_record_reopened',
+    entity: 'clinical_record',
+    entityId: result.ok ? result.data.id : reopen.recordId,
+    result: result.ok ? 'sucesso' : 'falha',
+  });
+  return result;
 }

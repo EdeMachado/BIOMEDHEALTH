@@ -16,20 +16,20 @@ Este documento é a **fonte oficial de continuidade e governança** do projeto B
 | Repositório | `EdeMachado/BIOMEDHEALTH` |
 | Branch de referência | `main` |
 | **Architecture Baseline** | **v1.0** — `docs/ARCHITECTURE_BASELINE_v1.md` (**FASE I Foundation ENCERRADA**) |
-| Baseline oficial `origin/main` | `cc560ac94b0a0fe946d3ef61f3cc5384bb09f118` (merge **PR #48**, 2026-08-06T12:13:08Z) |
+| Baseline oficial `origin/main` | `6aa954b4d3e951d1015d01f54de99ad48628dc2e` (merge **PR #49** docs WP-04.0; funcional WP-03.2 `cc560ac…` / PR #48) |
 | Baseline anterior (pré WP-03.2) | `d3375963544cdf381f318dd23b602dc11b4014ad` (merge PR #47) |
-| Último merge funcional integrado | **PR #48** — WP-03.2 operational reliability (0020, fail-closed, audit); Quality+Database gates SUCCESS |
-| HML Supabase | `biomedhealth-hml` (`nwsqhbdusdxcwquayase`) sincronizado até **0020_residual_rls_and_audit_rpc** (aplicada e validada estrutural+comportamental em 2026-08-06) |
-| Change set em curso | Consolidação documental **WP-04.0** (baseline/ADRs/roadmap); **não** inicia D02-A |
+| Último merge funcional integrado | **PR #48** — WP-03.2; docs baseline **PR #49** |
+| HML Supabase | `biomedhealth-hml` até **0020**; **0021 pendente** (após merge WP-04.1 + autorização humana) |
+| Change set em curso | **WP-04.1** Platform Readiness (`feat/wp-04-1-platform-readiness`) — JWT→app_auth, search_path 0017, E01 sinks; **não** inicia D02-A; **sem** db push HML |
 | Data desta atualização do handoff | 2026-08-06 |
 | Ratificação org×unit (coletivo) | PR #17 — decisão documental |
 | SPEC SUP-D01 | Aprovada; ciclo **A/B/C/D** em `main` (PRs #20–#24; docs #23/#26) |
 | SPEC SUP-D02 / Gate | SPEC + Gate D02-0 documentais em `main`; **implementação D02-A não autorizada** |
 | WP-03.1 | Domínio coletivo + bootstrap application (PRs #45–#47) — **DONE** |
 | WP-03.2 | Endurecimento operacional — **DONE** (PR #48 + HML 0020) |
-| WP-04.0 | Architecture Baseline v1.0 — **DONE** (este ciclo) |
-| WP-04.1 | Platform Readiness / prep Intelligence — **NEXT** |
-| ADRs oficiais | `docs/adr/ADR-001`…`008`; operacionais WP-03.2: `ADR-010`…`012` |
+| WP-04.0 | Architecture Baseline v1.0 — **DONE** (PR #49) |
+| WP-04.1 | Platform Readiness — **IN PR** (aguardar gates + autorização humana; sem merge automático) |
+| ADRs oficiais | `docs/adr/ADR-001`…`008`; operacionais `010`…`013` |
 | Roadmap / WP Status / Métricas | `docs/ROADMAP.md`, `docs/WP_STATUS.md`, `docs/PLATFORM_METRICS.md` |
 
 ## 3. Propósito do BIOMED HEALTH e módulos
@@ -222,8 +222,8 @@ Granularidade coletiva org×unit (**ratificada**). D01 concluído. **PR #48** me
 
 ## 12. Sequência recomendada de retomada
 
-1. **WP-04.1** — Platform Readiness: policies JWT-era (0002), `search_path` helpers 0017, inventário HML, hardening E02 parcial.
-2. Completar **SUP-E01** (consent/clinical sinks, append-only deny update/delete tests).
+1. **WP-04.1** — aguardar Quality+Database gates, autorização humana para merge, depois **0021 no HML** (backup→dry-run→push→validação).
+2. Completar residual **SUP-E01** coletivo / deny update-delete / E2E.
 3. **Não iniciar D02-A** sem critério humano + inventário remoto + Gate de implementação.
 4. Issue #25 — follow-up P3 isolado.
 5. SUP-D03 — após D02 liberado.

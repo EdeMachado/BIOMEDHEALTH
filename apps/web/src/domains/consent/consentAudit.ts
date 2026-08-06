@@ -8,10 +8,10 @@ export type ConsentAuditSink = {
 export function createNoopConsentAuditSink(): ConsentAuditSink {
   return {
     registerAccepted() {
-      // SUP-E01 pendente: trilha append-only persistente via RPC controlada.
+      // intentional no-op for tests / unavailable session
     },
     registerRevoked() {
-      // SUP-E01 pendente: trilha append-only persistente via RPC controlada.
+      // intentional no-op for tests / unavailable session
     },
   };
 }

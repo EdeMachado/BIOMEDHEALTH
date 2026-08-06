@@ -21,13 +21,17 @@ function mapRow(row: AuditRow): AuditEvent {
       ? row.result
       : 'falha';
 
+  const correlationMatch = row.reason?.match(/(?:^|\|)corr=([A-Za-z0-9_-]{8,64})(?:\||$)/);
+
   return {
     id: row.id,
     actorEmail: row.actor_user_id ?? 'desconhecido',
     actorRole: row.actor_role,
     organizationId: row.organization_id,
     action: row.action,
-    entity: row.entity_id ? `${row.entity}:${row.entity_id}` : row.entity,
+    entity: row.entity,
+    entityId: row.entity_id ?? undefined,
+    correlationId: correlationMatch?.[1],
     result,
     timestamp: row.created_at,
     reason: row.reason ?? undefined,
@@ -35,8 +39,9 @@ function mapRow(row: AuditRow): AuditEvent {
 }
 
 /**
- * Persistent audit trail via app_audit.register_event RPC + audit_events SELECT.
+ * Persistent audit trail via public.register_audit_event RPC + audit_events SELECT.
  * Failures are logged; callers keep fire-and-forget semantics.
+ * Never falls back to sessionStorage / mock.
  */
 export function createSupabaseAuditTrail(client: SupabaseAuditClient): AuditTrail {
   return {
@@ -48,12 +53,10 @@ export function createSupabaseAuditTrail(client: SupabaseAuditClient): AuditTrai
           p_actor_role: event.actorRole,
           p_action: event.action,
           p_entity: event.entity,
-          p_entity_id: null,
+          p_entity_id: event.entityId ?? null,
           p_origin: 'web',
           p_result: event.result,
-          p_reason: event.reason
-            ? `${event.reason} | actor=${event.actorEmail}`
-            : `actor=${event.actorEmail}`,
+          p_reason: event.reason ?? null,
         });
         if (error) {
           console.error('[audit] Falha ao persistir evento', error.message);

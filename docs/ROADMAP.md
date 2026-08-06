@@ -18,8 +18,8 @@ Atualizado: **2026-08-06** · Baseline: Architecture v1.0 · SHA `cc560ac…` ·
 
 | WP | Objetivo | Autorização |
 |---|---|---|
-| **WP-04.1** | Readiness: dívida RLS JWT-era, `search_path` 0017, inventário remoto, métricas contínuas | Liberado como próximo |
-| WP-04.x | Permission / Audit Engine completion (E01 restante) | Após WP-04.1 |
+| **WP-04.1** | JWT→app_auth, search_path 0017, E01 sinks consent/clínico | **IN PR** — sem HML até autorização |
+| WP-04.x | Permission / Audit Engine completion (E01 coletivo residual) | Após merge+HML 0021 |
 | D02-A | Analytics agregados reais | **Não autorizado** |
 | Motores IA / AI Gateway | Fora do escopo imediato | Bloqueado |
 | Nova UX ampla | Fora do escopo imediato | Bloqueado |

@@ -11,6 +11,7 @@ import {
   registerConsentRevocation,
 } from '@/domains/consent/consentService';
 import { createNoopConsentAuditSink } from '@/domains/consent/consentAudit';
+import { createPersistingConsentAuditSink } from '@/domains/consent/persistingConsentAuditSink';
 
 type ConsentManagementCardProps = {
   onMessage: (message: string) => void;
@@ -24,7 +25,13 @@ export function ConsentManagementCard({ onMessage }: ConsentManagementCardProps)
     []
   );
   const repository = bootstrap.ok ? bootstrap.repository : null;
-  const auditSink = useMemo(() => createNoopConsentAuditSink(), []);
+  const auditSink = useMemo(() => {
+    if (!user) return createNoopConsentAuditSink();
+    return createPersistingConsentAuditSink({
+      actorEmail: user.email,
+      actorRole: user.role,
+    });
+  }, [user]);
 
   const [state, setState] = useState<{
     loading: boolean;

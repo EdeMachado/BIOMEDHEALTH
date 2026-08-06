@@ -17,13 +17,13 @@ Este documento é a **fonte oficial de continuidade e governança** do projeto B
 | Branch de referência | `main` |
 | **Architecture Baseline** | **v1.0** — `docs/ARCHITECTURE_BASELINE_v1.md` (**FASE I Foundation ENCERRADA**) |
 | **Engineering Book** | `docs/BIOMED_HEALTH_ENGINEERING_BOOK_v1.md` (índice de entrada; não substitui este handoff) |
-| Baseline oficial `origin/main` | `ee0eff64d5ccec04314dd52f1b795fe55e8aaa3c` (merge **PR #54** WP-04.3) |
+| Baseline oficial `origin/main` | `c9d4de0015072c6d903bc3d4e6dd5806ac51e05a` (merge **PR #55** closeout WP-04.3) |
+| Baseline funcional WP-04.3 | `ee0eff64d5ccec04314dd52f1b795fe55e8aaa3c` (merge **PR #54**) |
 | Baseline anterior (closeout WP-04.2) | `a21a184174bb901de3199a1051705bd59dd1b9da` (PR #53) |
 | Baseline Trust & Audit funcional | `cc6252059ce7746b0369f892c445c74860bf1481` (merge **PR #52** WP-04.2) |
-| Baseline funcional WP-04.1 | `cb61981ccf30c6f765431fab536dbeb17e3bf114` (PR #50) |
-| Último merge integrado | **PR #54** — WP-04.3 E01 Residual Closure |
+| Último merge integrado | **PR #55** — docs WP-04.3 DONE |
 | HML Supabase | `biomedhealth-hml` sincronizado até **0022** (0001–0022) — WP-04.3 **sem** migration / **sem** apply |
-| Change set em curso | **Closeout documental WP-04.3** → próximo recomendado: gap clínico `unit_id`; **D02-A BLOCKED** |
+| Change set em curso | **Nenhum** — aguardando ordem do gap clínico `unit_id`; **D02-A BLOCKED** |
 | Data desta atualização do handoff | 2026-08-06 |
 | Ratificação org×unit (coletivo) | PR #17 — decisão documental |
 | SPEC SUP-D01 | Aprovada; ciclo **A/B/C/D** em `main` (PRs #20–#24; docs #23/#26) |

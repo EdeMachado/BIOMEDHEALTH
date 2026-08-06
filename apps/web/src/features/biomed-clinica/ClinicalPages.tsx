@@ -1093,7 +1093,7 @@ function useCarePlan(patientId: string | null) {
       expectedVersion: openBundle.plan.version,
       title: editTitle,
       generalObjective: editObjective,
-    });
+    }, auditSink);
     setBusy(false);
     if (!result.ok) {
       setMessage(
@@ -1129,7 +1129,7 @@ function useCarePlan(patientId: string | null) {
         specificObjective: actionObjective,
         actionText,
         frequency: actionFrequency,
-      });
+      }, auditSink);
       setBusy(false);
       if (!result.ok) {
         setMessage(
@@ -1155,7 +1155,7 @@ function useCarePlan(patientId: string | null) {
       specificObjective: actionObjective,
       actionText,
       frequency: actionFrequency,
-    });
+    }, auditSink);
     setBusy(false);
     if (!result.ok) {
       setMessage(
@@ -1185,7 +1185,7 @@ function useCarePlan(patientId: string | null) {
       actionId: action.id,
       expectedVersion: action.version,
       actionStatus: next,
-    });
+    }, auditSink);
     setBusy(false);
     if (!result.ok) {
       setMessage(

@@ -1,5 +1,5 @@
 import { Navigate, Outlet } from 'react-router';
-import { registerAuditEvent } from '@/domains/audit/auditTrail';
+import { registerAuthenticatedAuthEvent } from '@/domains/audit/authAudit';
 import { useAuth } from '@/services/auth/AuthContext';
 import { assignedPatientsByProfessional } from '@/services/repositories/demoData';
 import type { Role } from '@/shared/types/access';
@@ -20,14 +20,13 @@ export function RequireRole({ allow }: GuardProps) {
   const activeRoles = user.roles?.length ? user.roles : [user.role];
   const allowed = allow.some((role) => activeRoles.includes(role));
   if (!allowed) {
-    registerAuditEvent({
+    registerAuthenticatedAuthEvent({
+      code: 'access_denied',
       actorEmail: user.email,
       actorRole: user.role,
       organizationId: user.organizationId,
-      action: 'rota_negada',
-      entity: 'autorizacao',
       result: 'negado',
-      reason: 'Perfil sem permissão para a rota',
+      provenance: 'application_precheck_denied',
     });
     return <Navigate to="/acesso-negado" replace />;
   }

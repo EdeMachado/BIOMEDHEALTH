@@ -1,5 +1,5 @@
 import { registerAuditEvent } from '@/domains/audit/auditTrail';
-import { newCorrelationId } from '@/domains/audit/auditContract';
+import { newCorrelationId, type AuditProvenance } from '@/domains/audit/auditContract';
 import { sanitizeAuditMetadata } from '@/domains/audit/sanitizeAuditMetadata';
 
 export type ClinicalAuditActor = {
@@ -8,21 +8,32 @@ export type ClinicalAuditActor = {
   organizationId: string;
 };
 
+export type ClinicalAuditCode =
+  | 'clinical_record_draft_saved'
+  | 'clinical_record_concluded'
+  | 'clinical_record_reopened'
+  | 'care_plan_created'
+  | 'care_plan_updated'
+  | 'care_plan_closed'
+  | 'care_plan_suspended'
+  | 'care_plan_note_added'
+  | 'care_plan_reassessment_added'
+  | 'care_plan_action_created'
+  | 'care_plan_action_updated'
+  | 'care_plan_action_status_changed'
+  | 'clinical_appointment_created'
+  | 'clinical_appointment_updated'
+  | 'repository_error';
+
 export type ClinicalAuditSink = {
   registerSensitiveOperation: (input: {
-    code:
-      | 'clinical_record_draft_saved'
-      | 'clinical_record_concluded'
-      | 'clinical_record_reopened'
-      | 'care_plan_created'
-      | 'care_plan_closed'
-      | 'care_plan_note_added'
-      | 'clinical_appointment_created'
-      | 'clinical_appointment_updated';
-    entity: 'clinical_record' | 'care_plan' | 'clinical_appointment';
+    code: ClinicalAuditCode;
+    entity: 'clinical_record' | 'care_plan' | 'clinical_appointment' | 'care_plan_action';
     entityId?: string | null;
     result: 'sucesso' | 'falha' | 'negado';
     correlationId?: string | null;
+    provenance?: AuditProvenance;
+    metadata?: Record<string, string | number | boolean>;
   }) => void;
 };
 
@@ -41,6 +52,8 @@ export function createPersistingClinicalAuditSink(actor: ClinicalAuditActor): Cl
           correlationId: input.correlationId ?? newCorrelationId(),
           result: input.result,
           source: 'clinical',
+          provenance: input.provenance ?? 'application',
+          metadata: input.metadata,
         });
         registerAuditEvent({
           actorEmail: actor.actorEmail,

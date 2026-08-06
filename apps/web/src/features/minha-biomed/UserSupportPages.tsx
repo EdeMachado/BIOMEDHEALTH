@@ -9,6 +9,7 @@ import {
 } from '@/domains/journey/journeyService';
 import { useAuth } from '@/services/auth/AuthContext';
 import { getSupabaseClient } from '@/services/api/supabaseClient';
+import { requestLgpdCapability } from '@/application/lgpd/lgpdRequestService';
 import {
   createJourneyRepositoryFactory,
   resolveJourneyRepositoryMode,
@@ -313,38 +314,57 @@ function toPublicJourneyError(code: string): string {
 }
 
 export function UserProfilePrivacyPage() {
+  const { user } = useAuth();
   const [message, setMessage] = useState('');
+
+  function handleLgpdRequest(kind: 'export' | 'correction' | 'preferences') {
+    const result = requestLgpdCapability({
+      requestKind: kind,
+      actorEmail: user?.email,
+      actorRole: user?.role,
+      organizationId: user?.organizationId,
+    });
+    setMessage(result.message);
+  }
 
   return (
     <Card className="space-y-3">
       <CardTitle>Perfil e privacidade</CardTitle>
       <CardDescription>
-        Histórico de consentimento, solicitação de exportação e correção de dados.
+        Histórico de consentimento e direitos LGPD. Exportação, correção e exclusão só são
+        anunciadas quando houver fluxo persistente autorizado — sem simulação de sucesso.
       </CardDescription>
       <div className="grid gap-3 sm:grid-cols-2">
         <section className="rounded-xl border p-3">
           <h4 className="font-semibold">Preferências de comunicação</h4>
-          <p className="text-sm text-[var(--muted-foreground)]">Canal atual: e-mail.</p>
-          <Button size="sm" className="mt-2" variant="outline" onClick={() => setMessage('Preferências atualizadas em modo demonstração.')}>
-            Editar preferências
+          <p className="text-sm text-[var(--muted-foreground)]">
+            Persistência de preferências ainda não disponível neste ambiente.
+          </p>
+          <Button size="sm" className="mt-2" variant="outline" onClick={() => handleLgpdRequest('preferences')}>
+            Solicitar alteração de preferências
           </Button>
         </section>
         <ConsentManagementCard onMessage={setMessage} />
         <section className="rounded-xl border p-3">
           <h4 className="font-semibold">Direitos LGPD</h4>
-          <p className="text-sm text-[var(--muted-foreground)]">Solicitações administrativas disponíveis.</p>
+          <p className="text-sm text-[var(--muted-foreground)]">
+            Exportação e correção: indisponíveis até política jurídica e pipeline seguro.
+            Apagamento irreversível não é oferecido (retenção legal).
+          </p>
           <div className="mt-2 flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={() => setMessage('Solicitação de exportação registrada em modo demonstração.')}>
+            <Button size="sm" variant="outline" onClick={() => handleLgpdRequest('export')}>
               Solicitar exportação
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setMessage('Solicitação de correção registrada em modo demonstração.')}>
+            <Button size="sm" variant="outline" onClick={() => handleLgpdRequest('correction')}>
               Solicitar correção
             </Button>
           </div>
         </section>
         <section className="rounded-xl border p-3">
           <h4 className="font-semibold">Segurança da conta</h4>
-          <p className="text-sm text-[var(--muted-foreground)]">Sessão ativa em ambiente de demonstração.</p>
+          <p className="text-sm text-[var(--muted-foreground)]">
+            Sessão gerida pelo provedor de autenticação do ambiente ativo.
+          </p>
         </section>
       </div>
       {message ? <p className="rounded-lg bg-[var(--secondary)] p-2 text-sm">{message}</p> : null}

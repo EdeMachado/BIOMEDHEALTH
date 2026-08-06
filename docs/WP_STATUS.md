@@ -9,8 +9,22 @@ Atualizado: **2026-08-06**
 | WP-03.2 | Operational reliability (0020, fail-closed, audit) | **DONE** | PR #48 · merge `cc560ac…` · HML 0020 |
 | WP-04.0 | Architecture Baseline v1.0 · fim Foundation | **DONE** | PR #49 · `6aa954b…` |
 | WP-04.1 | Platform Readiness (JWT→app_auth, search_path, E01 sinks) | **DONE** | PR #50 · `cb61981…` · HML **0021** |
-| **WP-04.2 / E01.x** | Trust & Audit Layer | **DONE** (residuais E01 documentados) | PR #52 · `cc62520…` · HML **0022** |
+| WP-04.2 / E01.x | Trust & Audit Layer | **DONE** | PR #52 · `cc62520…` · HML **0022** · closeout #53 `a21a184…` |
+| **WP-04.3 / E01 residual** | E01 Residual Closure | **IN REVIEW** | branch `feat/wp-04-3-e01-residual-closure` · base `a21a184…` · sem migration · sem HML apply |
 | D02-A | Analytics agregados | **BLOCKED** | Gate impl. não liberado — **não iniciar** |
+
+## Registro WP-04.3 (em revisão)
+
+| Item | Valor |
+|---|---|
+| Baseline | `a21a184174bb901de3199a1051705bd59dd1b9da` |
+| Migration | **Nenhuma** (0022 suficiente; provenance em metadata) |
+| Inventário | `docs/WP-04-3_E01_FINAL_INVENTORY.md` |
+| Relatório | `docs/WP-04-3_TECHNICAL_REPORT.md` |
+| Validação SQL | `supabase/policies/WP_04_3_E01_RESIDUAL_VALIDATION.sql` |
+| E01 | **não** 100% — limites documentados |
+| D02-A | **BLOCKED** |
+| HML | **não** alterar até merge + autorização humana |
 
 ## Registro PR #52 / WP-04.2 (encerrado)
 
@@ -52,4 +66,4 @@ Atualizado: **2026-08-06**
 
 ## Próxima decisão humana (não automática)
 
-A. residual E01 · B. gap `unit_id` · C. B04 · D. issue #25 · E. D02-A (somente gate humano)
+Após merge WP-04.3: A. gap clínico `unit_id` · B. B04 · C. issue #25 · D. gate humano D02-A · E. outro residual estrutural — **não** auto-iniciar D02-A.

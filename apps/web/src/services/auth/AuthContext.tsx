@@ -1,5 +1,9 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { registerAuditEvent } from '@/domains/audit/auditTrail';
+import {
+  recordPreAuthLoginFailure,
+  registerAuthenticatedAuthEvent,
+} from '@/domains/audit/authAudit';
+import { newCorrelationId } from '@/domains/audit/auditContract';
 import { getSupabaseClient, validateSupabaseConfiguration } from '@/services/api/supabaseClient';
 import { demoUsers, getRoleHomePath } from '@/services/repositories/demoData';
 import {
@@ -190,14 +194,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
 
           if (error) {
-            registerAuditEvent({
-              actorEmail: input.email,
-              actorRole: 'nao_autenticado',
-              organizationId: input.organizationId,
-              action: 'login',
-              entity: 'auth',
-              result: 'falha',
-              reason: 'Falha no Supabase Auth',
+            recordPreAuthLoginFailure({
+              mode: 'supabase',
+              emailAttempted: input.email,
+              organizationIdHint: input.organizationId,
+              failureKind: 'invalid_credentials',
             });
             return { ok: false, message: 'Credenciais inválidas para este ambiente demonstrativo.' };
           }
@@ -207,6 +208,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const authSession = await supabaseClient.auth.getUser();
           const authUser = authSession.data.user;
           if (!authUser?.id) {
+            recordPreAuthLoginFailure({
+              mode: 'supabase',
+              emailAttempted: input.email,
+              organizationIdHint: input.organizationId,
+              failureKind: 'session_invalid',
+            });
             await supabaseClient.auth.signOut();
             removeSessionItem(SUPABASE_ORG_STORAGE_KEY);
             return { ok: false, message: 'Sessão Supabase inválida após autenticação.' };
@@ -220,17 +227,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           };
           const resolved = await accessRepository.resolveAccessContext(identity);
           if (!resolved.ok) {
-            await supabaseClient.auth.signOut();
-            removeSessionItem(SUPABASE_ORG_STORAGE_KEY);
-            registerAuditEvent({
-              actorEmail: input.email,
+            // Audit while session still exists (auth.uid available), then sign out.
+            registerAuthenticatedAuthEvent({
+              code: 'login',
+              actorEmail: authUser.email ?? 'unknown',
               actorRole: 'nao_autenticado',
               organizationId: input.organizationId,
-              action: 'login',
-              entity: 'auth',
               result: 'negado',
-              reason: resolved.error.code,
+              provenance: 'application_precheck_denied',
+              metadata: { error_code: resolved.error.code },
             });
+            await supabaseClient.auth.signOut();
+            removeSessionItem(SUPABASE_ORG_STORAGE_KEY);
             return {
               ok: false,
               message: toPublicAccessFailureMessage(resolved.error.code),
@@ -247,13 +255,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           setUser(sessionUser);
-          registerAuditEvent({
+          registerAuthenticatedAuthEvent({
+            code: 'login',
             actorEmail: sessionUser.email,
             actorRole: sessionUser.role,
             organizationId: sessionUser.organizationId,
-            action: 'login',
-            entity: 'auth',
             result: 'sucesso',
+            provenance: 'application',
           });
           return { ok: true, redirectTo: getRoleHomePath(sessionUser.role) };
         }
@@ -266,14 +274,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
 
         if (!foundCredentialUser) {
-          registerAuditEvent({
-            actorEmail: input.email,
-            actorRole: 'nao_autenticado',
-            organizationId: input.organizationId,
-            action: 'login',
-            entity: 'auth',
-            result: 'falha',
-            reason: 'Credenciais inválidas',
+          recordPreAuthLoginFailure({
+            mode: 'mock',
+            emailAttempted: input.email,
+            organizationIdHint: input.organizationId,
+            failureKind: 'invalid_credentials',
           });
           return { ok: false, message: 'Credenciais inválidas para este ambiente demonstrativo.' };
         }
@@ -286,14 +291,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
         const resolved = await accessRepository.resolveAccessContext(identity);
         if (!resolved.ok) {
-          registerAuditEvent({
-            actorEmail: input.email,
+          registerAuthenticatedAuthEvent({
+            code: 'login',
+            actorEmail: foundCredentialUser.email,
             actorRole: 'nao_autenticado',
-            organizationId: input.organizationId,
-            action: 'login',
-            entity: 'auth',
+            organizationId: foundCredentialUser.organizationId,
             result: 'negado',
-            reason: resolved.error.code,
+            provenance: 'application_precheck_denied',
+            metadata: { error_code: resolved.error.code },
           });
           return {
             ok: false,
@@ -312,26 +317,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         writeSessionItem(AUTH_STORAGE_KEY, JSON.stringify(sessionUser));
-        registerAuditEvent({
+        registerAuthenticatedAuthEvent({
+          code: 'login',
           actorEmail: sessionUser.email,
           actorRole: sessionUser.role,
           organizationId: sessionUser.organizationId,
-          action: 'login',
-          entity: 'auth',
           result: 'sucesso',
+          provenance: 'application',
         });
         setUser(sessionUser);
         return { ok: true, redirectTo: getRoleHomePath(foundCredentialUser.role) };
       },
       async logout() {
         if (user) {
-          registerAuditEvent({
+          registerAuthenticatedAuthEvent({
+            code: 'logout',
             actorEmail: user.email,
             actorRole: user.role,
             organizationId: user.organizationId,
-            action: 'logout',
-            entity: 'auth',
             result: 'sucesso',
+            correlationId: newCorrelationId(),
+            provenance: 'application',
           });
         }
 

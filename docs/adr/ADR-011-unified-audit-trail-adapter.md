@@ -1,4 +1,4 @@
-# ADR-002 — Unified audit trail adapter (WP-03.2)
+# ADR-011 — Unified audit trail adapter (WP-03.2)
 
 ## Status
 

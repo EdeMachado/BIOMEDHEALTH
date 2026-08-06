@@ -1,4 +1,4 @@
-# ADR-001 — Fail-closed repository bootstrap (WP-03.2)
+# ADR-010 — Fail-closed repository bootstrap (WP-03.2)
 
 ## Status
 

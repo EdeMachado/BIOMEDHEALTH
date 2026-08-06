@@ -15,16 +15,22 @@ Este documento é a **fonte oficial de continuidade e governança** do projeto B
 |---|---|
 | Repositório | `EdeMachado/BIOMEDHEALTH` |
 | Branch de referência | `main` |
-| Baseline de `origin/main` (pré WP-03.2) | `d3375963544cdf381f318dd23b602dc11b4014ad` (merge PR #47) |
-| Último merge funcional integrado | **PR #47** — adapter coletivo de application layer; HEAD `5c394107…`; merge `d337596…` |
-| HML Supabase | `biomedhealth-hml` (`nwsqhbdusdxcwquayase`) sincronizado até **0019_security_hardening** (aplicada e validada em 2026-08-06); **0020** entra com WP-03.2 |
-| Change set em curso | `feat/wp-03-2-operational-reliability-hardening` — WP-03.2 (RLS residual, fail-closed, audit adapter, seed/docs) |
+| **Architecture Baseline** | **v1.0** — `docs/ARCHITECTURE_BASELINE_v1.md` (**FASE I Foundation ENCERRADA**) |
+| Baseline oficial `origin/main` | `cc560ac94b0a0fe946d3ef61f3cc5384bb09f118` (merge **PR #48**, 2026-08-06T12:13:08Z) |
+| Baseline anterior (pré WP-03.2) | `d3375963544cdf381f318dd23b602dc11b4014ad` (merge PR #47) |
+| Último merge funcional integrado | **PR #48** — WP-03.2 operational reliability (0020, fail-closed, audit); Quality+Database gates SUCCESS |
+| HML Supabase | `biomedhealth-hml` (`nwsqhbdusdxcwquayase`) sincronizado até **0020_residual_rls_and_audit_rpc** (aplicada e validada estrutural+comportamental em 2026-08-06) |
+| Change set em curso | Consolidação documental **WP-04.0** (baseline/ADRs/roadmap); **não** inicia D02-A |
 | Data desta atualização do handoff | 2026-08-06 |
 | Ratificação org×unit (coletivo) | PR #17 — decisão documental |
 | SPEC SUP-D01 | Aprovada; ciclo **A/B/C/D** em `main` (PRs #20–#24; docs #23/#26) |
 | SPEC SUP-D02 / Gate | SPEC + Gate D02-0 documentais em `main`; **implementação D02-A não autorizada** |
-| WP-03.1 | Domínio coletivo + bootstrap application (PRs #45–#47) |
-| WP-03.2 | Endurecimento operacional (este ciclo): sem indicadores novos; sem D02-A |
+| WP-03.1 | Domínio coletivo + bootstrap application (PRs #45–#47) — **DONE** |
+| WP-03.2 | Endurecimento operacional — **DONE** (PR #48 + HML 0020) |
+| WP-04.0 | Architecture Baseline v1.0 — **DONE** (este ciclo) |
+| WP-04.1 | Platform Readiness / prep Intelligence — **NEXT** |
+| ADRs oficiais | `docs/adr/ADR-001`…`008`; operacionais WP-03.2: `ADR-010`…`012` |
+| Roadmap / WP Status / Métricas | `docs/ROADMAP.md`, `docs/WP_STATUS.md`, `docs/PLATFORM_METRICS.md` |
 
 ## 3. Propósito do BIOMED HEALTH e módulos
 
@@ -55,6 +61,10 @@ Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limia
 | Documento | Finalidade |
 |---|---|
 | `PROJECT_MASTER_HANDOFF.md` (este) | Continuidade, status, decisões, retomada |
+| `docs/ARCHITECTURE_BASELINE_v1.md` | Arquitetura oficial pós-Foundation |
+| `docs/adr/ADR-001`…`008` | Decisões arquitetônicas canônicas |
+| `docs/ROADMAP.md` / `docs/WP_STATUS.md` | Roadmap e status de WPs |
+| `docs/PLATFORM_METRICS.md` | Métricas de maturidade |
 | `SUPABASE_IMPLEMENTATION_BACKLOG.md` | Backlog técnico detalhado (tickets SUP-*) |
 | `SUPABASE_ARCHITECTURE_PLANNING.md` | Decisões arquitetônicas Supabase (histórico + adendo de continuidade) |
 | `SUP_D01_TECHNICAL_SPECIFICATION.md` | SPEC gestão coletiva / escopo (D01) |
@@ -107,7 +117,7 @@ Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limia
 
 **SUP-D02:** SPEC integrada via PR #27 (`547c60c…` — base histórica do PR #28). Gate D02-0: PR #28 **mergeado** (`b04b4b9…`); HEAD corretivo `f9a4ca5…` (B1–B6/P05); 1ª auditoria histórica **reprovou**; reauditoria SUP-D02-G0-RA **aprovada com P3** (2026-08-03); nenhum review formal no GitHub no momento auditado. Status: **Gate D02-0 documentalmente reauditatado e aprovado com P3**; desenho **proposto / especificado**; **Gate de implementação não liberado**; **D02-A não autorizado** (critério 14). Contrato canônico: bandas; `support_n` interno; sem `empty`/contagem exata; P05 diferido. **Implementação não iniciada / não autorizada.**
 
-**Ambiente HML (PROJECT-HML) — metadados sanitizados:** SUP-ENV-04 bootstrap e vínculo controlados; SUP-ENV-05 histórico inicialmente vazio e dry-run validado; SUP-ENV-06 migrations `0001`–`0018` aplicadas; histórico local/remoto sincronizado; seed **não** executado; migration `0019` **inexistente**; artefatos de bootstrap local (`config.toml` / pinagem CLI) **ainda não integrados** ao repositório. A aplicação de `0001`–`0018` **não** autoriza D02-A.
+**Ambiente HML (PROJECT-HML):** `biomedhealth-hml` com migrations **`0001`–`0020`** aplicadas e validadas (0019 em 2026-08-06; 0020 em 2026-08-06 no WP-04.0). Seed demo **não** é pré-requisito de produção. A sincronização HML **não** autoriza D02-A.
 
 **Auditoria independente do PR #24 (HEAD `ebfd700…`):** veredito **B**; nenhum P1/P2; nenhum achado bloqueante; prova concorrente (duas sessões) aprovada; rollback e reaplicação da `0018` aprovados; validação SQL D01-D aprovada. **Único P3 residual** (não bloqueante): mensagem de sucesso residual após falha de close/delete na UI coletiva — rastreado na issue **#25** (aberta; follow-up isolado).
 
@@ -123,7 +133,7 @@ Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limia
 | B — Preventivo | Parcial | B01–B03 (+ filhas) entregues; **B04 aberto** (não iniciado) |
 | C — Clínico | Parcial | C01.1/C01.2, C02, C03 entregues; C01 parent com gap `unit_id`; C04 parcial (ver §8) |
 | D — Gestão agregada | Parcial | D01 em main; SPEC D02 + Gate em main (PR #27/#28); Gate reauditatado com P3; impl. D02 não iniciada; critério 14 impede D02-A; D03 não iniciado |
-| E — Auditoria/hardening | Aberta | Após B/C/D maduros |
+| E — Auditoria/hardening | Parcial | WP-03.2 entregou fundação E01 (adapter + RPC + RLS auditor); sinks/E2E ainda abertos |
 
 ## 8. Tickets e fatias C04 — status consolidado
 
@@ -208,17 +218,17 @@ Inelegível a qualquer fallback de dados.
 
 ## 11. Decisões humanas pendentes
 
-Granularidade coletiva org×unit (**ratificada**). D01 concluído. PR #47 mergeado. HML com **0019** aplicada. Gate D02-0 documental; **D02-A não autorizado**. Pendentes: inventário remoto completo; autorização humana para D02-A; issue **#25** isolada.
+Granularidade coletiva org×unit (**ratificada**). D01 concluído. **PR #48** mergeado; HML com **0019+0020**. Architecture Baseline v1.0 oficial. Gate D02-0 documental; **D02-A não autorizado**. Pendentes: dívida JWT-era / search_path 0017 (WP-04.1); inventário remoto completo; autorização humana para D02-A; issue **#25** isolada.
 
 ## 12. Sequência recomendada de retomada
 
-1. Mergear **WP-03.2** (RLS residual / fail-closed / audit adapter) e aplicar **0020** no HML.
-2. Escolher próxima frente: stubs demo de UX **ou** preparação controlada pós-gate para D02-A (somente com autorização).
-3. **Não iniciar D02-A** sem critério humano + inventário remoto.
+1. **WP-04.1** — Platform Readiness: policies JWT-era (0002), `search_path` helpers 0017, inventário HML, hardening E02 parcial.
+2. Completar **SUP-E01** (consent/clinical sinks, append-only deny update/delete tests).
+3. **Não iniciar D02-A** sem critério humano + inventário remoto + Gate de implementação.
 4. Issue #25 — follow-up P3 isolado.
 5. SUP-D03 — após D02 liberado.
-6. Completar **SUP-E01** (consent/clinical sinks, append-only deny update/delete tests) sobre a base WP-03.2.
-7. SUP-B04 / gap C01 / C04.2b — governança vigente; C04.2b não iniciar.
+6. SUP-B04 / gap C01 / C04.2b — governança vigente; C04.2b não iniciar.
+7. Produção — somente após HML estável + autorização explícita.
 
 ## 13. Instruções para retomada segura
 

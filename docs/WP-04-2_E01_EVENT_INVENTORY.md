@@ -3,9 +3,9 @@
 | Campo | Valor |
 |---|---|
 | Data | 2026-08-06 |
-| Baseline | `9533563b0f19e6cf4b16a5dc1b4e3181a07a4dd6` (merge PR #51) |
-| Branch | `feat/wp-04-2-trust-audit-layer` |
-| HML | 0001–0021 (pré-0022) |
+| Baseline | `cc6252059ce7746b0369f892c445c74860bf1481` (merge PR #52) |
+| Branch | `feat/wp-04-2-trust-audit-layer` (histórica; mergeada) |
+| HML | **0001–0022** (pós apply autorizado; evidência `docs/WP-04-2_HML_0022_EVIDENCE.md`) |
 
 Adapter canônico: `registerAuditEvent` → bootstrap → mock (`sessionStorage`) **ou** RPC `register_audit_event`.
 

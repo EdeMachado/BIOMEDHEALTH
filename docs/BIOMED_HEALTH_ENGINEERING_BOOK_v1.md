@@ -4,7 +4,9 @@
 |---|---|
 | Versão | 1.0 |
 | Data | 2026-08-06 |
-| Baseline `main` (início WP-04.2) | `9533563b0f19e6cf4b16a5dc1b4e3181a07a4dd6` (merge PR #51) |
+| Baseline `main` (WP-04.2 closeout) | `cc6252059ce7746b0369f892c445c74860bf1481` (merge PR #52) |
+| Baseline início WP-04.2 | `9533563b0f19e6cf4b16a5dc1b4e3181a07a4dd6` (merge PR #51) |
+| HML | **0001–0022** (`docs/WP-04-2_HML_0022_EVIDENCE.md`) |
 | Escopo | Documento de entrada para desenvolvedores e auditores |
 
 Este livro **não substitui** Architecture Baseline, ADRs, handoff, backlog ou relatórios técnicos. Serve como índice + princípios consolidados.
@@ -36,7 +38,7 @@ Regra: componentes React não concentram regra de negócio nem chamam RPC de aud
 
 ## 4. Estratégia de banco
 
-Migrations numeradas e imutáveis após merge. Toda mudança = nova migration + rollback em `supabase/rollbacks/`. HML só após merge + gates verdes + autorização humana. Baseline HML pós WP-04.1: **0001–0021**; WP-04.2 introduz **0022** (não aplicar no HML neste PR).
+Migrations numeradas e imutáveis após merge. Toda mudança = nova migration + rollback em `supabase/rollbacks/`. HML só após merge + gates verdes + autorização humana. Baseline HML pós WP-04.2: **0001–0022** (Trust & Audit operacional).
 
 ## 5. Estratégia de RLS
 
@@ -108,5 +110,6 @@ D02-A / Analytics Engine / AI Gateway **bloqueados** até gate humano. Engineeri
 | `SUPABASE_IMPLEMENTATION_BACKLOG.md` | Backlog técnico |
 | `docs/ROADMAP.md` / `WP_STATUS.md` / `PLATFORM_METRICS.md` | Planejamento e maturidade |
 | `docs/WP-04-2_E01_EVENT_INVENTORY.md` | Inventário E01 |
-| `docs/WP-04-2_HML_REMOTE_INVENTORY.md` | Inventário remoto HML |
+| `docs/WP-04-2_HML_REMOTE_INVENTORY.md` | Inventário remoto HML (**real** pós-0022) |
+| `docs/WP-04-2_HML_0022_EVIDENCE.md` | Evidência apply HML 0022 |
 | `docs/WP-04-1_HML_0021_EVIDENCE.md` | Evidência HML 0021 |

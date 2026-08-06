@@ -2,70 +2,71 @@
 
 | Campo | Valor |
 |---|---|
-| Status | **PR aberto — aguardando gates/revisão** (não mergeado; HML sem 0022) |
-| Branch | `feat/wp-04-2-trust-audit-layer` |
-| Baseline `main` | `9533563b0f19e6cf4b16a5dc1b4e3181a07a4dd6` (merge **PR #51**) |
-| Funcional anterior | `cb61981ccf30c6f765431fab536dbeb17e3bf114` (PR #50 WP-04.1) |
+| Status | **DONE** (residuais E01 documentados; E01 **não** 100%) |
+| PR | **#52 MERGED** |
+| SHA `main` | `cc6252059ce7746b0369f892c445c74860bf1481` |
+| Baseline anterior | `9533563…` (PR #51) |
 | Migration | `0022_trust_audit_layer.sql` + rollback |
-| HML | **0001–0021** — 0022 **não** aplicada |
+| HML | **0001–0022** alinhadas local/remoto |
+| Evidência HML | `docs/WP-04-2_HML_0022_EVIDENCE.md` |
+| Inventário remoto | `docs/WP-04-2_HML_REMOTE_INVENTORY.md` (**real**) |
 | D02-A | **BLOCKED** — não iniciar |
 | Engineering Book | `docs/BIOMED_HEALTH_ENGINEERING_BOOK_v1.md` |
-| Testes locais | **393** passed |
-| `supabase:verify` | PASS (reset + lint + WP-02/03.2/04.1/04.2) |
+| Testes (PR #52) | **393** passed |
+| Rollback HML | **Não usado** |
 
 ## Objetivo
 
-Fechar a camada Trust & Audit (E01.x): mutações coletivas auditadas, sanitização allowlist, append-only da trilha, inventário E01 e remoto HML — sem D02-A e sem alterar 0001–0021.
+Consolidar Trust & Audit (E01.x): mutações coletivas auditadas, sanitização allowlist, append-only, inventário E01 e remoto HML — sem D02-A e sem alterar 0001–0021.
 
-## Migration 0022
+## Migration 0022 (aplicada no HML)
 
 | Item | Conteúdo |
 |---|---|
 | Schema | Coluna `correlation_id` (nullable para legado) |
-| Grants | `authenticated`: SELECT only |
+| Grants | `authenticated`: SELECT; sem INSERT/UPDATE/DELETE |
 | RLS | FORCE; deny UPDATE/DELETE; sem INSERT policy |
 | RPC | endurecida (actor=`auth.uid()`, result enum, reject PHI, org link, corr obrigatória) |
+| EXECUTE | authenticated sim; PUBLIC/anon não |
 
 ## Sinks entregues
 
 | Área | Estado |
 |---|---|
 | Consent + clínico (WP-04.1) | Mantido + correlationId |
-| Coletivo create/update/close/delete + action plan | `audited*` + `collectiveAuditSink` (fail-closed) |
-| UI Gestão | `ManagementPages` → application wrappers apenas |
+| Coletivo create/update/close/delete + action plan | `audited*` + fail-closed |
+| UI Gestão | application wrappers apenas |
 | Sanitizer allowlist | códigos + sources + metadata keys |
-| Append-only 0022 | No branch; **fora do HML** até autorização |
+| Append-only 0022 | **Operacional no HML** |
 
-## Residuais E01 (não concluído integralmente)
+## Apply HML (autorizado)
+
+1. Backup `hml-pre-0022-20260806-104024`
+2. Dry-run = somente 0022
+3. `db push` OK
+4. Validação WP-04.2 PASS
+5. Inventário remoto real preenchido
+6. Fixtures residuais = 0
+
+### Honestidade A–R
+
+| Caso | Nota |
+|---|---|
+| A–N, P–Q | Validados no HML via `WP_04_2_TRUST_AUDIT_VALIDATION.sql` |
+| O (falha repo ≠ sucesso) | Coberto por **testes de aplicação** |
+| R (WPs anteriores) | Validado no **CI/local**; **não** reexecutado integralmente no HML no apply 0022 |
+| RLS-deny same-txn | **Não** declarado como auditável na mesma transação abortada |
+
+## Residuais E01 (não 100%)
 
 | Residual | Nota |
 |---|---|
 | Login failure pré-auth | Sem `auth.uid()` → RPC não persiste |
 | Export demo LGPD | Lacuna de auditoria |
-| Pure RLS-deny same-txn | Não afirmar persistência na txn abortada |
-| Care-plan fine-grained updates | Updates/ações sem sink completo |
+| Pure RLS-deny same-txn | Limite arquitetural documentado |
+| Care-plan fine-grained | Updates/ações sem sink completo |
+| service_role/postgres write | Esperado (fora do caminho app) |
 
-## Gates locais (este ciclo)
+## Próximas opções (humano decide — sem auto D02-A)
 
-| Gate | Resultado |
-|---|---|
-| typecheck / lint / build | PASS |
-| vitest | **393** PASS |
-| db reset / db lint | PASS |
-| WP-02 / WP-03.2 / WP-04.1 / WP-04.2 | PASS |
-| Fixtures residuais | 0 |
-
-## Pendente humano
-
-- Quality Gate + Database Gate no PR
-- Merge
-- Autorização + apply 0022 no HML + inventário remoto preenchido
-- **D02-A** permanece bloqueado
-
-## Próximas opções (humano decide)
-
-1. Residual E01 (pré-auth / LGPD demo / RLS-deny / care-plan)
-2. Gap `unit_id` clínico
-3. SUP-B04
-4. Issue **#25**
-5. D02-A — **somente** se gate humano liberar (**não recomendado automaticamente**)
+A. Residual E01 · B. Gap `unit_id` · C. SUP-B04 · D. Issue **#25** · E. D02-A só com gate humano

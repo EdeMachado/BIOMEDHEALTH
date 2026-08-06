@@ -35,6 +35,7 @@ export function bootstrapCollectiveRepository(
       };
     }
 
+    // Cast at the boundary: full SupabaseClient generics trigger TS2589 in tsc.
     const getClient =
       dependencies.getClient ??
       (() => getSupabaseClient() as SupabaseCollectiveClient | null);
@@ -53,9 +54,7 @@ export function bootstrapCollectiveRepository(
       mode,
       repository: createCollectiveRepositoryFactory({
         mode: 'supabase',
-        // Narrow the generated SupabaseClient generics to the collective port
-        // to avoid TS2589 (excessively deep type instantiation) in CI.
-        supabaseClient: client as SupabaseCollectiveClient,
+        supabaseClient: client,
       }),
     };
   } catch (error) {

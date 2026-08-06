@@ -35,9 +35,7 @@ export function bootstrapCollectiveRepository(
       };
     }
 
-    const getClient =
-      dependencies.getClient ??
-      (() => getSupabaseClient() as unknown as SupabaseCollectiveClient | null);
+    const getClient = dependencies.getClient ?? (() => getSupabaseClient());
     const client = getClient();
 
     if (!client) {

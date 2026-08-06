@@ -1,6 +1,6 @@
 # BIOMED HEALTH — Roadmap (pós-Foundation)
 
-Atualizado: **2026-08-06** · SHA `main` `9533563…` (PR #51) · WP-04.2 **IN PROGRESS** · HML até **0021**
+Atualizado: **2026-08-06** · SHA `main` `cc62520…` (PR #52) · WP-04.2 **DONE** · HML **0001–0022**
 
 ## Fase I — Foundation (ENCERRADA)
 
@@ -10,18 +10,19 @@ Atualizado: **2026-08-06** · SHA `main` `9533563…` (PR #51) · WP-04.2 **IN P
 | Demo + clínica C01–C04.2a | Em `main` |
 | Coletivo D01 A–D | Em `main` |
 | SPEC/Gate D02 documental | Em `main` (impl. bloqueada) |
-| Hardening 0019 + 0020 + 0021 | Em `main` + HML |
+| Hardening 0019 + 0020 + 0021 + **0022** | Em `main` + HML |
 | Fail-closed + audit adapter | WP-03.2 / PR #48 |
 | Architecture Baseline v1.0 | WP-04.0 |
 | Platform Readiness | WP-04.1 / PR #50 |
-| Baseline pós-#51 | PR #51 · `9533563…` |
+| Trust & Audit Layer | WP-04.2 / PR #52 · HML 0022 |
 
 ## Fase II — Platform Intelligence (prep)
 
 | WP | Objetivo | Autorização |
 |---|---|---|
-| **WP-04.2 / E01.x** | Trust & Audit: sinks coletivos; sanitizer; append-only 0022; inventário E01/remoto | **IN PROGRESS** (`feat/wp-04-2-trust-audit-layer`; 0022 **não** no HML) |
-| D02-A | Analytics agregados reais | **BLOCKED** — não iniciar |
+| WP-04.2 / E01.x | Trust & Audit (sinks coletivos; sanitizer; append-only 0022; inventários) | **DONE** (residuais E01 documentados; E01 **não** 100%) |
+| Residual E01 / B04 / #25 / unit_id | Opções humanas paralelas | **Pendente decisão** |
+| D02-A | Analytics agregados reais | **BLOCKED** — não iniciar automaticamente |
 | Motores IA / AI Gateway | Fora do escopo imediato | Bloqueado |
 | Nova UX ampla | Fora do escopo imediato | Bloqueado |
 

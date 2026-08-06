@@ -872,11 +872,15 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 1. **Identificador**: `SUP-E01`
 2. **Titulo**: Implementacao de auditoria persistente append-only
 3. **Finalidade**: garantir trilha imutavel de eventos sensiveis.
-4. **Escopo incluido**:
-   - persistencia em `audit_events`;
-   - padrao de payload minimo;
-   - escrita por RPC controlada;
-   - bloqueio de update/delete para app user.
+4. **Status parcial (WP-03.2)**:
+   - adapter unico `bootstrapAuditTrail` (mock intencional vs supabase fail-closed);
+   - RPC `public.register_audit_event` + policy `audit_events_select_auditor` via `app_auth`;
+   - UI de gestao lista via `listAuditEventsAsync`;
+   - **ainda pendente**: sinks de consentimento/clinico, deny update/delete explicito, suite E2E E01, correlacao rica de entity_id.
+5. **Escopo incluido** (restante):
+   - padrao de payload minimo completo;
+   - bloqueio de update/delete para app user;
+   - integracao nos fluxos sensiveis restantes.
 5. **Fora do escopo**:
    - SIEM externo;
    - assinatura criptografica de logs.

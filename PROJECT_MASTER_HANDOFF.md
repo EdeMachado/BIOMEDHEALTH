@@ -15,16 +15,16 @@ Este documento é a **fonte oficial de continuidade e governança** do projeto B
 |---|---|
 | Repositório | `EdeMachado/BIOMEDHEALTH` |
 | Branch de referência | `main` |
-| Baseline de `origin/main` | `b04b4b9e7d0302d2670ed6513c0587bb473ce1d1` (merge commit do PR #28) |
-| Último merge documental integrado | **PR #28** — Gate D02-0; HEAD `f9a4ca5…`; merge `b04b4b9…` (pais `547c60c…` + `f9a4ca5…`) |
-| Base histórica do PR #28 | `547c60c992c64b9f9038db1029734c3b9c9ec93e` (merge do PR #27 — SPEC SUP-D02) |
-| Merge documental anterior | PR #27 — SPEC SUP-D02; HEAD `7258208…`; merge `547c60c…` |
-| Último merge funcional integrado | PR #24 — SUP-D01-D; HEAD auditado `ebfd700…`; merge `00b7b3f…` |
-| Change set de consolidação | Branch `docs/sup-d02-g0-post-merge` — consolidação pós-merge e pós-reauditoria (G1/O1-R/A1–A3); **não** autoriza D02-A |
-| Data desta atualização do handoff | 2026-08-03 |
+| Baseline de `origin/main` (pré WP-03.2) | `d3375963544cdf381f318dd23b602dc11b4014ad` (merge PR #47) |
+| Último merge funcional integrado | **PR #47** — adapter coletivo de application layer; HEAD `5c394107…`; merge `d337596…` |
+| HML Supabase | `biomedhealth-hml` (`nwsqhbdusdxcwquayase`) sincronizado até **0019_security_hardening** (aplicada e validada em 2026-08-06); **0020** entra com WP-03.2 |
+| Change set em curso | `feat/wp-03-2-operational-reliability-hardening` — WP-03.2 (RLS residual, fail-closed, audit adapter, seed/docs) |
+| Data desta atualização do handoff | 2026-08-06 |
 | Ratificação org×unit (coletivo) | PR #17 — decisão documental |
 | SPEC SUP-D01 | Aprovada; ciclo **A/B/C/D** em `main` (PRs #20–#24; docs #23/#26) |
-| SPEC SUP-D02 / Gate | SPEC em `main` (PR #27). Gate: **documentalmente reauditatado e aprovado com P3**; desenho proposto / especificado; **Gate de implementação não liberado**; D02-A **não** autorizado |
+| SPEC SUP-D02 / Gate | SPEC + Gate D02-0 documentais em `main`; **implementação D02-A não autorizada** |
+| WP-03.1 | Domínio coletivo + bootstrap application (PRs #45–#47) |
+| WP-03.2 | Endurecimento operacional (este ciclo): sem indicadores novos; sem D02-A |
 
 ## 3. Propósito do BIOMED HEALTH e módulos
 
@@ -204,24 +204,21 @@ Inelegível a qualquer fallback de dados.
 - Gap `unit_id` em entidades operacionais clínicas.
 - Decisões clínicas provisórias (ficha/plano) sujeitas a revisão humana.
 - Texto jurídico de consentimento pendente.
-- Suite de auditoria persistente (E01) ainda não entregue.
+- Suite de auditoria persistente (E01) ainda não entregue integralmente; **WP-03.2** preparou adapter único + RPC `register_audit_event` + RLS auditor modernizada (fundação parcial de E01).
 
 ## 11. Decisões humanas pendentes
 
-Granularidade coletiva org×unit (**ratificada**). D01 concluído. PR #27/#28 integrados. Gate D02-0 **documentalmente reauditatado e aprovado com P3**; desenho proposto / especificado; **Gate de implementação não liberado**. Critério 14 **Não** → **D02-A não autorizado**. Pendentes: inventário remoto (owner/grants/`BYPASSRLS`); invalidação de cache para dados tardios; autorização humana separada. Issue **#25** isolada. SUP-D03 / Fase E não iniciados.
+Granularidade coletiva org×unit (**ratificada**). D01 concluído. PR #47 mergeado. HML com **0019** aplicada. Gate D02-0 documental; **D02-A não autorizado**. Pendentes: inventário remoto completo; autorização humana para D02-A; issue **#25** isolada.
 
 ## 12. Sequência recomendada de retomada
 
-1. **Consolidação documental** — PR #16.
-2. **Ratificação org×unit** — PR #17.
-3. **SPEC SUP-D01** — PRs #18/#19; implementação A/B/C/D — PRs #20–#24; docs #23/#26.
-4. **SPEC SUP-D02** — PR #27 mergeado (`547c60c…` — histórico).
-5. **Gate D02-0** — PR #28 mergeado (`b04b4b9…`); reauditoria aprovada com P3; consolidação pós-merge nesta branch.
-6. **Somente após critério 14 (ordem humana) + inventário remoto:** D02-A → D02-B → D02-C → D02-D (com A1–A3 no aceite).
-7. **Issue #25** — follow-up P3 isolado.
-8. **SUP-D03** — após D02 liberado; não iniciar agora.
-9. **SUP-B04** / gap C01 / **C04.2b** — governança vigente; C04.2b não iniciar.
-10. **Fase E** — não substitui auditoria mínima do D02; não iniciar como atalho.
+1. Mergear **WP-03.2** (RLS residual / fail-closed / audit adapter) e aplicar **0020** no HML.
+2. Escolher próxima frente: stubs demo de UX **ou** preparação controlada pós-gate para D02-A (somente com autorização).
+3. **Não iniciar D02-A** sem critério humano + inventário remoto.
+4. Issue #25 — follow-up P3 isolado.
+5. SUP-D03 — após D02 liberado.
+6. Completar **SUP-E01** (consent/clinical sinks, append-only deny update/delete tests) sobre a base WP-03.2.
+7. SUP-B04 / gap C01 / C04.2b — governança vigente; C04.2b não iniciar.
 
 ## 13. Instruções para retomada segura
 

@@ -1,12 +1,17 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { listAuditEvents, registerAuditEvent } from '@/domains/audit/auditTrail';
+import {
+  configureAuditTrail,
+  listAuditEvents,
+  registerAuditEvent,
+} from '@/domains/audit/auditTrail';
 
 describe('auditTrail', () => {
   beforeEach(() => {
     sessionStorage.clear();
+    configureAuditTrail(null);
   });
 
-  it('registra e lista eventos em ordem inversa', () => {
+  it('registra e lista eventos em ordem inversa no modo mock', () => {
     registerAuditEvent({
       actorEmail: 'usuario.demo@biomed.health',
       actorRole: 'usuario',

@@ -16,21 +16,23 @@ Este documento é a **fonte oficial de continuidade e governança** do projeto B
 | Repositório | `EdeMachado/BIOMEDHEALTH` |
 | Branch de referência | `main` |
 | **Architecture Baseline** | **v1.0** — `docs/ARCHITECTURE_BASELINE_v1.md` (**FASE I Foundation ENCERRADA**) |
-| Baseline oficial `origin/main` | `cb61981ccf30c6f765431fab536dbeb17e3bf114` (merge **PR #50** WP-04.1) |
+| **Engineering Book** | `docs/BIOMED_HEALTH_ENGINEERING_BOOK_v1.md` (índice de entrada; não substitui este handoff) |
+| Baseline oficial `origin/main` | `9533563b0f19e6cf4b16a5dc1b4e3181a07a4dd6` (merge **PR #51**) |
+| Baseline funcional anterior | `cb61981ccf30c6f765431fab536dbeb17e3bf114` (PR #50 WP-04.1) |
 | Baseline anterior (docs WP-04.0) | `6aa954b4d3e951d1015d01f54de99ad48628dc2e` (PR #49); funcional WP-03.2 `cc560ac…` / PR #48 |
 | Baseline anterior (pré WP-03.2) | `d3375963544cdf381f318dd23b602dc11b4014ad` (merge PR #47) |
-| Último merge funcional integrado | **PR #50** — WP-04.1 Platform Readiness (0021, JWT→app_auth, E01 sinks) |
-| HML Supabase | `biomedhealth-hml` sincronizado até **0021_platform_readiness** (aplicada e validada A–L em 2026-08-06; evidência `docs/WP-04-1_HML_0021_EVIDENCE.md`) |
-| Change set em curso | **WP-04.2 / E01.x** (próximo) — auditoria residual coletiva/append-only; **não** inicia D02-A |
+| Último merge integrado | **PR #51** — baseline pós-WP-04.1 / prep WP-04.2 |
+| HML Supabase | `biomedhealth-hml` sincronizado até **0021_platform_readiness** (0022 **não** aplicada no HML; evidência WP-04.1: `docs/WP-04-1_HML_0021_EVIDENCE.md`) |
+| Change set em curso | **WP-04.2 Trust & Audit Layer** — branch `feat/wp-04-2-trust-audit-layer` (**IN PROGRESS**, não mergeada); migration `0022_trust_audit_layer.sql` + rollback; inventários `docs/WP-04-2_E01_EVENT_INVENTORY.md`, `docs/WP-04-2_HML_REMOTE_INVENTORY.md` |
 | Data desta atualização do handoff | 2026-08-06 |
 | Ratificação org×unit (coletivo) | PR #17 — decisão documental |
 | SPEC SUP-D01 | Aprovada; ciclo **A/B/C/D** em `main` (PRs #20–#24; docs #23/#26) |
-| SPEC SUP-D02 / Gate | SPEC + Gate D02-0 documentais em `main`; **implementação D02-A não autorizada** |
+| SPEC SUP-D02 / Gate | SPEC + Gate D02-0 documentais em `main`; **implementação D02-A não autorizada** (**permanece BLOCKED**) |
 | WP-03.1 | Domínio coletivo + bootstrap application (PRs #45–#47) — **DONE** |
 | WP-03.2 | Endurecimento operacional — **DONE** (PR #48 + HML 0020) |
 | WP-04.0 | Architecture Baseline v1.0 — **DONE** (PR #49) |
 | WP-04.1 | Platform Readiness — **DONE** (PR #50 + HML 0021) |
-| WP-04.2 | E01 residual (coletivo / append-only / inventário remoto) — **NEXT** |
+| WP-04.2 | Trust & Audit Layer (coletivo auditado / sanitizer / append-only 0022) — **IN PROGRESS** |
 | ADRs oficiais | `docs/adr/ADR-001`…`008`; operacionais `010`…`013` |
 | Roadmap / WP Status / Métricas | `docs/ROADMAP.md`, `docs/WP_STATUS.md`, `docs/PLATFORM_METRICS.md` |
 
@@ -64,6 +66,7 @@ Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limia
 |---|---|
 | `PROJECT_MASTER_HANDOFF.md` (este) | Continuidade, status, decisões, retomada |
 | `docs/ARCHITECTURE_BASELINE_v1.md` | Arquitetura oficial pós-Foundation |
+| `docs/BIOMED_HEALTH_ENGINEERING_BOOK_v1.md` | Engineering Book v1 — índice de entrada |
 | `docs/adr/ADR-001`…`008` | Decisões arquitetônicas canônicas |
 | `docs/ROADMAP.md` / `docs/WP_STATUS.md` | Roadmap e status de WPs |
 | `docs/PLATFORM_METRICS.md` | Métricas de maturidade |
@@ -119,7 +122,7 @@ Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limia
 
 **SUP-D02:** SPEC integrada via PR #27 (`547c60c…` — base histórica do PR #28). Gate D02-0: PR #28 **mergeado** (`b04b4b9…`); HEAD corretivo `f9a4ca5…` (B1–B6/P05); 1ª auditoria histórica **reprovou**; reauditoria SUP-D02-G0-RA **aprovada com P3** (2026-08-03); nenhum review formal no GitHub no momento auditado. Status: **Gate D02-0 documentalmente reauditatado e aprovado com P3**; desenho **proposto / especificado**; **Gate de implementação não liberado**; **D02-A não autorizado** (critério 14). Contrato canônico: bandas; `support_n` interno; sem `empty`/contagem exata; P05 diferido. **Implementação não iniciada / não autorizada.**
 
-**Ambiente HML (PROJECT-HML):** `biomedhealth-hml` com migrations **`0001`–`0020`** aplicadas e validadas (0019 em 2026-08-06; 0020 em 2026-08-06 no WP-04.0). Seed demo **não** é pré-requisito de produção. A sincronização HML **não** autoriza D02-A.
+**Ambiente HML (PROJECT-HML):** `biomedhealth-hml` com migrations **`0001`–`0021`** aplicadas e validadas (0021 em 2026-08-06 no WP-04.1). Migration **0022** existe no branch WP-04.2 e **não** está no HML. Seed demo **não** é pré-requisito de produção. A sincronização HML **não** autoriza D02-A.
 
 **Auditoria independente do PR #24 (HEAD `ebfd700…`):** veredito **B**; nenhum P1/P2; nenhum achado bloqueante; prova concorrente (duas sessões) aprovada; rollback e reaplicação da `0018` aprovados; validação SQL D01-D aprovada. **Único P3 residual** (não bloqueante): mensagem de sucesso residual após falha de close/delete na UI coletiva — rastreado na issue **#25** (aberta; follow-up isolado).
 
@@ -135,7 +138,7 @@ Painéis, campanhas, indicadores e planos coletivos. **Somente agregado**; limia
 | B — Preventivo | Parcial | B01–B03 (+ filhas) entregues; **B04 aberto** (não iniciado) |
 | C — Clínico | Parcial | C01.1/C01.2, C02, C03 entregues; C01 parent com gap `unit_id`; C04 parcial (ver §8) |
 | D — Gestão agregada | Parcial | D01 em main; SPEC D02 + Gate em main (PR #27/#28); Gate reauditatado com P3; impl. D02 não iniciada; critério 14 impede D02-A; D03 não iniciado |
-| E — Auditoria/hardening | Parcial | WP-03.2 entregou fundação E01 (adapter + RPC + RLS auditor); sinks/E2E ainda abertos |
+| E — Auditoria/hardening | Parcial | WP-03.2/04.1 fundação E01; WP-04.2 **IN PROGRESS** (0022 append-only, sinks coletivos, sanitizer); residual E01 aberto; E2E ainda aberto |
 
 ## 8. Tickets e fatias C04 — status consolidado
 
@@ -192,7 +195,7 @@ Inelegível a qualquer fallback de dados.
 | SUP-C01 `unit_id` | Gap residual clínico **paralelo** (não bloqueia D01) |
 | SUP-D01 | Ciclo **A/B/C/D** concluído em `main` (PRs #20–#24; docs #23/#26 `89de7ab…`); P3 residual UI issue **#25** (aberta) |
 | SUP-D02…D03 | **D02:** Gate documentalmente reauditatado e aprovado com P3; desenho proposto / especificado; Gate de implementação não liberado; D02-A **não** autorizado (critério 14); inventário remoto pendente; A1–A3 como aceite futuro. **D03:** não iniciado |
-| SUP-E01…E03 | Abertos (Fase E) |
+| SUP-E01…E03 | E01 **parcial / WP-04.2 IN PROGRESS**; E02–E03 abertos |
 | Decisões humanas (jurídico/clínico/retention/rollout) | Pendentes (seção backlog) |
 
 ## 9. PRs relevantes (clínica / C04)
@@ -216,19 +219,19 @@ Inelegível a qualquer fallback de dados.
 - Gap `unit_id` em entidades operacionais clínicas.
 - Decisões clínicas provisórias (ficha/plano) sujeitas a revisão humana.
 - Texto jurídico de consentimento pendente.
-- Suite de auditoria persistente (E01) ainda não entregue integralmente; **WP-03.2** preparou adapter único + RPC `register_audit_event` + RLS auditor modernizada (fundação parcial de E01).
+- Suite de auditoria persistente (E01) **melhorada** sob WP-04.2 (ainda **IN PROGRESS**): mutações coletivas auditadas, sanitizer allowlist, append-only 0022 (não no HML). Residuais: login pré-auth, export demo LGPD, RLS-deny same-txn, care-plan fine-grained.
 
 ## 11. Decisões humanas pendentes
 
-Granularidade coletiva org×unit (**ratificada**). D01 concluído. **PR #48** mergeado; HML com **0019+0020**. Architecture Baseline v1.0 oficial. Gate D02-0 documental; **D02-A não autorizado**. Pendentes: dívida JWT-era / search_path 0017 (WP-04.1); inventário remoto completo; autorização humana para D02-A; issue **#25** isolada.
+Granularidade coletiva org×unit (**ratificada**). D01 concluído. **PR #51** em `main` (`9533563…`). HML até **0021** (0022 pendente). Architecture Baseline v1.0 + Engineering Book v1. Gate D02-0 documental; **D02-A permanece BLOCKED** (não iniciar). Pendentes: residual E01; gap `unit_id`; B04; issue **#25**; autorização humana para próximos passos (humano decide).
 
 ## 12. Sequência recomendada de retomada
 
-1. **WP-04.2 / E01.x** — sinks coletivos, auditoria de negações update/delete, append-only real, correlação, inventário remoto formal, fechamento documental E01.
-2. **Não iniciar D02-A** sem critério humano + inventário remoto + Gate de implementação.
-3. Issue #25 — follow-up P3 isolado.
-4. SUP-D03 — após D02 liberado.
-5. SUP-B04 / gap C01 / C04.2b — governança vigente; C04.2b não iniciar.
+1. **Concluir WP-04.2** — residual E01 documentado; aplicar/validar 0022 no HML quando autorizado; fechar branch `feat/wp-04-2-trust-audit-layer`.
+2. **Não iniciar D02-A** — gate de implementação não liberado.
+3. Opções paralelas (humano decide): gap `unit_id` · B04 · issue #25.
+4. SUP-D03 — somente após D02 liberado.
+5. C04.2b — não iniciar.
 6. Produção — somente após HML estável + autorização explícita.
 
 ## 13. Instruções para retomada segura

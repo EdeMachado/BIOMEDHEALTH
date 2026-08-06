@@ -38,30 +38,42 @@ function mapRow(row: AuditRow): AuditEvent {
   };
 }
 
+async function persist(
+  client: SupabaseAuditClient,
+  event: AuditRegisterInput
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { error } = await client.rpc('register_audit_event', {
+    p_organization_id: event.organizationId,
+    p_actor_role: event.actorRole,
+    p_action: event.action,
+    p_entity: event.entity,
+    p_entity_id: event.entityId ?? null,
+    p_origin: 'web',
+    p_result: event.result,
+    p_reason: event.reason ?? null,
+  });
+  if (error) {
+    return { ok: false, message: error.message };
+  }
+  return { ok: true };
+}
+
 /**
  * Persistent audit trail via public.register_audit_event RPC + audit_events SELECT.
- * Failures are logged; callers keep fire-and-forget semantics.
  * Never falls back to sessionStorage / mock.
  */
 export function createSupabaseAuditTrail(client: SupabaseAuditClient): AuditTrail {
   return {
     mode: 'supabase',
     register(event: AuditRegisterInput) {
-      void (async () => {
-        const { error } = await client.rpc('register_audit_event', {
-          p_organization_id: event.organizationId,
-          p_actor_role: event.actorRole,
-          p_action: event.action,
-          p_entity: event.entity,
-          p_entity_id: event.entityId ?? null,
-          p_origin: 'web',
-          p_result: event.result,
-          p_reason: event.reason ?? null,
-        });
-        if (error) {
-          console.error('[audit] Falha ao persistir evento', error.message);
+      void persist(client, event).then((result) => {
+        if (!result.ok) {
+          console.error('[audit] Falha ao persistir evento', result.message);
         }
-      })();
+      });
+    },
+    async registerAsync(event: AuditRegisterInput) {
+      return persist(client, event);
     },
     listSync() {
       return [];

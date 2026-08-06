@@ -1,6 +1,11 @@
 import type { AuditEvent } from '@/domains/audit/types';
+import type { AuditEventInput, AuditSource } from '@/domains/audit/auditContract';
+import { toDbResult } from '@/domains/audit/auditContract';
 
 const ALLOWED_CODES = new Set([
+  'login',
+  'logout',
+  'access_denied',
   'consent_accepted',
   'consent_revoked',
   'clinical_record_draft_saved',
@@ -11,25 +16,55 @@ const ALLOWED_CODES = new Set([
   'care_plan_note_added',
   'clinical_appointment_created',
   'clinical_appointment_updated',
-  'access_denied',
+  'campaign_created',
+  'campaign_updated',
+  'campaign_closed',
+  'campaign_deleted',
+  'action_plan_created',
+  'action_plan_updated',
+  'action_plan_status_advanced',
+  'action_plan_deleted',
   'repository_error',
+  'context_denied',
+  'permission_denied',
+  'audit_persist_failed',
+]);
+
+const ALLOWED_SOURCES = new Set<AuditSource>([
+  'auth',
+  'consent',
+  'clinical',
+  'collective',
+  'lgpd',
+  'repository',
+  'application',
+]);
+
+const ALLOWED_METADATA_KEYS = new Set([
+  'error_code',
+  'scope_type',
+  'campaign_status',
+  'action_status',
+  'repository_mode',
+  'previous_status',
+  'next_status',
 ]);
 
 const BLOCKED_REASON_PATTERN =
-  /(diagnost|anota[cç][aã]o|prontu[aá]rio|cpf|senha|password|summary|notes?\s*=|body\s*=|conteudo\s*=)/i;
+  /(diagnost|anota[cç][aã]o|prontu[aá]rio|cpf|senha|password|summary|notes?\s*=|body\s*=|conteudo\s*=|email\s*=|token|jwt|bearer|stack|select\s+|insert\s+|update\s+|delete\s+)/i;
 
 export type SanitizedAuditPayload = {
   action: string;
   entity: string;
   entityId?: string;
-  correlationId?: string;
+  correlationId: string;
+  source: AuditSource;
   result: AuditEvent['result'];
   reason: string;
 };
 
 /**
- * Builds audit reason with only action code + optional correlation id.
- * Rejects free-text clinical / PII payloads.
+ * Allowlist sanitizer — rejects PHI/PII/clinical free text and unknown keys.
  */
 export function sanitizeAuditMetadata(input: {
   code: string;
@@ -37,7 +72,9 @@ export function sanitizeAuditMetadata(input: {
   entityId?: string | null;
   correlationId?: string | null;
   result: AuditEvent['result'];
+  source?: AuditSource;
   rawReason?: string | null;
+  metadata?: Record<string, unknown> | null;
 }): SanitizedAuditPayload {
   const code = input.code.trim().toLowerCase();
   if (!ALLOWED_CODES.has(code)) {
@@ -48,19 +85,83 @@ export function sanitizeAuditMetadata(input: {
     throw new Error('audit metadata: payload clinico/PII bloqueado');
   }
 
+  const source = input.source ?? 'application';
+  if (!ALLOWED_SOURCES.has(source)) {
+    throw new Error('audit metadata: source invalida');
+  }
+
   const entityId = normalizeId(input.entityId);
   const correlationId = normalizeCorrelation(input.correlationId);
-  const reasonParts = [`code=${code}`];
-  if (correlationId) reasonParts.push(`corr=${correlationId}`);
+  if (!correlationId) {
+    throw new Error('audit metadata: correlationId obrigatorio');
+  }
+
+  const metaPairs = sanitizeMetadataRecord(input.metadata);
+  const reasonParts = [`code=${code}`, `src=${source}`, `corr=${correlationId}`, ...metaPairs];
 
   return {
     action: code,
     entity: input.entity.trim() || 'unknown',
     entityId,
     correlationId,
+    source,
     result: input.result,
-    reason: reasonParts.join('|'),
+    reason: reasonParts.join('|').slice(0, 500),
   };
+}
+
+/** Builds DB-facing register payload from canonical AuditEventInput. */
+export function sanitizeAuditEventInput(input: AuditEventInput): SanitizedAuditPayload & {
+  organizationId: string;
+  actorEmail: string;
+  actorRole: string;
+} {
+  const meta = sanitizeAuditMetadata({
+    code: input.reasonCode ?? input.action,
+    entity: input.entityType,
+    entityId: input.entityId,
+    correlationId: input.correlationId,
+    result: toDbResult(input.result),
+    source: input.source,
+    metadata: input.metadata,
+  });
+  return {
+    ...meta,
+    organizationId: input.organizationId,
+    actorEmail: input.actorEmail,
+    actorRole: input.actorRole,
+  };
+}
+
+function sanitizeMetadataRecord(metadata: Record<string, unknown> | null | undefined): string[] {
+  if (!metadata) return [];
+  const keys = Object.keys(metadata);
+  if (keys.length > 8) {
+    throw new Error('audit metadata: excesso de campos');
+  }
+  const pairs: string[] = [];
+  for (const key of keys) {
+    if (!ALLOWED_METADATA_KEYS.has(key)) {
+      throw new Error(`audit metadata: chave nao permitida (${key})`);
+    }
+    const value = metadata[key];
+    if (value === undefined) continue;
+    if (value !== null && typeof value === 'object') {
+      throw new Error('audit metadata: objetos aninhados proibidos');
+    }
+    if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'boolean') {
+      throw new Error('audit metadata: tipo de valor nao permitido');
+    }
+    const asText = typeof value === 'string' ? value : String(value);
+    if (asText.length > 64) {
+      throw new Error('audit metadata: valor excede limite');
+    }
+    if (BLOCKED_REASON_PATTERN.test(asText)) {
+      throw new Error('audit metadata: valor bloqueado');
+    }
+    pairs.push(`${key}=${asText}`);
+  }
+  return pairs;
 }
 
 function normalizeId(value: string | null | undefined): string | undefined {

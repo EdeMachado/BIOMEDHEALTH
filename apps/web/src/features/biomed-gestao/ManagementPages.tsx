@@ -22,7 +22,16 @@ import {
   formatScopeLabel,
   sanitizeCollectiveUiMessage,
 } from '@/features/biomed-gestao/collectiveUi';
-import { bootstrapCollectiveRepository } from '@/application/collective';
+import {
+  auditedCreateActionPlan,
+  auditedCreateCampaign,
+  auditedDeleteActionPlan,
+  auditedDeleteCampaign,
+  auditedUpdateActionPlan,
+  auditedUpdateCampaign,
+  bootstrapCollectiveRepository,
+} from '@/application/collective';
+import { createPersistingCollectiveAuditSink } from '@/domains/collective/collectiveAuditSink';
 import { useAuth } from '@/services/auth/AuthContext';
 import type {
   ActionPlanRecord,
@@ -38,6 +47,32 @@ import { Alert } from '@/shared/ui/alert';
 function buildCollectiveContext(user: { id: string; organizationId: string } | null): CollectiveContext | null {
   if (!user?.id || !user.organizationId) return null;
   return { userId: user.id, organizationId: user.organizationId, selectedUnitId: null };
+}
+
+function useAuditedCollectiveDeps(
+  bootstrap: ReturnType<typeof bootstrapCollectiveRepository>,
+  context: CollectiveContext | null,
+  canWrite: boolean,
+  user: { email: string; role: string; organizationId: string } | null | undefined
+) {
+  return useMemo(() => {
+    if (!bootstrap.ok || !user) return null;
+    return {
+      repository: bootstrap.repository,
+      context,
+      canWrite,
+      actor: {
+        actorEmail: user.email,
+        actorRole: user.role,
+        organizationId: user.organizationId,
+      },
+      auditSink: createPersistingCollectiveAuditSink({
+        actorEmail: user.email,
+        actorRole: user.role,
+        organizationId: user.organizationId,
+      }),
+    };
+  }, [bootstrap, context, canWrite, user]);
 }
 
 function parseExplicitUnitIds(
@@ -224,6 +259,7 @@ export function ManagementCampaignsPage() {
   );
   const context = useMemo(() => buildCollectiveContext(user), [user]);
   const canWrite = canWriteCollective(user?.role);
+  const audited = useAuditedCollectiveDeps(bootstrap, context, canWrite, user);
   const submittingRef = useRef(false);
 
   const [search, setSearch] = useState('');
@@ -353,7 +389,7 @@ export function ManagementCampaignsPage() {
   }
 
   async function submitForm() {
-    if (!bootstrap.ok || !context || submittingRef.current || !canWrite) return;
+    if (!bootstrap.ok || !context || !audited || submittingRef.current || !canWrite) return;
     submittingRef.current = true;
     setSubmitting(true);
     setError(null);
@@ -390,14 +426,14 @@ export function ManagementCampaignsPage() {
         } else if (hadAudienceCleared) {
           updatePayload.audience = null;
         }
-        const result = await bootstrap.repository.updateCampaign(context, updatePayload);
+        const result = await auditedUpdateCampaign(audited, updatePayload);
         if (!result.ok) {
           setError(sanitizeCollectiveUiMessage(result.error));
           return;
         }
         setMessage(`Campanha "${result.data.title}" atualizada.`);
       } else {
-        const result = await bootstrap.repository.createCampaign(context, {
+        const result = await auditedCreateCampaign(audited, {
           organizationId: context.organizationId,
           title,
           description,
@@ -423,17 +459,21 @@ export function ManagementCampaignsPage() {
   }
 
   async function closeCampaign(campaign: CampaignRecord) {
-    if (!bootstrap.ok || !context || submittingRef.current || !canWrite) return;
+    if (!bootstrap.ok || !context || !audited || submittingRef.current || !canWrite) return;
     submittingRef.current = true;
     setSubmitting(true);
     setMessage('');
     setError(null);
     try {
-      const result = await bootstrap.repository.updateCampaign(context, {
-        organizationId: context.organizationId,
-        campaignId: campaign.id,
-        campaignStatus: 'Encerrada',
-      });
+      const result = await auditedUpdateCampaign(
+        audited,
+        {
+          organizationId: context.organizationId,
+          campaignId: campaign.id,
+          campaignStatus: 'Encerrada',
+        },
+        { closed: true }
+      );
       if (!result.ok) {
         setError(sanitizeCollectiveUiMessage(result.error));
         return;
@@ -447,13 +487,13 @@ export function ManagementCampaignsPage() {
   }
 
   async function removeCampaign(campaign: CampaignRecord) {
-    if (!bootstrap.ok || !context || submittingRef.current || !canWrite) return;
+    if (!bootstrap.ok || !context || !audited || submittingRef.current || !canWrite) return;
     submittingRef.current = true;
     setSubmitting(true);
     setMessage('');
     setError(null);
     try {
-      const result = await bootstrap.repository.deleteCampaign(context, campaign.id);
+      const result = await auditedDeleteCampaign(audited, campaign.id);
       if (!result.ok) {
         setError(sanitizeCollectiveUiMessage(result.error));
         return;
@@ -694,6 +734,7 @@ export function ManagementActionPlanPage() {
   );
   const context = useMemo(() => buildCollectiveContext(user), [user]);
   const canWrite = canWriteCollective(user?.role);
+  const audited = useAuditedCollectiveDeps(bootstrap, context, canWrite, user);
   const submittingRef = useRef(false);
 
   const [statusFilter, setStatusFilter] = useState('todos');
@@ -816,7 +857,7 @@ export function ManagementActionPlanPage() {
   }
 
   async function submitForm() {
-    if (!bootstrap.ok || !context || submittingRef.current || !canWrite) return;
+    if (!bootstrap.ok || !context || !audited || submittingRef.current || !canWrite) return;
     submittingRef.current = true;
     setSubmitting(true);
     setError(null);
@@ -827,7 +868,7 @@ export function ManagementActionPlanPage() {
         return;
       }
       if (editingId) {
-        const result = await bootstrap.repository.updateActionPlan(context, {
+        const result = await auditedUpdateActionPlan(audited, {
           organizationId: context.organizationId,
           actionPlanId: editingId,
           originIndicator,
@@ -844,7 +885,7 @@ export function ManagementActionPlanPage() {
         }
         setMessage('Plano de acao atualizado.');
       } else {
-        const result = await bootstrap.repository.createActionPlan(context, {
+        const result = await auditedCreateActionPlan(audited, {
           organizationId: context.organizationId,
           originIndicator,
           issueDescription,
@@ -870,7 +911,7 @@ export function ManagementActionPlanPage() {
   }
 
   async function advanceStatus(plan: ActionPlanRecord) {
-    if (!bootstrap.ok || !context || submittingRef.current || !canWrite) return;
+    if (!bootstrap.ok || !context || !audited || submittingRef.current || !canWrite) return;
     const nextStatus =
       plan.actionStatus === 'Planejado'
         ? 'Em andamento'
@@ -882,11 +923,19 @@ export function ManagementActionPlanPage() {
     setMessage('');
     setError(null);
     try {
-      const result = await bootstrap.repository.updateActionPlan(context, {
-        organizationId: context.organizationId,
-        actionPlanId: plan.id,
-        actionStatus: nextStatus,
-      });
+      const result = await auditedUpdateActionPlan(
+        audited,
+        {
+          organizationId: context.organizationId,
+          actionPlanId: plan.id,
+          actionStatus: nextStatus,
+        },
+        {
+          advanced: true,
+          previousStatus: plan.actionStatus,
+          nextStatus,
+        }
+      );
       if (!result.ok) {
         setError(sanitizeCollectiveUiMessage(result.error));
         return;
@@ -900,13 +949,13 @@ export function ManagementActionPlanPage() {
   }
 
   async function removePlan(plan: ActionPlanRecord) {
-    if (!bootstrap.ok || !context || submittingRef.current || !canWrite) return;
+    if (!bootstrap.ok || !context || !audited || submittingRef.current || !canWrite) return;
     submittingRef.current = true;
     setSubmitting(true);
     setMessage('');
     setError(null);
     try {
-      const result = await bootstrap.repository.deleteActionPlan(context, plan.id);
+      const result = await auditedDeleteActionPlan(audited, plan.id);
       if (!result.ok) {
         setError(sanitizeCollectiveUiMessage(result.error));
         return;

@@ -36,6 +36,10 @@ export function createMockAuditTrail(): AuditTrail {
       events.push(newEvent);
       writeEvents(events);
     },
+    registerAsync(event) {
+      this.register(event);
+      return Promise.resolve({ ok: true as const });
+    },
     listSync() {
       return readEvents().slice().reverse();
     },
@@ -55,6 +59,10 @@ export function createMemoryAuditTrail(seed: AuditEvent[] = []): AuditTrail {
         id: generateId(),
         timestamp: new Date().toISOString(),
       });
+    },
+    registerAsync(event) {
+      this.register(event);
+      return Promise.resolve({ ok: true as const });
     },
     listSync() {
       return events.slice().reverse();

@@ -41,6 +41,26 @@ export function registerAuditEvent(event: Omit<AuditEvent, 'id' | 'timestamp'>) 
 }
 
 /**
+ * Awaitable register for audit-required mutations (fail-closed).
+ * Returns ok:false when bootstrap/RPC fails — never falls back to mock silently.
+ */
+export async function registerAuditEventAsync(
+  event: Omit<AuditEvent, 'id' | 'timestamp'>
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  try {
+    const trail = ensureTrail();
+    if (!trail) {
+      return { ok: false, message: bootstrapError ?? 'Auditoria indisponivel.' };
+    }
+    return trail.registerAsync(event);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Falha ao registrar auditoria.';
+    console.error('[audit] Falha ao registrar evento de auditoria', error);
+    return { ok: false, message };
+  }
+}
+
+/**
  * Sync list for mock/demo and tests. Supabase mode returns [] — use listAuditEventsAsync.
  */
 export function listAuditEvents(): AuditEvent[] {

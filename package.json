@@ -21,7 +21,7 @@
     "supabase:reset": "npx --yes supabase@2.109.1 db reset",
     "supabase:lint": "npx --yes supabase@2.109.1 db lint --level error",
     "supabase:types": "npx --yes supabase@2.109.1 gen types typescript --local > apps/web/src/services/supabase/database.types.ts",
-    "supabase:validate-hardening": "docker exec -i supabase_db_biomedhealth psql -U postgres -v ON_ERROR_STOP=1 < supabase/policies/WP_02_SECURITY_HARDENING_VALIDATION.sql && docker exec -i supabase_db_biomedhealth psql -U postgres -v ON_ERROR_STOP=1 < supabase/policies/WP_03_2_RESIDUAL_RLS_VALIDATION.sql && docker exec -i supabase_db_biomedhealth psql -U postgres -v ON_ERROR_STOP=1 < supabase/policies/WP_04_1_PLATFORM_READINESS_VALIDATION.sql",
+    "supabase:validate-hardening": "docker exec -i supabase_db_biomedhealth psql -U postgres -v ON_ERROR_STOP=1 < supabase/policies/WP_02_SECURITY_HARDENING_VALIDATION.sql && docker exec -i supabase_db_biomedhealth psql -U postgres -v ON_ERROR_STOP=1 < supabase/policies/WP_03_2_RESIDUAL_RLS_VALIDATION.sql && docker exec -i supabase_db_biomedhealth psql -U postgres -v ON_ERROR_STOP=1 < supabase/policies/WP_04_1_PLATFORM_READINESS_VALIDATION.sql && docker exec -i supabase_db_biomedhealth psql -U postgres -v ON_ERROR_STOP=1 < supabase/policies/WP_04_2_TRUST_AUDIT_VALIDATION.sql",
     "supabase:verify": "npm run supabase:reset && npm run supabase:lint && npm run supabase:validate-hardening"
   }
 }

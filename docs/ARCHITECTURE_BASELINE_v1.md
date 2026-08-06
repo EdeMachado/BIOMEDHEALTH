@@ -5,12 +5,13 @@
 | Versão | **1.0** |
 | Status | **Oficial** — encerra FASE I (Foundation) |
 | Data | 2026-08-06 |
-| Baseline `main` | `cb61981ccf30c6f765431fab536dbeb17e3bf114` (PR #50 WP-04.1; docs #49; funcional #48) |
-| PR consolidado | [#48](https://github.com/EdeMachado/BIOMEDHEALTH/pull/48), [#49](https://github.com/EdeMachado/BIOMEDHEALTH/pull/49), [#50](https://github.com/EdeMachado/BIOMEDHEALTH/pull/50) |
-| HML | `biomedhealth-hml` — migrations **0001–0021** |
-| Próxima fase | WP-04.2 / E01.x (auditoria residual) — **D02-A não autorizado** |
+| Baseline `main` | `9533563b0f19e6cf4b16a5dc1b4e3181a07a4dd6` (PR #51; funcional WP-04.1 `cb61981…` / PR #50) |
+| PR consolidado | [#48](https://github.com/EdeMachado/BIOMEDHEALTH/pull/48), [#49](https://github.com/EdeMachado/BIOMEDHEALTH/pull/49), [#50](https://github.com/EdeMachado/BIOMEDHEALTH/pull/50), [#51](https://github.com/EdeMachado/BIOMEDHEALTH/pull/51) |
+| HML | `biomedhealth-hml` — migrations **0001–0021** (0022 **não** aplicada) |
+| Em curso | WP-04.2 Trust & Audit Layer — branch `feat/wp-04-2-trust-audit-layer` (**IN PROGRESS**) — **D02-A BLOCKED** |
+| Engineering Book | `docs/BIOMED_HEALTH_ENGINEERING_BOOK_v1.md` |
 
-Complemento WP-04.1 (mergeado + HML): policies JWT-era residual → `app_auth`; search_path 0017 endurecido; sinks E01 consent/clínico. **Não altera** os princípios nem o fluxo oficial deste baseline.
+Complemento WP-04.1 (mergeado + HML): policies JWT-era residual → `app_auth`; search_path 0017 endurecido; sinks E01 consent/clínico. Complemento WP-04.2 (em curso, não em `main`): contrato de auditoria endurecido (sanitizer allowlist, sinks coletivos, migration **0022** append-only/`correlation_id` — só no branch). **Não altera** os princípios nem o fluxo oficial deste baseline.
 
 Este documento é a **fonte canônica da arquitetura vigente** após a consolidação WP-04.0. Não inicia motores de IA, analytics reais nem D02-A.
 
@@ -139,7 +140,7 @@ Produção
 | D02 | SPEC + Gate documental; **impl. não autorizada** |
 | Hardening 0019/0020/0021 | Em `main` + **aplicado no HML** |
 | Fail-closed bootstraps | assessment, consent, audit, collective |
-| Audit adapter | Unificado; RPC `register_audit_event` |
+| Audit adapter | Unificado; RPC `register_audit_event` (0022 no branch WP-04.2: append-only + correlação) |
 
 **FASE I (Foundation) — ENCERRADA oficialmente por este baseline.**  
-WP-04.1 (Platform Readiness) **concluído** com HML até **0021**. Próximo: **WP-04.2 / E01.x**, sem iniciar D02-A.
+WP-04.1 **concluído** (HML **0021**). **WP-04.2 IN PROGRESS** — sem iniciar D02-A. Ver Engineering Book e `docs/WP-04-2_TECHNICAL_REPORT.md`.

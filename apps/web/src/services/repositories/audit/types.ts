@@ -5,6 +5,8 @@ export type AuditRegisterInput = Omit<AuditEvent, 'id' | 'timestamp'>;
 export interface AuditTrail {
   readonly mode: 'mock' | 'supabase';
   register(event: AuditRegisterInput): void;
+  /** Awaitable persist — required for audit-required mutations (fail-closed). */
+  registerAsync(event: AuditRegisterInput): Promise<{ ok: true } | { ok: false; message: string }>;
   /** Sync snapshot for demo/tests. Supabase returns [] — use `list()` for persistence. */
   listSync(): AuditEvent[];
   list(): Promise<AuditEvent[]>;

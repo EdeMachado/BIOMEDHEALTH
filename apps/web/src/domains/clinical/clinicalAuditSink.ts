@@ -1,4 +1,5 @@
 import { registerAuditEvent } from '@/domains/audit/auditTrail';
+import { newCorrelationId } from '@/domains/audit/auditContract';
 import { sanitizeAuditMetadata } from '@/domains/audit/sanitizeAuditMetadata';
 
 export type ClinicalAuditActor = {
@@ -25,13 +26,6 @@ export type ClinicalAuditSink = {
   }) => void;
 };
 
-function newCorrelationId(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID().replace(/-/g, '').slice(0, 24);
-  }
-  return `corr${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
-}
-
 /**
  * Minimal clinical audit sink for sensitive writes — identifiers only, no PHI/notes.
  */
@@ -46,6 +40,7 @@ export function createPersistingClinicalAuditSink(actor: ClinicalAuditActor): Cl
           entityId: input.entityId,
           correlationId: input.correlationId ?? newCorrelationId(),
           result: input.result,
+          source: 'clinical',
         });
         registerAuditEvent({
           actorEmail: actor.actorEmail,

@@ -31,7 +31,8 @@ export type CollectiveErrorCode =
   | 'NOT_FOUND'
   | 'CONFLICT'
   | 'ATOMICITY_REQUIRED'
-  | 'TECHNICAL_ERROR';
+  | 'TECHNICAL_ERROR'
+  | 'AUDIT_REQUIRED_FAILED';
 
 export type CollectiveError = {
   code: CollectiveErrorCode;

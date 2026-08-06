@@ -872,15 +872,16 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 1. **Identificador**: `SUP-E01`
 2. **Titulo**: Implementacao de auditoria persistente append-only
 3. **Finalidade**: garantir trilha imutavel de eventos sensiveis.
-4. **Status parcial (WP-03.2 + WP-04.0 + WP-04.1)**:
+4. **Status parcial (WP-03.2 + WP-04.0 + WP-04.1 + WP-04.2 IN PROGRESS)**:
    - adapter unico `bootstrapAuditTrail` (mock intencional vs supabase fail-closed);
    - RPC `public.register_audit_event` + policy `audit_events_select_auditor` via `app_auth`;
    - migration **0020** em `main` e **aplicada no HML**;
    - migration **0021** (JWT→app_auth + search_path 0017) em `main` (PR #50) e **aplicada no HML** (validacao A–L; evidência `docs/WP-04-1_HML_0021_EVIDENCE.md`);
    - sinks **consentimento** + **escritas clinicas sensiveis** com metadata sanitizada (IDs/codigos);
    - UI de gestao lista via `listAuditEventsAsync`;
-   - Architecture Baseline v1.0 + ADRs 001–008 (+013);
-   - **ainda pendente (WP-04.2 / E01.x)**: sinks coletivos, auditoria de negacoes update/delete, append-only real, correlacao, inventario remoto formal, fechamento documental E01.
+   - Architecture Baseline v1.0 + ADRs 001–008 (+013); Engineering Book v1;
+   - **WP-04.2 IN PROGRESS** (`feat/wp-04-2-trust-audit-layer`; baseline `main` PR #51 `9533563…`): migration **0022** + rollback (append-only / RPC endurecida / `correlation_id`) — **nao aplicada no HML**; mutacoes coletivas auditadas; sanitizer allowlist; inventarios `docs/WP-04-2_E01_EVENT_INVENTORY.md`, `docs/WP-04-2_HML_REMOTE_INVENTORY.md`;
+   - **residual E01 ainda aberto**: falha login pre-auth; export demo LGPD; RLS-deny same-txn; care-plan fine-grained; fechamento documental E01. **D02-A permanece BLOCKED.**
 5. **Escopo incluido** (restante):
    - padrao de payload minimo completo;
    - bloqueio de update/delete para app user;
@@ -1003,7 +1004,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 | 13 | SUP-D01 | D | SUP-A01 + decisao coletiva ratificada | Ciclo A/B/C/D em main (PRs #20–#24; docs #26 `89de7ab…`) |
 | 14 | SUP-D02 | D | D01 + limiar 10 | SPEC em main (PR #27); Gate PR #28 mergeado (`b04b4b9…`); reauditoria aprovada com P3; **implementacao nao iniciada**; D02-A bloqueado (criterio 14) |
 | 15 | SUP-D03 | D | D01, D02 | Gestao em dados reais agregados |
-| 16 | SUP-E01 | E | A02, A03 + B/C/D | Auditoria append-only ativa |
+| 16 | SUP-E01 | E | A02, A03 + B/C/D | PARCIAL — WP-04.2 IN PROGRESS (0022 + sinks coletivos; residual E01) |
 | 17 | SUP-E02 | E | A03, C04 residual, D03, E01 | Suite de seguranca completa |
 | 18 | SUP-E03 | E | Todas anteriores | Hardening e plano de cutover final |
 
@@ -1011,7 +1012,7 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 
 ## Caminho critico recomendado
 
-`SUP-A01 -> … -> [D01] -> [Gate D02-0 documental] -> [WP-03.2/PR#48 + 0020 HML] -> [WP-04.0 Architecture Baseline v1.0] -> [WP-04.1/PR#50 + 0021 HML] -> [WP-04.2 / E01.x] -> [criterio 14 + inventario remoto] -> [D02-A… — nao autorizada ainda] -> SUP-D03 -> …`
+`SUP-A01 -> … -> [D01] -> [Gate D02-0 documental] -> [WP-03.2/PR#48 + 0020 HML] -> [WP-04.0 Architecture Baseline v1.0] -> [WP-04.1/PR#50 + 0021 HML] -> [PR#51 `9533563…`] -> [WP-04.2 IN PROGRESS / E01.x + 0022] -> [criterio 14 + inventario remoto] -> [D02-A… — BLOCKED] -> SUP-D03 -> …`
 
 Notas de caminho:
 

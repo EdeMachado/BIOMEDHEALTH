@@ -62,6 +62,11 @@ const ERROR_DEFAULTS: ErrorDefaults = {
     transient: true,
     message: 'Falha tecnica na gestao coletiva.',
   },
+  AUDIT_REQUIRED_FAILED: {
+    kind: 'technical',
+    transient: true,
+    message: 'Operacao concluida no dominio, mas a auditoria obrigatoria falhou.',
+  },
 };
 
 const COLLECTIVE_MESSAGE_CODES = new Set<string>(Object.keys(ERROR_DEFAULTS));

@@ -5,12 +5,12 @@
 | Versão | **1.0** |
 | Status | **Oficial** — encerra FASE I (Foundation) |
 | Data | 2026-08-06 |
-| Baseline `main` | `6aa954b4d3e951d1015d01f54de99ad48628dc2e` (docs PR #49; funcional PR #48 `cc560ac…`) |
-| PR consolidado | [#48](https://github.com/EdeMachado/BIOMEDHEALTH/pull/48), [#49](https://github.com/EdeMachado/BIOMEDHEALTH/pull/49) |
-| HML | `biomedhealth-hml` — migrations **0001–0020** (0021 via WP-04.1 após autorização) |
-| Próxima fase | Platform Readiness / Intelligence prep — **D02-A não autorizado** |
+| Baseline `main` | `cb61981ccf30c6f765431fab536dbeb17e3bf114` (PR #50 WP-04.1; docs #49; funcional #48) |
+| PR consolidado | [#48](https://github.com/EdeMachado/BIOMEDHEALTH/pull/48), [#49](https://github.com/EdeMachado/BIOMEDHEALTH/pull/49), [#50](https://github.com/EdeMachado/BIOMEDHEALTH/pull/50) |
+| HML | `biomedhealth-hml` — migrations **0001–0021** |
+| Próxima fase | WP-04.2 / E01.x (auditoria residual) — **D02-A não autorizado** |
 
-Complemento WP-04.1 (quando mergeado): policies JWT-era residual → `app_auth`; search_path 0017 endurecido; sinks E01 consent/clínico. **Não altera** os princípios nem o fluxo oficial deste baseline.
+Complemento WP-04.1 (mergeado + HML): policies JWT-era residual → `app_auth`; search_path 0017 endurecido; sinks E01 consent/clínico. **Não altera** os princípios nem o fluxo oficial deste baseline.
 
 Este documento é a **fonte canônica da arquitetura vigente** após a consolidação WP-04.0. Não inicia motores de IA, analytics reais nem D02-A.
 
@@ -137,9 +137,9 @@ Produção
 | Clínico (C) | Parcial (C04.2b encerrada sem impl.; gap `unit_id`) |
 | Coletivo D01 | Em `main` |
 | D02 | SPEC + Gate documental; **impl. não autorizada** |
-| Hardening 0019/0020 | Em `main` + **aplicado no HML** |
+| Hardening 0019/0020/0021 | Em `main` + **aplicado no HML** |
 | Fail-closed bootstraps | assessment, consent, audit, collective |
 | Audit adapter | Unificado; RPC `register_audit_event` |
 
 **FASE I (Foundation) — ENCERRADA oficialmente por este baseline.**  
-Próximo ciclo: **WP-04.1** (Platform Readiness / Intelligence prep), sem iniciar D02-A.
+WP-04.1 (Platform Readiness) **concluído** com HML até **0021**. Próximo: **WP-04.2 / E01.x**, sem iniciar D02-A.

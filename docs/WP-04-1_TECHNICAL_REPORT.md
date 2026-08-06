@@ -41,11 +41,13 @@
 
 ## Restrições respeitadas
 
-Sem D02-A, sem analytics, sem AI, sem nova UX, sem C04.2b, sem fallback mock, sem editar 0001–0020, **sem db push HML**.
+Sem D02-A, sem analytics, sem AI, sem nova UX, sem C04.2b, sem fallback mock, sem editar 0001–0020.
+`db push` HML da **0021** executado **após** merge PR #50 + autorização humana — ver `docs/WP-04-1_HML_0021_EVIDENCE.md`.
 
 ## Riscos remanescentes
 
-- E01 coletivo e negações repository ainda parciais
-- HML sem seed de roles (inventar remoto / seed controlado futuro)
+- E01 coletivo e negações repository ainda parciais → **WP-04.2 / E01.x**
+- HML sem seed completo de roles (inventário remoto formal no próximo ciclo)
 - Issue #25 UI; B04; gap `unit_id` clínico
 - Produção não liberada
+- **D02-A bloqueado**

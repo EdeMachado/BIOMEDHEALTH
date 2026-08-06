@@ -26,6 +26,10 @@ import {
   loadLinkedPatientJourneyViews,
   summarizeClinicalJourneyViews,
 } from '@/domains/journey/journeyService';
+import {
+  createNoopClinicalAuditSink,
+  createPersistingClinicalAuditSink,
+} from '@/domains/clinical/clinicalAuditSink';
 import { useAuth } from '@/services/auth/AuthContext';
 import { getSupabaseClient } from '@/services/api/supabaseClient';
 import {
@@ -940,8 +944,21 @@ function formatDateTime(value: string): string {
   return date.toLocaleString('pt-BR');
 }
 
+function useClinicalAuditSink() {
+  const { user } = useAuth();
+  return useMemo(() => {
+    if (!user?.organizationId) return createNoopClinicalAuditSink();
+    return createPersistingClinicalAuditSink({
+      actorEmail: user.email,
+      actorRole: user.role,
+      organizationId: user.organizationId,
+    });
+  }, [user]);
+}
+
 function useCarePlan(patientId: string | null) {
   const { user } = useAuth();
+  const auditSink = useClinicalAuditSink();
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1051,7 +1068,7 @@ function useCarePlan(patientId: string | null) {
       title: draftTitle,
       generalObjective: draftObjective,
       startsOn: new Date().toISOString().slice(0, 10),
-    });
+    }, auditSink);
     setBusy(false);
     if (!result.ok) {
       setMessage(
@@ -1191,7 +1208,7 @@ function useCarePlan(patientId: string | null) {
       note: noteText,
       kind,
       expectedPlanVersion: openBundle.plan.version,
-    });
+    }, auditSink);
     setBusy(false);
     if (!result.ok) {
       setMessage(
@@ -1225,7 +1242,7 @@ function useCarePlan(patientId: string | null) {
       expectedVersion: openBundle.plan.version,
       mode,
       suspensionReason: mode === 'suspend' ? suspendReason : undefined,
-    });
+    }, auditSink);
     setBusy(false);
     if (!result.ok) {
       setMessage(
@@ -1280,6 +1297,7 @@ function useCarePlan(patientId: string | null) {
 
 function useClinicalRecord(patientId: string | null) {
   const { user } = useAuth();
+  const auditSink = useClinicalAuditSink();
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1388,7 +1406,7 @@ function useClinicalRecord(patientId: string | null) {
       patientId,
       recordId: record?.id,
       sections,
-    });
+    }, auditSink);
     setBusy(false);
     if (!result.ok) {
       setMessage(
@@ -1413,7 +1431,7 @@ function useClinicalRecord(patientId: string | null) {
     const result = await concludeLinkedClinicalRecord(repositoryConfig.repository, context, {
       recordId: record.id,
       sections,
-    });
+    }, auditSink);
     setBusy(false);
     if (!result.ok) {
       setMessage(
@@ -1437,7 +1455,7 @@ function useClinicalRecord(patientId: string | null) {
     setMessage('');
     const result = await reopenLinkedClinicalRecord(repositoryConfig.repository, context, {
       recordId: record.id,
-    });
+    }, auditSink);
     setBusy(false);
     if (!result.ok) {
       setMessage('Nao foi possivel abrir nova versao da ficha.');

@@ -14,6 +14,10 @@ import type {
   UpdateCarePlanActionInput,
   UpdateCarePlanInput,
 } from '@/services/repositories/carePlan/types';
+import {
+  createNoopClinicalAuditSink,
+  type ClinicalAuditSink,
+} from '@/domains/clinical/clinicalAuditSink';
 
 function validateContext(context: CarePlanContext): CarePlanResult<true> {
   if (!context.sessionUserId || !context.professionalUserId) return fail('NO_SESSION');
@@ -55,11 +59,19 @@ export async function loadCarePlanBundle(
 export async function createLinkedCarePlan(
   repository: CarePlanRepository,
   context: CarePlanContext,
-  plan: CreateCarePlanInput
+  plan: CreateCarePlanInput,
+  auditSink: ClinicalAuditSink = createNoopClinicalAuditSink()
 ): Promise<CarePlanResult<CarePlan>> {
   const validation = validateContext(context);
   if (!validation.ok) return validation;
-  return repository.createCarePlan({ context, plan });
+  const result = await repository.createCarePlan({ context, plan });
+  auditSink.registerSensitiveOperation({
+    code: 'care_plan_created',
+    entity: 'care_plan',
+    entityId: result.ok ? result.data.id : undefined,
+    result: result.ok ? 'sucesso' : 'falha',
+  });
+  return result;
 }
 
 export async function updateLinkedCarePlan(
@@ -95,21 +107,37 @@ export async function updateLinkedCarePlanAction(
 export async function closeLinkedCarePlan(
   repository: CarePlanRepository,
   context: CarePlanContext,
-  close: CloseCarePlanInput
+  close: CloseCarePlanInput,
+  auditSink: ClinicalAuditSink = createNoopClinicalAuditSink()
 ): Promise<CarePlanResult<CarePlan>> {
   const validation = validateContext(context);
   if (!validation.ok) return validation;
-  return repository.closeCarePlan({ context, close });
+  const result = await repository.closeCarePlan({ context, close });
+  auditSink.registerSensitiveOperation({
+    code: 'care_plan_closed',
+    entity: 'care_plan',
+    entityId: result.ok ? result.data.id : close.planId,
+    result: result.ok ? 'sucesso' : 'falha',
+  });
+  return result;
 }
 
 export async function addLinkedCarePlanNote(
   repository: CarePlanRepository,
   context: CarePlanContext,
-  note: CarePlanNoteInput
+  note: CarePlanNoteInput,
+  auditSink: ClinicalAuditSink = createNoopClinicalAuditSink()
 ): Promise<CarePlanResult<CarePlanEvent>> {
   const validation = validateContext(context);
   if (!validation.ok) return validation;
-  return repository.addCarePlanNote({ context, note });
+  const result = await repository.addCarePlanNote({ context, note });
+  auditSink.registerSensitiveOperation({
+    code: 'care_plan_note_added',
+    entity: 'care_plan',
+    entityId: note.planId,
+    result: result.ok ? 'sucesso' : 'falha',
+  });
+  return result;
 }
 
 export async function loadCarePlanHistory(

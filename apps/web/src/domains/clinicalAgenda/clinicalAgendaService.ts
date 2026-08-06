@@ -7,6 +7,10 @@ import type {
   CreateClinicalAppointmentInput,
   UpdateClinicalAppointmentInput,
 } from '@/services/repositories/clinicalAgenda/types';
+import {
+  createNoopClinicalAuditSink,
+  type ClinicalAuditSink,
+} from '@/domains/clinical/clinicalAuditSink';
 
 function validateContext(context: ClinicalAgendaContext): ClinicalAgendaResult<true> {
   if (!context.sessionUserId || !context.professionalUserId) return fail('NO_SESSION');
@@ -29,20 +33,36 @@ export async function loadLinkedClinicalAgenda(
 export async function createLinkedClinicalAppointment(
   repository: ClinicalAgendaRepository,
   context: ClinicalAgendaContext,
-  appointment: CreateClinicalAppointmentInput
+  appointment: CreateClinicalAppointmentInput,
+  auditSink: ClinicalAuditSink = createNoopClinicalAuditSink()
 ): Promise<ClinicalAgendaResult<ClinicalAppointment>> {
   const validation = validateContext(context);
   if (!validation.ok) return validation;
-  return repository.createClinicalAppointment({ context, appointment });
+  const result = await repository.createClinicalAppointment({ context, appointment });
+  auditSink.registerSensitiveOperation({
+    code: 'clinical_appointment_created',
+    entity: 'clinical_appointment',
+    entityId: result.ok ? result.data.id : undefined,
+    result: result.ok ? 'sucesso' : 'falha',
+  });
+  return result;
 }
 
 /** Atualiza compromisso do profissional autenticado. */
 export async function updateLinkedClinicalAppointment(
   repository: ClinicalAgendaRepository,
   context: ClinicalAgendaContext,
-  appointment: UpdateClinicalAppointmentInput
+  appointment: UpdateClinicalAppointmentInput,
+  auditSink: ClinicalAuditSink = createNoopClinicalAuditSink()
 ): Promise<ClinicalAgendaResult<ClinicalAppointment>> {
   const validation = validateContext(context);
   if (!validation.ok) return validation;
-  return repository.updateClinicalAppointment({ context, appointment });
+  const result = await repository.updateClinicalAppointment({ context, appointment });
+  auditSink.registerSensitiveOperation({
+    code: 'clinical_appointment_updated',
+    entity: 'clinical_appointment',
+    entityId: result.ok ? result.data.id : appointment.appointmentId,
+    result: result.ok ? 'sucesso' : 'falha',
+  });
+  return result;
 }

@@ -872,13 +872,15 @@ Nenhum item abaixo implica conexao Supabase nesta etapa.
 1. **Identificador**: `SUP-E01`
 2. **Titulo**: Implementacao de auditoria persistente append-only
 3. **Finalidade**: garantir trilha imutavel de eventos sensiveis.
-4. **Status parcial (WP-03.2 + WP-04.0)**:
+4. **Status parcial (WP-03.2 + WP-04.0 + WP-04.1)**:
    - adapter unico `bootstrapAuditTrail` (mock intencional vs supabase fail-closed);
    - RPC `public.register_audit_event` + policy `audit_events_select_auditor` via `app_auth`;
-   - migration **0020** em `main` e **aplicada no HML** (validacao estrutural + comportamental);
+   - migration **0020** em `main` e **aplicada no HML**;
+   - migration **0021** (JWT→app_auth + search_path 0017) em PR WP-04.1 — **HML pendente autorizacao**;
+   - sinks **consentimento** + **escritas clinicas sensiveis** com metadata sanitizada (IDs/codigos);
    - UI de gestao lista via `listAuditEventsAsync`;
-   - Architecture Baseline v1.0 + ADRs 001–008 registrados (Foundation encerrada);
-   - **ainda pendente**: sinks de consentimento/clinico, deny update/delete explicito, suite E2E E01, correlacao rica de entity_id.
+   - Architecture Baseline v1.0 + ADRs 001–008 (+013);
+   - **ainda pendente**: sinks coletivos/negacoes repository amplas, deny update/delete explicito E2E, suite E01 completa.
 5. **Escopo incluido** (restante):
    - padrao de payload minimo completo;
    - bloqueio de update/delete para app user;

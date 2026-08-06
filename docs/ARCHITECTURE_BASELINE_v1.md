@@ -5,10 +5,12 @@
 | Versão | **1.0** |
 | Status | **Oficial** — encerra FASE I (Foundation) |
 | Data | 2026-08-06 |
-| Baseline `main` | `cc560ac94b0a0fe946d3ef61f3cc5384bb09f118` (merge PR #48) |
-| PR consolidado | [#48](https://github.com/EdeMachado/BIOMEDHEALTH/pull/48) |
-| HML | `biomedhealth-hml` (`nwsqhbdusdxcwquayase`) — migrations **0001–0020** |
-| Próxima fase | Platform Intelligence (prep) — **D02-A não autorizado** |
+| Baseline `main` | `6aa954b4d3e951d1015d01f54de99ad48628dc2e` (docs PR #49; funcional PR #48 `cc560ac…`) |
+| PR consolidado | [#48](https://github.com/EdeMachado/BIOMEDHEALTH/pull/48), [#49](https://github.com/EdeMachado/BIOMEDHEALTH/pull/49) |
+| HML | `biomedhealth-hml` — migrations **0001–0020** (0021 via WP-04.1 após autorização) |
+| Próxima fase | Platform Readiness / Intelligence prep — **D02-A não autorizado** |
+
+Complemento WP-04.1 (quando mergeado): policies JWT-era residual → `app_auth`; search_path 0017 endurecido; sinks E01 consent/clínico. **Não altera** os princípios nem o fluxo oficial deste baseline.
 
 Este documento é a **fonte canônica da arquitetura vigente** após a consolidação WP-04.0. Não inicia motores de IA, analytics reais nem D02-A.
 
